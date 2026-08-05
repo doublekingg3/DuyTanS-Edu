@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar, GraduationCap, ArrowRight } from 'lucide-react';
 
-export default function Portal({ onSelectEduManager }: { onSelectEduManager: () => void }) {
+export default function Portal({ onSelectEduManager, onSelectTkb }: { onSelectEduManager: () => void, onSelectTkb: () => void }) {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
@@ -14,13 +14,9 @@ export default function Portal({ onSelectEduManager }: { onSelectEduManager: () 
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              window.open('https://example.com/tkb', '_blank'); // Update this link to the actual TKB system later
-            }}
-            className="group bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center"
+          <button
+            onClick={onSelectTkb}
+            className="group bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50/20 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mb-6 text-blue-600 group-hover:scale-110 transition-transform duration-300 relative z-10">
@@ -34,11 +30,11 @@ export default function Portal({ onSelectEduManager }: { onSelectEduManager: () 
               <span>Truy cập TKB</span>
               <ArrowRight className="w-5 h-5 ml-1 transition-transform group-hover:translate-x-1" />
             </div>
-          </a>
+          </button>
 
           <button
             onClick={onSelectEduManager}
-            className="group bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center w-full"
+            className="group bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center w-full"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50/20 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="w-20 h-20 bg-indigo-100 rounded-2xl flex items-center justify-center mb-6 text-indigo-600 group-hover:scale-110 transition-transform duration-300 relative z-10">

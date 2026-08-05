@@ -5,13 +5,13 @@ import ParentView from './components/ParentView';
 import AdminView from './components/AdminView';
 import Login from './components/Login';
 import Portal from './components/Portal';
-import { GraduationCap, Users, UserCircle, Shield, Loader2, LogOut } from 'lucide-react';
+import { GraduationCap, Calendar, Users, UserCircle, Shield, Loader2, LogOut, ArrowLeft } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from './lib/firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 
 export default function App() {
-  const [appMode, setAppMode] = useState<'portal' | 'edu_manager'>('portal');
+  const [appMode, setAppMode] = useState<'portal' | 'edu_manager' | 'tkb'>('portal');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [role, setRole] = useState<'admin' | 'teacher' | 'parent'>('admin');
   const [loggedInUserId, setLoggedInUserId] = useState<string>('');
@@ -232,7 +232,36 @@ export default function App() {
   };
 
   if (appMode === 'portal') {
-    return <Portal onSelectEduManager={() => setAppMode('edu_manager')} />;
+    return <Portal onSelectEduManager={() => setAppMode('edu_manager')} onSelectTkb={() => setAppMode('tkb')} />;
+  }
+
+  if (appMode === 'tkb') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col relative">
+        <div className="bg-white border-b border-slate-200 p-4 flex items-center shadow-sm z-10">
+          <button 
+            onClick={() => setAppMode('portal')}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Về Portal</span>
+          </button>
+          <h1 className="text-xl font-bold font-display text-slate-800 ml-6">Hệ thống Thời Khoá Biểu</h1>
+        </div>
+        <div className="flex-1 w-full bg-slate-100">
+          {/* 
+            ↓↓↓ BẠN DÁN LINK TKB CỦA BẠN VÀO THUỘC TÍNH src Ở BÊN DƯỚI NHÉ ↓↓↓ 
+            Ví dụ: src="https://tkb.truongcuaban.edu.vn" 
+          */}
+          <iframe 
+            src="https://tkb-081225.vercel.app/" 
+            className="w-full h-full border-0"
+            title="TKB System"
+          />
+          {/* ↑↑↑ DÁN LINK VÀO ĐOẠN TRÊN ↑↑↑ */}
+        </div>
+      </div>
+    );
   }
 
   if (loading) {
@@ -245,7 +274,7 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login classes={classes} students={students} users={users} onLogin={handleLogin} />;
+    return <Login classes={classes} students={students} users={users} onLogin={handleLogin} onBack={() => setAppMode('portal')} />;
   }
 
   return (
@@ -267,12 +296,23 @@ export default function App() {
               {role === 'parent' && 'Phụ huynh'}
             </span>
             <button
+              onClick={() => {
+                handleLogout();
+                setAppMode('portal');
+              }}
+              className="ml-2 p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2"
+              title="Trở về"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm font-medium hidden sm:inline">Về Portal</span>
+            </button>
+            <button
               onClick={handleLogout}
               className="ml-2 p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
               title="Đăng xuất"
             >
               <LogOut className="w-4 h-4" />
-              <span className="text-sm font-medium hidden sm:inline">Đăng xuất</span>
+              <span className="text-sm font-medium hidden md:inline">Đăng xuất</span>
             </button>
           </div>
         </div>
