@@ -4,12 +4,14 @@ import TeacherView from './components/TeacherView';
 import ParentView from './components/ParentView';
 import AdminView from './components/AdminView';
 import Login from './components/Login';
+import Portal from './components/Portal';
 import { GraduationCap, Users, UserCircle, Shield, Loader2, LogOut } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from './lib/firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 
 export default function App() {
+  const [appMode, setAppMode] = useState<'portal' | 'edu_manager'>('portal');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [role, setRole] = useState<'admin' | 'teacher' | 'parent'>('admin');
   const [loggedInUserId, setLoggedInUserId] = useState<string>('');
@@ -228,6 +230,10 @@ export default function App() {
     setParentStudentId('');
     setLoggedInUserId('');
   };
+
+  if (appMode === 'portal') {
+    return <Portal onSelectEduManager={() => setAppMode('edu_manager')} />;
+  }
 
   if (loading) {
     return (
