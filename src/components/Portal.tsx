@@ -9,7 +9,7 @@ export default function Portal({ onSelectEduManager }: { onSelectEduManager: () 
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200 mb-6">
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold font-display text-slate-800 mb-4">Hệ Sinh Thái Giáo Dục</h1>
+          <h1 className="text-4xl font-bold font-display text-slate-800 mb-4">Ứng dụng quản lý lớp học thông minh và ứng dụng sắp xếp thời khoá biểu AI.</h1>
           <p className="text-slate-500 text-lg">Vui lòng chọn hệ thống bạn muốn truy cập</p>
         </div>
 
