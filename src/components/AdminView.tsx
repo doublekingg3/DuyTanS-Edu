@@ -489,8 +489,8 @@ export default function AdminView({ classes, students, users, schoolYears }: { c
   };
 
   const filteredUsers = users.filter(u => 
-    u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
-    u.fullName.toLowerCase().includes(userSearchTerm.toLowerCase())
+    (u.username || '').toLowerCase().includes((userSearchTerm || '').toLowerCase()) || 
+    (u.fullName || '').toLowerCase().includes((userSearchTerm || '').toLowerCase())
   );
 
   return (
@@ -860,9 +860,9 @@ export default function AdminView({ classes, students, users, schoolYears }: { c
                           <td className="px-6 py-4 border-b border-slate-50">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium text-sm">
-                                {u.fullName.charAt(0)}
+                                {(u.fullName || 'U').charAt(0)}
                               </div>
-                              <span className="font-medium text-slate-700">{u.fullName}</span>
+                              <span className="font-medium text-slate-700">{u.fullName || 'Chưa cập nhật'}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 border-b border-slate-50">
@@ -1162,7 +1162,7 @@ export default function AdminView({ classes, students, users, schoolYears }: { c
                       <div className="overflow-y-auto flex-1">
                         {users
                           .filter(u => u.role === 'teacher')
-                          .filter(u => u.fullName.toLowerCase().includes(teacherSearchTerm.toLowerCase()) || u.username.toLowerCase().includes(teacherSearchTerm.toLowerCase()))
+                          .filter(u => (u.fullName || '').toLowerCase().includes((teacherSearchTerm || '').toLowerCase()) || (u.username || '').toLowerCase().includes((teacherSearchTerm || '').toLowerCase()))
                           .map(teacher => (
                             <div 
                               key={teacher.id}
@@ -1177,7 +1177,7 @@ export default function AdminView({ classes, students, users, schoolYears }: { c
                               <div className="text-xs text-slate-500">Mã GV: {teacher.username}</div>
                             </div>
                           ))}
-                        {users.filter(u => u.role === 'teacher' && (u.fullName.toLowerCase().includes(teacherSearchTerm.toLowerCase()) || u.username.toLowerCase().includes(teacherSearchTerm.toLowerCase()))).length === 0 && (
+                        {users.filter(u => u.role === 'teacher' && ((u.fullName || '').toLowerCase().includes((teacherSearchTerm || '').toLowerCase()) || (u.username || '').toLowerCase().includes((teacherSearchTerm || '').toLowerCase()))).length === 0 && (
                           <div className="px-3 py-4 text-center text-sm text-slate-500">
                             Không tìm thấy giáo viên nào.
                           </div>
