@@ -1,0 +1,29 @@
+{
+  "collections": [
+    {
+      "name": "students",
+      "description": "Store student details, grades, and information",
+      "fields": [
+        { "name": "fullName", "type": "string" },
+        { "name": "gender", "type": "string" },
+        { "name": "ethnicity", "type": "string" },
+        { "name": "status", "type": "string" },
+        { "name": "academicPerformance", "type": "string" },
+        { "name": "conduct", "type": "string" },
+        { "name": "cp", "type": "number" },
+        { "name": "kp", "type": "number" },
+        { "name": "award", "type": "string" },
+        { "name": "grades", "type": "map" },
+        { "name": "comments", "type": "array" },
+        { "name": "notifications", "type": "array" },
+        { "name": "stt", "type": "number" }
+      ],
+      "access": {
+        "read": "Anyone",
+        "create": "Anyone",
+        "update": "Anyone",
+        "delete": "Anyone"
+      }
+    }
+  ]
+}
