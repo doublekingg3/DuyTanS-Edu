@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar, GraduationCap, ArrowRight } from 'lucide-react';
 
-export default function Portal({ onSelectEduManager, onSelectTkb }: { onSelectEduManager: () => void, onSelectTkb: () => void }) {
+export default function Portal({ onSelectEduManager }: { onSelectEduManager: () => void }) {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
@@ -14,8 +14,14 @@ export default function Portal({ onSelectEduManager, onSelectTkb }: { onSelectEd
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          <button
-            onClick={onSelectTkb}
+          {/* 
+            ↓↓↓ BẠN DÁN LINK TKB CỦA BẠN VÀO THUỘC TÍNH href Ở BÊN DƯỚI NHÉ ↓↓↓ 
+            Ví dụ: href="https://tkb.truongcuaban.edu.vn" 
+          */}
+          <a
+            href="https://tkb-081225.vercel.app/" 
+            target="_blank"
+            rel="noopener noreferrer"
             className="group bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50/20 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -30,7 +36,8 @@ export default function Portal({ onSelectEduManager, onSelectTkb }: { onSelectEd
               <span>Truy cập TKB</span>
               <ArrowRight className="w-5 h-5 ml-1 transition-transform group-hover:translate-x-1" />
             </div>
-          </button>
+          </a>
+          {/* ↑↑↑ DÁN LINK VÀO ĐOẠN TRÊN ↑↑↑ */}
 
           <button
             onClick={onSelectEduManager}

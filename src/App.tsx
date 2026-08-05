@@ -232,7 +232,7 @@ export default function App() {
   };
 
   if (appMode === 'portal') {
-    return <Portal onSelectEduManager={() => setAppMode('edu_manager')} onSelectTkb={() => setAppMode('tkb')} />;
+    return <Portal onSelectEduManager={() => setAppMode('edu_manager')} />;
   }
 
   if (appMode === 'tkb') {
@@ -254,7 +254,7 @@ export default function App() {
             Ví dụ: src="https://tkb.truongcuaban.edu.vn" 
           */}
           <iframe 
-            src="https://tkb-081225.vercel.app/" 
+            src="https://example.com" 
             className="w-full h-full border-0"
             title="TKB System"
           />
