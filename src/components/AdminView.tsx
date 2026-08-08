@@ -19,6 +19,22 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     }
   }, [settings]);
 
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: keyof AppSettings) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 800 * 1024) {
+        showAlert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh < 800KB để đảm bảo lưu trữ.', 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAppSettings(prev => ({ ...prev, [field]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSaveSettings = async () => {
     setIsSavingSettings(true);
     try {
@@ -864,47 +880,75 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   <p className="text-xs text-slate-500 mt-1">Sẽ hiển thị ở trang đăng nhập thay cho EduManage Pro.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hình nền Giao diện Portal (URL)</label>
-                  <input
-                    type="text"
-                    value={appSettings.portalBackground}
-                    onChange={(e) => setAppSettings({ ...appSettings, portalBackground: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="https://example.com/bg.jpg"
-                  />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Hình nền Giao diện Portal \(URL\)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={appSettings.portalBackground}
+                      onChange={(e) => setAppSettings({ ...appSettings, portalBackground: e.target.value })}
+                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Nhập URL hoặc tải ảnh lên"
+                    />
+                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
+                      <Upload className="w-4 h-4" />
+                      <span className="hidden sm:inline">Tải lên</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'portalBackground')} />
+                    </label>
+                  </div>
                   <p className="text-xs text-slate-500 mt-1">URL hình ảnh nền cho trang Portal.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Icon Tiêu đề (Favicon URL)</label>
-                  <input
-                    type="text"
-                    value={appSettings.pageIcon}
-                    onChange={(e) => setAppSettings({ ...appSettings, pageIcon: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="https://example.com/icon.png"
-                  />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Icon Tiêu đề \(Favicon URL\)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={appSettings.pageIcon}
+                      onChange={(e) => setAppSettings({ ...appSettings, pageIcon: e.target.value })}
+                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Nhập URL hoặc tải ảnh lên"
+                    />
+                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
+                      <Upload className="w-4 h-4" />
+                      <span className="hidden sm:inline">Tải lên</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'pageIcon')} />
+                    </label>
+                  </div>
                   <p className="text-xs text-slate-500 mt-1">URL hình ảnh nhỏ trên thẻ trình duyệt.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Logo Giao diện Portal (URL)</label>
-                  <input
-                    type="text"
-                    value={appSettings.portalLogo}
-                    onChange={(e) => setAppSettings({ ...appSettings, portalLogo: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="https://example.com/logo.png"
-                  />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Logo Giao diện Portal \(URL\)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={appSettings.portalLogo}
+                      onChange={(e) => setAppSettings({ ...appSettings, portalLogo: e.target.value })}
+                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Nhập URL hoặc tải ảnh lên"
+                    />
+                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
+                      <Upload className="w-4 h-4" />
+                      <span className="hidden sm:inline">Tải lên</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'portalLogo')} />
+                    </label>
+                  </div>
                   <p className="text-xs text-slate-500 mt-1">Sẽ thay thế icon cái mũ ở trang Portal.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Logo Trang Đăng nhập (URL)</label>
-                  <input
-                    type="text"
-                    value={appSettings.loginLogo}
-                    onChange={(e) => setAppSettings({ ...appSettings, loginLogo: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="https://example.com/login-logo.png"
-                  />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Logo Trang Đăng nhập \(URL\)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={appSettings.loginLogo}
+                      onChange={(e) => setAppSettings({ ...appSettings, loginLogo: e.target.value })}
+                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Nhập URL hoặc tải ảnh lên"
+                    />
+                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
+                      <Upload className="w-4 h-4" />
+                      <span className="hidden sm:inline">Tải lên</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'loginLogo')} />
+                    </label>
+                  </div>
                   <p className="text-xs text-slate-500 mt-1">Sẽ thay thế icon cái mũ ở trang Đăng nhập.</p>
                 </div>
               </div>
