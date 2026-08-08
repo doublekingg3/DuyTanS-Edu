@@ -1,26 +1,7 @@
 const fs = require('fs');
 const file = 'src/components/Login.tsx';
-let code = fs.readFileSync(file, 'utf8');
+let content = fs.readFileSync(file, 'utf8');
 
-const target1 = `<p className="text-xs text-slate-500 mt-2">
-                  <strong>Tài Khoản Demo</strong><br/>
-                  Phụ huynh đăng nhập theo mẫu: năm học-stt<br/>
-                  Ví dụ: 20252026-001
-                </p>`;
-code = code.replace(target1, "");
+content = content.replace("        </div>\n      </div>\n    </div>\n  );\n}", "        </div>\n      </div>\n      </div>\n    </div>\n  );\n}");
 
-const target2 = `{(selectedRole === 'admin' || selectedRole === 'teacher') && (`;
-const insert2 = `{selectedRole === 'parent' && (
-              <div className="text-center mt-4">
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <strong>Tài Khoản Demo</strong><br/>
-                  Phụ huynh đăng nhập theo mẫu: <strong>năm học-stt</strong><br/>
-                  Ví dụ: <strong>20252026-001</strong>
-                </p>
-              </div>
-            )}
-            
-            {(selectedRole === 'admin' || selectedRole === 'teacher') && (`;
-code = code.replace(target2, insert2);
-
-fs.writeFileSync(file, code);
+fs.writeFileSync(file, content);

@@ -9,11 +9,11 @@ export default function Portal({ onSelectEduManager, settings }: { onSelectEduMa
       backgroundSize: 'cover',
       backgroundPosition: 'center'
     }}>
-      {settings?.portalBackground && <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-0"></div>}
+      {settings?.portalBackground && <div className="absolute inset-0 bg-white/40 backdrop-blur-sm z-0"></div>}
       <div className="max-w-4xl w-full relative z-10">
         <div className="text-center mb-12">
           {settings?.portalLogo ? (
-            <img src={settings.portalLogo} alt="Logo" className="h-24 object-contain mb-6 mx-auto drop-shadow-xl" />
+            <img src={settings.portalLogo} alt="Logo" className="w-[150px] h-[150px] rounded-full object-cover mb-6 mx-auto drop-shadow-xl border-4 border-white/50" />
           ) : (
             <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200 mb-6">
               <GraduationCap className="w-8 h-8 text-white" />

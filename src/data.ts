@@ -5,6 +5,7 @@ export interface AppSettings {
   portalBackground: string;
   portalLogo: string;
   loginLogo: string;
+  loginBackground: string;
   appName: string;
 }
 
@@ -14,6 +15,7 @@ export const defaultSettings: AppSettings = {
   portalBackground: "",
   portalLogo: "",
   loginLogo: "",
+  loginBackground: "",
   appName: "EduManage Pro"
 };
 

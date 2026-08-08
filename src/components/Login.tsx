@@ -75,20 +75,28 @@ export default function Login({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-slate-50 relative flex items-center p-4 sm:p-8 overflow-hidden" style={{ 
+      backgroundImage: settings?.loginBackground ? `url(${settings.loginBackground})` : 'none',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    }}>
+      {settings?.loginBackground && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-0"></div>}
+      
       {onBack && (
         <button 
           onClick={onBack}
-          className="absolute top-4 left-4 sm:top-8 sm:left-8 flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all font-medium"
+          className="absolute top-4 left-4 sm:top-8 sm:left-8 flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-white/20 text-slate-700 hover:text-indigo-600 transition-all font-medium z-20"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="hidden sm:inline">Về Portal</span>
+          <span>Về Portal</span>
         </button>
       )}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+
+      <div className="w-full max-w-md relative z-10 mx-auto lg:mx-0 lg:ml-auto lg:mr-[100px]">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div className="bg-indigo-600 p-8 text-center text-white">
           {settings?.loginLogo ? (
-            <img src={settings.loginLogo} alt="Logo" className="h-20 object-contain mx-auto mb-4 drop-shadow-md" />
+            <img src={settings.loginLogo} alt="Logo" className="w-24 h-24 rounded-full object-cover mx-auto mb-4 drop-shadow-md border-4 border-white/20" />
           ) : (
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
               <GraduationCap className="w-8 h-8 text-white" />
@@ -215,6 +223,7 @@ export default function Login({
             )}
           </form>
         </div>
+      </div>
       </div>
     </div>
   );

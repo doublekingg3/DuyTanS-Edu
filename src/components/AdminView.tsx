@@ -23,13 +23,52 @@ export default function AdminView({ classes, students, users, schoolYears, setti
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: keyof AppSettings) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 800 * 1024) {
-        showAlert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh < 800KB để đảm bảo lưu trữ.', 'error');
+      if (file.size > 2 * 1024 * 1024) {
+        showAlert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh < 2MB.', 'error');
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAppSettings(prev => ({ ...prev, [field]: reader.result as string }));
+        // Compress image using canvas
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Max dimensions
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG with 0.7 quality
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          
+          // Check size of base64 (approximate)
+          if (compressedDataUrl.length > 800000) {
+             showAlert('Ảnh sau khi nén vẫn quá lớn. Vui lòng chọn ảnh khác đơn giản hơn.', 'error');
+             return;
+          }
+          
+          setAppSettings(prev => ({ ...prev, [field]: compressedDataUrl }));
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -42,7 +81,8 @@ export default function AdminView({ classes, students, users, schoolYears, setti
       await setDoc(settingsRef, appSettings);
       showAlert('Đã lưu cấu hình giao diện thành công!', 'success');
     } catch (error) {
-      showAlert('Lỗi khi lưu cấu hình', 'error');
+      console.error(error);
+      showAlert('Lỗi khi lưu cấu hình. Vui lòng thử lại với ảnh dung lượng nhỏ hơn.', 'error');
     } finally {
       setIsSavingSettings(false);
     }
@@ -950,6 +990,25 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                     </label>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">Sẽ thay thế icon cái mũ ở trang Đăng nhập.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Hình nền Trang Đăng nhập (URL)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={appSettings.loginBackground}
+                      onChange={(e) => setAppSettings({ ...appSettings, loginBackground: e.target.value })}
+                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Nhập URL hoặc tải ảnh lên"
+                    />
+                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
+                      <Upload className="w-4 h-4" />
+                      <span className="hidden sm:inline">Tải lên</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'loginBackground')} />
+                    </label>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">URL hình ảnh nền cho trang Đăng nhập.</p>
                 </div>
               </div>
             </div>
