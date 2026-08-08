@@ -1,3 +1,22 @@
+
+export interface AppSettings {
+  pageTitle: string;
+  pageIcon: string;
+  portalBackground: string;
+  portalLogo: string;
+  loginLogo: string;
+  appName: string;
+}
+
+export const defaultSettings: AppSettings = {
+  pageTitle: "EduManage Pro",
+  pageIcon: "",
+  portalBackground: "",
+  portalLogo: "",
+  loginLogo: "",
+  appName: "EduManage Pro"
+};
+
 export interface GamificationData {
   study: string;
   achievement: string;
@@ -100,6 +119,12 @@ export interface Student {
   yearGrades?: Grades;
   term1Details?: DetailedGrades;
   term2Details?: DetailedGrades;
+  term1IsExcellent?: boolean;
+  term2IsExcellent?: boolean;
+  yearIsExcellent?: boolean;
+  term1RankOverride?: string;
+  term2RankOverride?: string;
+  yearRankOverride?: string;
   academicPerformance: 'Tốt' | 'Khá' | 'Đạt' | 'Chưa đạt' | string;
   conduct: 'Tốt' | 'Khá' | 'Đạt' | 'Chưa đạt' | string;
   cp: number;

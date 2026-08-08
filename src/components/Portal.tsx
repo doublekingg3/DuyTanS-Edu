@@ -1,14 +1,24 @@
 import React from 'react';
 import { Calendar, GraduationCap, ArrowRight } from 'lucide-react';
+import { AppSettings } from '../data';
 
-export default function Portal({ onSelectEduManager }: { onSelectEduManager: () => void }) {
+export default function Portal({ onSelectEduManager, settings }: { onSelectEduManager: () => void, settings?: AppSettings }) {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative" style={{ 
+      backgroundImage: settings?.portalBackground ? `url(${settings.portalBackground})` : 'none',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    }}>
+      {settings?.portalBackground && <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-0"></div>}
+      <div className="max-w-4xl w-full relative z-10">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200 mb-6">
-            <GraduationCap className="w-8 h-8 text-white" />
-          </div>
+          {settings?.portalLogo ? (
+            <img src={settings.portalLogo} alt="Logo" className="h-24 object-contain mb-6 mx-auto drop-shadow-xl" />
+          ) : (
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200 mb-6">
+              <GraduationCap className="w-8 h-8 text-white" />
+            </div>
+          )}
           <h1 className="text-4xl font-bold font-display text-slate-800 mb-4">Ứng dụng quản lý lớp học thông minh và ứng dụng sắp xếp thời khoá biểu AI.</h1>
           <p className="text-slate-500 text-lg">Vui lòng chọn hệ thống bạn muốn truy cập</p>
         </div>

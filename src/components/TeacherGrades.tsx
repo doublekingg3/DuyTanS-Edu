@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Student, Grades, getSubjectName, computeMonthlyGamificationData } from '../data';
 import GradeDetailModal from "./GradeDetailModal";
 import { SubjectDetail } from "../data";
-import { Download, FileSpreadsheet, Upload, Calendar, Clock, BookOpen, Medal, Calculator, AlertCircle, AlertTriangle, AlertOctagon } from 'lucide-react';
+import { Download, FileSpreadsheet, Upload, Calendar, Clock, BookOpen, Medal, Calculator, AlertCircle, AlertTriangle, AlertOctagon, Star, Settings2 } from 'lucide-react';
 import { useAlert } from "../contexts/AlertContext";
 
 const EditableCell = ({ value, onSave }: { value: string | number, onSave: (val: string) => void }) => {
@@ -474,11 +474,40 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     }
   };
 
-  const getRank = (avgStr: string, hasFail: boolean) => {
+  const getRank = (avgStr: string, currentGrades: Grades, visibleSubjs: Set<keyof Grades>, isExcellent?: boolean) => {
     const avg = parseFloat(avgStr);
-    if (avg >= 8.0 && !hasFail) return 'Giỏi';
-    if (avg >= 6.5 && !hasFail) return 'Khá';
-    if (avg >= 5.0) return 'Trung bình';
+    
+    let hasBelow65 = false;
+    let hasBelow50 = false;
+    let hasBelow35 = false;
+    let hasFail = false;
+
+    (Object.entries(currentGrades) as [keyof Grades, string | number][]).forEach(([key, val]) => {
+      if (!visibleSubjs.has(key)) return;
+      if (val === 'CĐ') {
+        hasFail = true;
+      } else if (typeof val === 'number') {
+        if (val < 6.5) hasBelow65 = true;
+        if (val < 5.0) hasBelow50 = true;
+        if (val < 3.5) hasBelow35 = true;
+      }
+    });
+
+    const math = typeof currentGrades.math === 'number' ? currentGrades.math : 0;
+    const literature = typeof currentGrades.literature === 'number' ? currentGrades.literature : 0;
+
+    if (hasFail) return 'Yếu';
+
+    if (avg >= 8.0 && !hasBelow65 && (math >= 8.0 || literature >= 8.0)) {
+      return isExcellent ? 'Xuất sắc' : 'Giỏi';
+    }
+    if (avg >= 6.5 && !hasBelow50) {
+      return 'Khá';
+    }
+    if (avg >= 5.0 && !hasBelow35) {
+      return 'Trung bình';
+    }
+    
     return 'Yếu';
   };
 
@@ -509,15 +538,21 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
       }
 
       const avg = calculateAverage(currentGrades, visibleSubjects);
-      const hasFail = (Object.entries(currentGrades) as [keyof Grades, string | number][]).some(([key, val]) => 
-        visibleSubjects.has(key) && (val === 'CĐ' || (typeof val === 'number' && val < 5.0))
-      );
+      const isExcellent = periodType === 'term2' ? s.term2IsExcellent : periodType === 'term1' ? s.term1IsExcellent : s.yearIsExcellent;
+      const rankOverride = periodType === 'term2' ? s.term2RankOverride : periodType === 'term1' ? s.term1RankOverride : s.yearRankOverride;
+      
+      const baseRank = getRank(avg, currentGrades, visibleSubjects, false);
+      const calculatedFinalRank = getRank(avg, currentGrades, visibleSubjects, isExcellent);
+      
+      const finalRank = rankOverride ? rankOverride : calculatedFinalRank;
 
       return {
         ...s,
         displayGrades: currentGrades,
         calculatedAvg: avg,
-        rank: getRank(avg, hasFail)
+        rank: finalRank,
+        baseRank: baseRank,
+        rankOverride: rankOverride
       };
     });
   }, [students, periodType, selectedWeek, selectedMonth, visibleSubjects]);
@@ -816,10 +851,46 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
                         <td className="px-4 py-3 text-center bg-indigo-50/30 border-l border-indigo-50">
                           <span className="text-indigo-700 font-bold text-base">{student.calculatedAvg}</span>
                         </td>
-                        <td className="px-4 py-3 text-center bg-indigo-50/30">
-                          <span className={`px-2 py-1 text-[10px] font-black rounded uppercase ${student.rank === 'Giỏi' ? 'bg-green-100 text-green-700' : student.rank === 'Khá' ? 'bg-blue-100 text-blue-700' : student.rank === 'Trung bình' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                            {student.rank}
-                          </span>
+                        <td className="px-4 py-3 text-center bg-indigo-50/30 min-w-[140px]">
+                          <div className="flex justify-center items-center gap-1">
+                            <span className={`px-2 py-1 text-[10px] font-black rounded uppercase ${student.rank === 'Xuất sắc' ? 'bg-purple-100 text-purple-700' : student.rank === 'Giỏi' ? 'bg-green-100 text-green-700' : student.rank === 'Khá' ? 'bg-blue-100 text-blue-700' : student.rank === 'Trung bình' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                              {student.rank}
+                            </span>
+                            
+                            {student.baseRank === 'Giỏi' && !student.rankOverride && (
+                              <button
+                                onClick={() => {
+                                  const field = periodType === 'term2' ? 'term2IsExcellent' : periodType === 'term1' ? 'term1IsExcellent' : 'yearIsExcellent';
+                                  onUpdateGrade(student.id, field, student.rank !== 'Xuất sắc');
+                                }}
+                                className={`p-1 rounded-full transition-colors ${student.rank === 'Xuất sắc' ? 'text-amber-500 hover:bg-amber-100' : 'text-slate-300 hover:text-amber-500 hover:bg-amber-50'}`}
+                                title={student.rank === 'Xuất sắc' ? 'Bỏ Đánh dấu Xuất Sắc' : 'Đánh dấu Xuất Sắc'}
+                              >
+                                <Star className={`w-4 h-4 ${student.rank === 'Xuất sắc' ? 'fill-current' : ''}`} />
+                              </button>
+                            )}
+
+                            <div className="relative group ml-1" title="Tuỳ chỉnh xếp loại">
+                              <select
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                value={student.rankOverride || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const field = periodType === 'term2' ? 'term2RankOverride' : periodType === 'term1' ? 'term1RankOverride' : 'yearRankOverride';
+                                  onUpdateGrade(student.id, field, val);
+                                }}
+                              >
+                                <option value="">Tự động</option>
+                                <option value="Giỏi">Giỏi</option>
+                                <option value="Khá">Khá</option>
+                                <option value="Trung bình">Trung bình</option>
+                                <option value="Yếu">Yếu</option>
+                              </select>
+                              <button className={`p-1 rounded-full transition-colors ${student.rankOverride ? 'text-indigo-600 bg-indigo-100' : 'text-slate-300 hover:text-indigo-500 hover:bg-indigo-50'}`}>
+                                <Settings2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
                         </td>
                       </>
                     )}

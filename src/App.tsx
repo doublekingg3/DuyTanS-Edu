@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { initialStudents, initialClasses, initialUsers, initialSchoolYears, Student, SchoolClass, Grades, UserAccount, SchoolYear } from './data';
+import { initialStudents, initialClasses, initialUsers, initialSchoolYears, Student, SchoolClass, Grades, UserAccount, SchoolYear, AppSettings, defaultSettings } from './data';
 import TeacherView from './components/TeacherView';
 import ParentView from './components/ParentView';
 import AdminView from './components/AdminView';
@@ -23,20 +23,23 @@ export default function App() {
   
   // For parent view simulation, select the first student by default
   const [parentStudentId, setParentStudentId] = useState('');
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
 
   useEffect(() => {
     const studentsRef = collection(db, 'students');
     const classesRef = collection(db, 'classes');
     const usersRef = collection(db, 'users');
     const schoolYearsRef = collection(db, 'schoolYears');
+    const settingsRef = doc(db, 'settings', 'general');
     
     let studentsLoaded = false;
     let classesLoaded = false;
     let usersLoaded = false;
     let schoolYearsLoaded = false;
+    let settingsLoaded = false;
     
     const checkLoading = () => {
-      if (studentsLoaded && classesLoaded && usersLoaded && schoolYearsLoaded) {
+      if (studentsLoaded && classesLoaded && usersLoaded && schoolYearsLoaded && settingsLoaded) {
         setLoading(false);
       }
     };
@@ -103,13 +106,41 @@ export default function App() {
     });
 
 
+
+    const unsubscribeSettings = onSnapshot(settingsRef, async (snapshot) => {
+      if (snapshot.exists()) {
+        setSettings(snapshot.data() as AppSettings);
+      } else {
+        await setDoc(settingsRef, defaultSettings);
+      }
+      settingsLoaded = true;
+      checkLoading();
+    });
+
     return () => {
       unsubscribeSchoolYears();
       unsubscribeStudents();
       unsubscribeClasses();
       unsubscribeUsers();
+      unsubscribeSettings();
     };
   }, []);
+
+
+  useEffect(() => {
+    if (settings.pageTitle) {
+      document.title = settings.pageTitle;
+    }
+    if (settings.pageIcon) {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = settings.pageIcon;
+    }
+  }, [settings.pageTitle, settings.pageIcon]);
 
   const handleAddComment = async (studentId: string, text: string) => {
     const student = students.find(s => s.id === studentId);
@@ -181,7 +212,7 @@ export default function App() {
     const numValue = typeof newValue === 'string' && newValue.trim() !== '' && !isNaN(Number(newValue)) ? Number(newValue) : newValue;
     const docRef = doc(db, 'students', studentId);
     
-    const isTopLevelField = ['academicPerformance', 'conduct', 'cp', 'kp', 'award'].includes(field);
+    const isTopLevelField = ['academicPerformance', 'conduct', 'cp', 'kp', 'award', 'term1IsExcellent', 'term2IsExcellent', 'yearIsExcellent', 'term1RankOverride', 'term2RankOverride', 'yearRankOverride'].includes(field);
     const updatePath = isTopLevelField ? field : (field.startsWith('weeklyData.') || field.startsWith('monthlyData.') || field.startsWith('term1Grades.') || field.startsWith('term2Grades.')  || field.startsWith('term1Details.') || field.startsWith('term2Details.')) ? field : `grades.${field}`;
     
     await updateDoc(docRef, {
@@ -201,7 +232,7 @@ export default function App() {
         const numValue = typeof update.newValue === 'string' && update.newValue.trim() !== '' && !isNaN(Number(update.newValue)) ? Number(update.newValue) : update.newValue;
         const docRef = doc(db, 'students', update.studentId);
         
-        const isTopLevelField = ['academicPerformance', 'conduct', 'cp', 'kp', 'award'].includes(update.field);
+        const isTopLevelField = ['academicPerformance', 'conduct', 'cp', 'kp', 'award', 'term1IsExcellent', 'term2IsExcellent', 'yearIsExcellent', 'term1RankOverride', 'term2RankOverride', 'yearRankOverride'].includes(update.field);
         const updatePath = isTopLevelField ? update.field : (update.field.startsWith('weeklyData.') || update.field.startsWith('monthlyData.') || update.field.startsWith('term1Grades.') || update.field.startsWith('term2Grades.') || update.field.startsWith('yearGrades.')  || update.field.startsWith('term1Details.') || update.field.startsWith('term2Details.')) ? update.field : `grades.${update.field}`;
         
         batch.update(docRef, {
@@ -232,7 +263,7 @@ export default function App() {
   };
 
   if (appMode === 'portal') {
-    return <Portal onSelectEduManager={() => setAppMode('edu_manager')} />;
+    return <Portal onSelectEduManager={() => setAppMode('edu_manager')} settings={settings} />;
   }
 
   if (appMode === 'tkb') {
@@ -274,7 +305,7 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login classes={classes} students={students} users={users} onLogin={handleLogin} onBack={() => setAppMode('portal')} />;
+    return <Login classes={classes} students={students} users={users} onLogin={handleLogin} onBack={() => setAppMode('portal')} settings={settings} />;
   }
 
   return (
@@ -321,7 +352,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 relative">
         {role === 'admin' ? (
-          <AdminView classes={classes} students={students} users={users} schoolYears={schoolYears} />
+          <AdminView classes={classes} students={students} users={users} schoolYears={schoolYears} settings={settings} />
         ) : role === 'teacher' ? (
           <TeacherView 
             students={students}

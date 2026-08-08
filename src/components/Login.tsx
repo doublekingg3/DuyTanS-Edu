@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { Shield, BookOpen, UserCircle, GraduationCap, ArrowRight, Lock, User, ArrowLeft } from 'lucide-react';
-import { SchoolClass, Student, UserAccount } from '../data';
+import { SchoolClass, Student, UserAccount, AppSettings } from '../data';
 
 export default function Login({ 
   classes, 
   students,
   users,
   onLogin,
-  onBack 
+  onBack,
+  settings
 }: { 
   classes: SchoolClass[],
   students: Student[],
   users: UserAccount[],
   onLogin: (role: 'admin' | 'teacher' | 'parent', parentStudentId?: string, loggedInUserId?: string) => void,
-  onBack?: () => void
+  onBack?: () => void,
+  settings?: AppSettings
 }) {
   const [selectedRole, setSelectedRole] = useState<'admin' | 'teacher' | 'parent'>('admin');
   const [username, setUsername] = useState('');
@@ -85,10 +87,14 @@ export default function Login({
       )}
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
         <div className="bg-indigo-600 p-8 text-center text-white">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-            <GraduationCap className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold font-display">EduManage Pro</h1>
+          {settings?.loginLogo ? (
+            <img src={settings.loginLogo} alt="Logo" className="h-20 object-contain mx-auto mb-4 drop-shadow-md" />
+          ) : (
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+              <GraduationCap className="w-8 h-8 text-white" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold font-display">{settings?.appName || "EduManage Pro"}</h1>
           <p className="text-indigo-100 mt-2">Hệ thống quản lý điểm số thông minh</p>
         </div>
 
