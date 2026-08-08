@@ -3,6 +3,8 @@ import { Student, getSubjectName, Grades, SchoolClass } from '../data';
 import { Search, MessageSquare, Send, UserCheck, UserX, Clock, Plus, Edit2, Trash2, X, Download, Upload } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useAlert } from "../contexts/AlertContext";
+import { db } from '../lib/firebase';
+import { doc, runTransaction } from 'firebase/firestore';
 
 export default function TeacherStudents({ 
   students, 
@@ -13,7 +15,8 @@ export default function TeacherStudents({
   onAddMultipleStudents,
   onEditStudent,
   onDeleteStudent,
-  classes
+  classes,
+  schoolYears
 }: { 
   students: Student[],
   classId: string,
@@ -23,7 +26,8 @@ export default function TeacherStudents({
   onAddMultipleStudents?: (students: Student[]) => void,
   onEditStudent: (student: Student) => void,
   onDeleteStudent: (studentId: string) => void,
-  classes: SchoolClass[]
+  classes: SchoolClass[],
+  schoolYears: SchoolYear[]
 }) {
   const { showAlert, showConfirm } = useAlert();
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,17 +54,21 @@ export default function TeacherStudents({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
-  const handleExportTemplate = async () => {
+    const handleExportTemplate = async () => {
     try {
+      const currentClass = classes.find(c => c.id === classId);
+      const currentYear = schoolYears.find(y => y.id === currentClass?.schoolYearId);
+      const yearStr = currentYear?.id || '20242027';
+
       const XLSX = await import('xlsx');
-      const headers = ['Họ và Tên', 'Giới tính', 'Dân tộc', 'Ngày sinh', 'Nơi sinh'];
+      const headers = ['Họ và Tên', 'Giới tính', 'Dân tộc', 'Ngày sinh', 'Nơi sinh', 'Niên khoá'];
       const data = [
-        ['Nguyễn Văn A', 'Nam', 'Kinh', '01/01/2008', 'TP.HCM'],
-        ['Trần Thị B', 'Nữ', 'Kinh', '15/02/2008', 'Hà Nội']
+        ['Nguyễn Văn A', 'Nam', 'Kinh', '01/01/2008', 'TP.HCM', yearStr],
+        ['Trần Thị B', 'Nữ', 'Kinh', '15/02/2008', 'Hà Nội', yearStr]
       ];
       
       const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-      ws['!cols'] = [{ wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 20 }];
+      ws['!cols'] = [{ wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 15 }];
       
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Danh_Sach_Hoc_Sinh');
@@ -71,7 +79,7 @@ export default function TeacherStudents({
     }
   };
 
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!classId) {
       showAlert('Vui lòng chọn lớp trước khi import học sinh.', 'error');
       if (e.target) e.target.value = '';
@@ -98,30 +106,67 @@ export default function TeacherStudents({
       const ethnicityIdx = headersRow.findIndex(h => h && typeof h === 'string' && h.includes('Dân tộc'));
       const dobIdx = headersRow.findIndex(h => h && typeof h === 'string' && h.includes('Ngày sinh'));
       const pobIdx = headersRow.findIndex(h => h && typeof h === 'string' && h.includes('Nơi sinh'));
+      const cohortIdx = headersRow.findIndex(h => h && typeof h === 'string' && h.includes('Niên khoá'));
       
       if (nameIdx === -1) {
         showAlert('File không đúng mẫu. Thiếu cột "Họ và Tên".', 'error');
         return;
       }
       
-      const newStudents: Student[] = [];
-      
+      const validRows = [];
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         if (!row || row.length === 0) continue;
-        
         const fullName = row[nameIdx]?.toString();
         if (!fullName) continue;
-        
+        validRows.push(row);
+      }
+
+      if (validRows.length === 0) {
+        showAlert('Không tìm thấy dữ liệu hợp lệ trong file.', 'info');
+        return;
+      }
+
+      const currentClass = classes.find(c => c.id === classId);
+      const currentYear = schoolYears.find(y => y.id === currentClass?.schoolYearId);
+      
+      let cohort = validRows[0][cohortIdx]?.toString();
+      if (!cohort) {
+        cohort = currentYear?.id || '20242027';
+      }
+
+      let nextStartId = 1;
+      try {
+        const counterRef = doc(db, 'counters', `studentCode_${cohort}`);
+        nextStartId = await runTransaction(db, async (transaction) => {
+          const counterDoc = await transaction.get(counterRef);
+          let lastId = 0;
+          if (counterDoc.exists()) {
+            lastId = counterDoc.data().lastId || 0;
+          }
+          const nextId = lastId + 1;
+          transaction.set(counterRef, { lastId: lastId + validRows.length }, { merge: true });
+          return nextId;
+        });
+      } catch (err) {
+        console.error("Error generating student code:", err);
+        showAlert('Có lỗi khi tạo mã học sinh tự động. Vui lòng thử lại.', 'error');
+        return;
+      }
+
+      const newStudents: Student[] = [];
+      validRows.forEach((row, idx) => {
+        const fullName = row[nameIdx]?.toString();
         const id = uuidv4();
-        const code = `HS${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const stt = nextStartId + idx;
+        const code = `${cohort}${stt.toString().padStart(3, '0')}`;
         
         newStudents.push({
           id,
           code,
           classId: classId,
-          stt: students.length + i,
-          fullName,
+          stt: students.length + idx + 1,
+          fullName: fullName as string,
           gender: row[genderIdx]?.toString() === 'Nữ' ? 'Nữ' : 'Nam',
           ethnicity: row[ethnicityIdx]?.toString() || 'Kinh',
           dob: row[dobIdx]?.toString() || '01/01/2008',
@@ -136,7 +181,7 @@ export default function TeacherStudents({
           notifications: [],
           comments: []
         });
-      }
+      });
       
       if (newStudents.length > 0) {
         if (onAddMultipleStudents) {
@@ -148,8 +193,6 @@ export default function TeacherStudents({
           }
           showAlert(`Đã import thành công ${newStudents.length} học sinh.`, 'success');
         }
-      } else {
-        showAlert('Không tìm thấy dữ liệu hợp lệ trong file.', 'info');
       }
     } catch (error) {
       console.error('Lỗi khi import Excel:', error);
@@ -270,13 +313,42 @@ export default function TeacherStudents({
     }
   };
 
-  const handleSaveModal = (e: React.FormEvent) => {
+      const handleSaveModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (modalMode === 'add') {
+      const currentClass = classes.find(c => c.id === classId);
+      const currentYear = schoolYears.find(y => y.id === currentClass?.schoolYearId);
+      const defaultCohort = currentYear?.id || '20242027';
+      
+      let cohort = window.prompt("Nhập niên khoá cho học sinh này (ví dụ: 20242027):", defaultCohort);
+      if (!cohort || cohort.trim() === '') {
+        showAlert('Cần có niên khoá để tạo mã học sinh.', 'error');
+        return;
+      }
+      
+      let nextId = 1;
+      try {
+        const counterRef = doc(db, 'counters', `studentCode_${cohort}`);
+        nextId = await runTransaction(db, async (transaction) => {
+          const counterDoc = await transaction.get(counterRef);
+          let lastId = 0;
+          if (counterDoc.exists()) {
+            lastId = counterDoc.data().lastId || 0;
+          }
+          const next = lastId + 1;
+          transaction.set(counterRef, { lastId: next }, { merge: true });
+          return next;
+        });
+      } catch (err) {
+        console.error("Error generating student code:", err);
+        showAlert('Có lỗi khi tạo mã học sinh. Thử lại sau.', 'error');
+        return;
+      }
+
       const newStudent: Student = {
         ...(editForm as Student),
         id: uuidv4(),
-        code: `HS${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        code: `${cohort}${nextId.toString().padStart(3, '0')}`,
         classId: classId,
         stt: students.length + 1
       };
@@ -383,7 +455,7 @@ export default function TeacherStudents({
                   </div>
                 </div>
                 <div className="mt-3 text-sm text-slate-600 flex flex-wrap gap-x-6 gap-y-2">
-                  <span className="flex items-center gap-1.5"><span className="text-slate-400">Mã HS:</span> <span className="font-mono font-medium text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded">{selectedStudent.id}</span></span>
+                  <span className="flex items-center gap-1.5"><span className="text-slate-400">Mã HS:</span> <span className="font-mono font-medium text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded">{selectedStudent.code || selectedStudent.id}</span></span>
                   <span className="flex items-center gap-1.5"><span className="text-slate-400">Giới tính:</span> <span className="font-medium text-slate-900">{selectedStudent.gender}</span></span>
                   <span className="flex items-center gap-1.5"><span className="text-slate-400">Ngày sinh:</span> <span className="font-medium text-slate-900">{selectedStudent.dob || '01/01/2008'}</span></span>
                   <span className="flex items-center gap-1.5"><span className="text-slate-400">Nơi sinh:</span> <span className="font-medium text-slate-900">{selectedStudent.pob || ''}</span></span>

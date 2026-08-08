@@ -85,7 +85,7 @@ export default function GradeDetailModal({ isOpen, onClose, studentName, subject
     }
 
     if (totalWeight === 0) return '';
-    return (totalScore / totalWeight).toFixed(1);
+    return (Math.round((totalScore / totalWeight) * 10) / 10).toFixed(1);
   };
 
   const handleAutoCalc = () => {

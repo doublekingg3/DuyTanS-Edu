@@ -2,15 +2,9 @@ const fs = require('fs');
 const file = 'src/components/Login.tsx';
 let code = fs.readFileSync(file, 'utf8');
 
-const target1 = `<p className="text-xs text-slate-500 mt-2">
-                  <strong>Tài Khoản Demo</strong><br/>
-                  Phụ huynh đăng nhập theo mẫu: năm học-stt<br/>
-                  Ví dụ: 20252026-001
-                </p>`;
-code = code.replace(target1, "");
+const regex = /(<button\s*type="submit"[\s\S]*?<\/button>\s*)\{(selectedRole === 'admin' \|\| selectedRole === 'teacher') && \(/;
 
-const target2 = `{(selectedRole === 'admin' || selectedRole === 'teacher') && (`;
-const insert2 = `{selectedRole === 'parent' && (
+const insert = `{selectedRole === 'parent' && (
               <div className="text-center mt-4">
                 <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <strong>Tài Khoản Demo</strong><br/>
@@ -20,7 +14,7 @@ const insert2 = `{selectedRole === 'parent' && (
               </div>
             )}
             
-            {(selectedRole === 'admin' || selectedRole === 'teacher') && (`;
-code = code.replace(target2, insert2);
+            {`;
 
+code = code.replace(regex, "$1" + insert + "$2 && (");
 fs.writeFileSync(file, code);

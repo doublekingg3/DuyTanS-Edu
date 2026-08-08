@@ -375,7 +375,7 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
         count++;
       }
     });
-    return count > 0 ? (total / count).toFixed(2) : '0.00';
+    return count > 0 ? (Math.round((total / count) * 10) / 10).toFixed(1) : '0.0';
   };
 
   const handleCalculateAllTB = () => {
@@ -402,11 +402,11 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
             const h1Val = parseFloat(String(hk1));
             const h2Val = parseFloat(String(hk2));
             if (!isNaN(h1Val) && !isNaN(h2Val)) {
-              tb = ((h1Val + h2Val * 2) / 3).toFixed(1);
+              tb = (Math.round(((h1Val + h2Val * 2) / 3) * 10) / 10).toFixed(1);
             } else if (!isNaN(h2Val)) {
-              tb = h2Val.toFixed(1);
+              tb = (Math.round(h2Val * 10) / 10).toFixed(1);
             } else if (!isNaN(h1Val)) {
-              tb = h1Val.toFixed(1);
+              tb = (Math.round(h1Val * 10) / 10).toFixed(1);
             }
           }
           
@@ -451,7 +451,7 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
           if (!isNaN(ckValue)) { totalScore += ckValue * 3; totalWeight += 3; }
           
           if (totalWeight > 0) {
-            tb = (totalScore / totalWeight).toFixed(1);
+            tb = (Math.round((totalScore / totalWeight) * 10) / 10).toFixed(1);
           }
         }
         
@@ -503,7 +503,7 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
             const variation = (s.id.charCodeAt(0) + periodIndex) % 3 - 1; // -1, 0, 1
             let simulated = baseGrade + variation * 0.5;
             simulated = Math.max(0, Math.min(10, simulated));
-            currentGrades[k] = Number(simulated.toFixed(1)) as never;
+            currentGrades[k] = (Math.round(simulated * 10) / 10) as never;
           }
         });
       }

@@ -39,9 +39,13 @@ export default function Login({
       }
       
       const codeInput = studentCode.trim().toUpperCase();
+      const codeInputNoHyphen = codeInput.replace(/-/g, '');
       
-      // Try to find by direct code (e.g., HS-001)
-      const studentByCode = students.find(s => s.code?.toUpperCase() === codeInput);
+      // Try to find by direct code (e.g., HS-001 or 20252026-001 or 20252026001)
+      const studentByCode = students.find(s => 
+        s.code?.toUpperCase() === codeInput || 
+        s.code?.toUpperCase() === codeInputNoHyphen
+      );
       
       if (studentByCode) {
         onLogin('parent', studentByCode.id);
@@ -120,6 +124,16 @@ export default function Login({
               </div>
             )}
 
+            {selectedRole === 'parent' && (
+              <div className="text-center mt-4">
+                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <strong>Tài Khoản Demo</strong><br/>
+                  Phụ huynh đăng nhập theo mẫu: <strong>năm học-stt</strong><br/>
+                  Ví dụ: <strong>20252026-001</strong>
+                </p>
+              </div>
+            )}
+            
             {(selectedRole === 'admin' || selectedRole === 'teacher') && (
               <>
                 <div>
@@ -160,13 +174,11 @@ export default function Login({
                     type="text" 
                     value={studentCode}
                     onChange={e => setStudentCode(e.target.value)}
-                    placeholder="VD: 10QT3A-001"
+                    placeholder="VD: 20252026-001"
                     className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
                   />
                 </div>
-                <p className="text-xs text-slate-500 mt-2">
-                  Định dạng: [Tên Lớp]-[Số thứ tự (3 chữ số)]. <br/>Ví dụ học sinh lớp 10QT3A, STT 1 thì nhập 10QT3A-001
-                </p>
+                
               </div>
             )}
 
@@ -177,6 +189,16 @@ export default function Login({
               Đăng nhập <ArrowRight className="w-4 h-4" />
             </button>
             
+            {selectedRole === 'parent' && (
+              <div className="text-center mt-4">
+                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <strong>Tài Khoản Demo</strong><br/>
+                  Phụ huynh đăng nhập theo mẫu: <strong>năm học-stt</strong><br/>
+                  Ví dụ: <strong>20252026-001</strong>
+                </p>
+              </div>
+            )}
+
             {(selectedRole === 'admin' || selectedRole === 'teacher') && (
               <div className="text-center mt-4">
                 <p className="text-xs text-slate-500">

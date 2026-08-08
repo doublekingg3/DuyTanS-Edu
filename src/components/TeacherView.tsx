@@ -184,6 +184,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
             onAddMultipleStudents={onAddMultipleStudents}
             onEditStudent={onEditStudent}
             onDeleteStudent={onDeleteStudent}
+            schoolYears={schoolYears}
           />
         )}
         {activeMenu === 'grades' && (
