@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Student, getSubjectName, Grades, SchoolClass, SchoolYear } from '../data';
-import { Search, MessageSquare, Send, UserCheck, UserX, Clock, Plus, Edit2, Trash2, X, Download, Upload } from 'lucide-react';
+import { Search, MessageSquare, Send, UserCheck, UserX, Clock, Plus, Edit2, Trash2, X, Download, Upload, LogOut, Calendar, ChevronDown, PieChart as PieChartIcon } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { v4 as uuidv4 } from 'uuid';
 import { useAlert } from "../contexts/AlertContext";
 import { db } from '../lib/firebase';
@@ -41,9 +42,10 @@ export default function TeacherStudents({
   const [editForm, setEditForm] = useState<Partial<Student>>({});
 
   // Temporary attendance state for demo
-  const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
+  const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late' | 'leave_early'>>({});
   
-  const [attendanceModal, setAttendanceModal] = useState<{isOpen: boolean, studentId: string, status: 'late' | 'absent', reason: string}>({ isOpen: false, studentId: '', status: 'late', reason: '' });
+  const [attendanceDate, setAttendanceDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [attendanceModal, setAttendanceModal] = useState<{isOpen: boolean, studentId: string, status: 'late' | 'absent' | 'leave_early', reason: string}>({ isOpen: false, studentId: '', status: 'late', reason: '' });
   const [editParentModal, setEditParentModal] = useState<{isOpen: boolean, studentId: string, name: string, phone: string, email: string}>({ isOpen: false, studentId: '', name: '', phone: '', email: '' });
 
   const filteredStudents = students.filter(s => 
@@ -214,14 +216,14 @@ export default function TeacherStudents({
     );
   };
 
-  const markAttendance = (id: string, status: 'present' | 'absent' | 'late') => {
-    if (status === 'late' || status === 'absent') {
+  const markAttendance = (id: string, status: 'present' | 'absent' | 'late' | 'leave_early') => {
+    if (status === 'late' || status === 'absent' || status === 'leave_early') {
       setAttendanceModal({ isOpen: true, studentId: id, status, reason: '' });
       return;
     }
     
     // For present, update immediately
-    const today = new Date().toISOString().split('T')[0];
+    const today = attendanceDate;
     const student = students.find(s => s.id === id);
     if (student) {
       const currentRecords = student.attendanceRecords || {};
@@ -239,7 +241,7 @@ export default function TeacherStudents({
   };
   
   const confirmAttendance = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = attendanceDate;
     const student = students.find(s => s.id === attendanceModal.studentId);
     if (student) {
       const currentRecords = student.attendanceRecords || {};
@@ -247,12 +249,12 @@ export default function TeacherStudents({
         ...student,
         attendanceRecords: {
           ...currentRecords,
-          [today]: { status: attendanceModal.status as 'present' | 'late' | 'absent', reason: attendanceModal.reason, time: new Date().toISOString() }
+          [today]: { status: attendanceModal.status as 'present' | 'late' | 'absent' | 'leave_early', reason: attendanceModal.reason, time: new Date().toISOString() }
         }
       };
       onEditStudent(newStudent);
       setAttendance(prev => ({ ...prev, [attendanceModal.studentId]: attendanceModal.status }));
-      showAlert(`Đã điểm danh ${attendanceModal.status === 'late' ? 'Đi trễ' : 'Vắng mặt'} và lưu lý do.`);
+      showAlert(`Đã điểm danh ${attendanceModal.status === 'late' ? 'Đi trễ' : attendanceModal.status === 'leave_early' ? 'Xin về' : 'Vắng mặt'} và lưu lý do.`);
     }
     setAttendanceModal({ ...attendanceModal, isOpen: false });
   };
@@ -420,15 +422,14 @@ export default function TeacherStudents({
               <div>
                 <div className="font-medium text-slate-800 text-sm">{student.fullName}</div>
                 <div className="mt-1 flex gap-1">
-                  {attendance[student.id] === 'present' ? (
-                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">Có mặt</span>
-                  ) : attendance[student.id] === 'absent' ? (
-                    <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full">Vắng</span>
-                  ) : attendance[student.id] === 'late' ? (
-                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded-full">Trễ</span>
-                  ) : (
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-full">Chưa điểm danh</span>
-                  )}
+                  {(() => {
+                    const status = student.attendanceRecords?.[attendanceDate]?.status || (attendanceDate === new Date().toISOString().split('T')[0] ? attendance[student.id] : undefined);
+                    if (status === 'present') return <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">Có mặt</span>;
+                    if (status === 'absent') return <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full">Vắng</span>;
+                    if (status === 'late') return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded-full">Trễ</span>;
+                    if (status === 'leave_early') return <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold rounded-full">Xin về</span>;
+                    return <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-full">Chưa ĐD</span>;
+                  })()}
                 </div>
               </div>
             </button>
@@ -466,13 +467,24 @@ export default function TeacherStudents({
               
               {/* Attendance Actions */}
               <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex flex-col items-center gap-3 w-full xl:w-auto mt-4 xl:mt-0">
-                <span className="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4" /> Điểm danh hôm nay
-                </span>
-                <div className="flex gap-2">
-                  <button onClick={() => markAttendance(selectedStudent.id, 'present')} className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all ${(selectedStudent.attendanceRecords?.[new Date().toISOString().split('T')[0]]?.status || attendance[selectedStudent.id]) === 'present' ? 'bg-green-500 text-white shadow-md shadow-green-500/20' : 'bg-white border border-slate-200 text-slate-600 hover:border-green-500 hover:text-green-600'}`} title="Có mặt"><UserCheck className="w-4 h-4"/> Có mặt</button>
-                  <button onClick={() => markAttendance(selectedStudent.id, 'late')} className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all ${(selectedStudent.attendanceRecords?.[new Date().toISOString().split('T')[0]]?.status || attendance[selectedStudent.id]) === 'late' ? 'bg-yellow-500 text-white shadow-md shadow-yellow-500/20' : 'bg-white border border-slate-200 text-slate-600 hover:border-yellow-500 hover:text-yellow-600'}`} title="Đi trễ"><Clock className="w-4 h-4"/> Đi trễ</button>
-                  <button onClick={() => markAttendance(selectedStudent.id, 'absent')} className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all ${(selectedStudent.attendanceRecords?.[new Date().toISOString().split('T')[0]]?.status || attendance[selectedStudent.id]) === 'absent' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-white border border-slate-200 text-slate-600 hover:border-red-500 hover:text-red-600'}`} title="Vắng mặt"><UserX className="w-4 h-4"/> Vắng</button>
+                <div className="flex justify-between items-center w-full">
+                  <span className="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4" /> Điểm danh
+                  </span>
+                  <input
+                    type="date"
+                    value={attendanceDate}
+                    onChange={(e) => setAttendanceDate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="text-xs px-2 py-1 bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium cursor-pointer"
+                    title="Chọn ngày để điểm danh bù"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <button onClick={() => markAttendance(selectedStudent.id, 'present')} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${(selectedStudent.attendanceRecords?.[attendanceDate]?.status || (attendanceDate === new Date().toISOString().split('T')[0] && attendance[selectedStudent.id])) === 'present' ? 'bg-green-500 text-white shadow-md shadow-green-500/20' : 'bg-white border border-slate-200 text-slate-600 hover:border-green-500 hover:text-green-600'}`} title="Có mặt"><UserCheck className="w-4 h-4"/> Có mặt</button>
+                  <button onClick={() => markAttendance(selectedStudent.id, 'late')} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${(selectedStudent.attendanceRecords?.[attendanceDate]?.status || (attendanceDate === new Date().toISOString().split('T')[0] && attendance[selectedStudent.id])) === 'late' ? 'bg-yellow-500 text-white shadow-md shadow-yellow-500/20' : 'bg-white border border-slate-200 text-slate-600 hover:border-yellow-500 hover:text-yellow-600'}`} title="Đi trễ"><Clock className="w-4 h-4"/> Đi trễ</button>
+                  <button onClick={() => markAttendance(selectedStudent.id, 'leave_early')} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${(selectedStudent.attendanceRecords?.[attendanceDate]?.status || (attendanceDate === new Date().toISOString().split('T')[0] && attendance[selectedStudent.id])) === 'leave_early' ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20' : 'bg-white border border-slate-200 text-slate-600 hover:border-orange-500 hover:text-orange-600'}`} title="Xin về"><LogOut className="w-4 h-4"/> Xin về</button>
+                  <button onClick={() => markAttendance(selectedStudent.id, 'absent')} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${(selectedStudent.attendanceRecords?.[attendanceDate]?.status || (attendanceDate === new Date().toISOString().split('T')[0] && attendance[selectedStudent.id])) === 'absent' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-white border border-slate-200 text-slate-600 hover:border-red-500 hover:text-red-600'}`} title="Vắng mặt"><UserX className="w-4 h-4"/> Vắng</button>
                 </div>
               </div>
             </div>
@@ -545,9 +557,70 @@ export default function TeacherStudents({
             </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400">
-            <Search className="w-12 h-12 mb-4 text-slate-300" />
-            <p className="text-lg font-medium">Chọn học sinh để quản lý thông tin</p>
+          <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-6">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-md w-full">
+              <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center justify-center gap-2">
+                <PieChartIcon className="w-6 h-6 text-indigo-600" />
+                Thống kê điểm danh
+              </h2>
+              <div className="mb-4 flex items-center justify-center gap-2">
+                <span className="text-sm font-medium text-slate-500">Ngày:</span>
+                <input
+                  type="date"
+                  value={attendanceDate}
+                  onChange={(e) => setAttendanceDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="text-sm px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
+                />
+              </div>
+              <div className="h-64 w-full relative">
+                {(() => {
+                  const presentCount = students.filter(s => (s.attendanceRecords?.[attendanceDate]?.status || (attendanceDate === new Date().toISOString().split('T')[0] && attendance[s.id])) === 'present').length;
+                  const lateCount = students.filter(s => (s.attendanceRecords?.[attendanceDate]?.status || (attendanceDate === new Date().toISOString().split('T')[0] && attendance[s.id])) === 'late').length;
+                  const leaveEarlyCount = students.filter(s => (s.attendanceRecords?.[attendanceDate]?.status || (attendanceDate === new Date().toISOString().split('T')[0] && attendance[s.id])) === 'leave_early').length;
+                  const absentCount = students.filter(s => (s.attendanceRecords?.[attendanceDate]?.status || (attendanceDate === new Date().toISOString().split('T')[0] && attendance[s.id])) === 'absent').length;
+                  const notTrackedCount = students.length - presentCount - lateCount - leaveEarlyCount - absentCount;
+
+                  const pieData = [
+                    { name: 'Có mặt', value: presentCount, color: '#22c55e' },
+                    { name: 'Đi trễ', value: lateCount, color: '#eab308' },
+                    { name: 'Xin về', value: leaveEarlyCount, color: '#f97316' },
+                    { name: 'Vắng mặt', value: absentCount, color: '#ef4444' },
+                    { name: 'Chưa ĐD', value: notTrackedCount, color: '#cbd5e1' }
+                  ].filter(d => d.value > 0);
+
+                  return (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          formatter={(value) => [`${value} học sinh`, 'Số lượng']}
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center opacity-60">
+              <Search className="w-10 h-10 mb-3 text-slate-400" />
+              <p className="text-base font-medium">Chọn học sinh bên trái để xem và cập nhật thông tin</p>
+            </div>
           </div>
         )}
       </div>
@@ -648,7 +721,7 @@ export default function TeacherStudents({
           <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-xl">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
               <h3 className="font-bold text-slate-800 text-lg">
-                Ghi chú lý do {attendanceModal.status === 'late' ? 'Đi trễ' : 'Vắng mặt'}
+                Ghi chú lý do {attendanceModal.status === 'late' ? 'Đi trễ' : attendanceModal.status === 'leave_early' ? 'Xin về' : 'Vắng mặt'}
               </h3>
               <button onClick={() => setAttendanceModal({...attendanceModal, isOpen: false})} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />

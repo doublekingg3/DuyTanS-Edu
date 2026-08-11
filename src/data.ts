@@ -135,7 +135,7 @@ export interface Student {
   status: string;
   parentName?: string;
   parentPhone?: string;
-  attendanceRecords?: Record<string, { status: 'present' | 'late' | 'absent', reason?: string, time: string }>;
+  attendanceRecords?: Record<string, { status: 'present' | 'late' | 'absent' | 'leave_early', reason?: string, time: string }>;
   weeklyData?: Record<number, WeeklyData>;
   monthlyData?: Record<number, MonthlyData>;
   comments: Comment[];
