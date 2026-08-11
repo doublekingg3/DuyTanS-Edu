@@ -4,7 +4,10 @@ service cloud.firestore {
     // Allow all read and write access for the demo app
     match /students/{studentId} {
       allow read, write: if true;
+      match /schedules/{scheduleId} {
+      allow read, write: if true;
     }
+  }
     match /classes/{classId} {
       allow read, write: if true;
     }

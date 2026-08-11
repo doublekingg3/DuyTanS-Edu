@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Student, SchoolClass, UserAccount, SchoolYear } from '../data';
+import { Student, SchoolClass, UserAccount, SchoolYear, ClassSchedule, SchedulePeriod } from '../data';
 import { LayoutDashboard, Users, FileSpreadsheet, Calendar as CalendarIcon, Settings } from 'lucide-react';
 import TeacherStudents from './TeacherStudents';
 import TeacherGrades from './TeacherGrades';
+import TeacherSchedule from './TeacherSchedule';
 
 export default function TeacherView({ 
   students, 
@@ -195,11 +196,9 @@ const [activeMenu, setActiveMenu] = useState('overview');
             onUpdateMultipleGrades={onUpdateMultipleGrades} 
           />
         )}
+
         {activeMenu === 'schedule' && (
-          <div className="p-8 h-full flex items-center justify-center text-slate-400 flex-col">
-            <CalendarIcon className="w-16 h-16 mb-4 text-slate-300" />
-            <p className="text-lg font-medium">Tính năng Thời khóa biểu đang được cập nhật</p>
-          </div>
+          <TeacherSchedule classId={selectedClassId} />
         )}
         </div>
       </div>

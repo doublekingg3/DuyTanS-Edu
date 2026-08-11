@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Student, getSubjectName, Grades, computeMonthlyGamificationData } from '../data';
 import { Bell, BookOpen, User, Calendar, Trophy, AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Medal, AlertTriangle, AlertOctagon, Bot, Loader2, Sparkles, CalendarCheck } from 'lucide-react';
+import ParentSchedule from './ParentSchedule';
 import Markdown from 'react-markdown';
 import {
   ResponsiveContainer,
@@ -16,7 +17,7 @@ import {
 type PeriodType = 'week' | 'month' | 'term1' | 'term2' | 'year';
 
 export default function ParentView({ student: initialStudent, allStudents, classes, schoolYears }: { student: Student, allStudents: Student[], classes: import('../data').SchoolClass[], schoolYears: import('../data').SchoolYear[] }) {
-  const [activeTab, setActiveTab] = useState<'grades' | 'notifications' | 'attendance' | 'history'>('grades');
+  const [activeTab, setActiveTab] = useState<'grades' | 'schedule' | 'notifications' | 'attendance' | 'history'>('grades');
   const [periodType, setPeriodType] = useState<PeriodType>('year');
   
   // Find all historical records for this student based on their unique code
@@ -272,6 +273,13 @@ export default function ParentView({ student: initialStudent, allStudents, class
         </div>
 
         {/* Tab Content */}
+
+        
+        {activeTab === 'schedule' && (
+          <div className="max-w-4xl mx-auto">
+            <ParentSchedule classId={student?.classId || ''} />
+          </div>
+        )}
 
         {activeTab === 'history' && (
           <div className="space-y-6">
