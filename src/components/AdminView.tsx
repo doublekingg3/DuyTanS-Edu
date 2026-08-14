@@ -588,51 +588,49 @@ export default function AdminView({ classes, students, users, schoolYears, setti
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Tab Navigation */}
-        <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 mb-6">
-          <div className="flex overflow-x-auto gap-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <button 
-              onClick={() => setActiveTab('classes')}
-              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'classes' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-            >
-              <Building2 className="w-4 h-4" /> Lớp học
-            </button>
-            <button 
-              onClick={() => setActiveTab('school_years')}
-              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'school_years' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-            >
-              <Calendar className="w-4 h-4" /> Năm học
-            </button>
-            <button 
-              onClick={() => setActiveTab('accounts')}
-              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'accounts' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-            >
-              <Shield className="w-4 h-4" /> Tài khoản & Phân quyền
-            </button>
-            <button 
-              onClick={() => setActiveTab('reports')}
-              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'reports' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-            >
-              <BarChart2 className="w-4 h-4" /> Báo cáo thống kê
-            </button>
-            <button 
-              onClick={() => setActiveTab('backup')}
-              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'backup' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-            >
-              <Database className="w-4 h-4" /> Sao lưu dữ liệu
-            </button>
-            <button 
-              onClick={() => setActiveTab('ai_config')}
-              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'ai_config' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-            >
-              <Sparkles className="w-4 h-4" /> Cấu hình AI
-            </button>
-            <button 
-              onClick={() => setActiveTab('firebase')}
-              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'firebase' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-            >
-              <Cloud className="w-4 h-4" /> Kết nối Firebase
-            </button>
-          </div>
+        <div className="flex flex-wrap gap-2.5 mb-8">
+          <button 
+            onClick={() => setActiveTab('classes')}
+            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'classes' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+          >
+            <Building2 className="w-4 h-4" /> Lớp học
+          </button>
+          <button 
+            onClick={() => setActiveTab('school_years')}
+            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'school_years' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+          >
+            <Calendar className="w-4 h-4" /> Năm học
+          </button>
+          <button 
+            onClick={() => setActiveTab('accounts')}
+            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'accounts' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+          >
+            <Shield className="w-4 h-4" /> Tài khoản & Phân quyền
+          </button>
+          <button 
+            onClick={() => setActiveTab('reports')}
+            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'reports' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+          >
+            <BarChart2 className="w-4 h-4" /> Báo cáo thống kê
+          </button>
+          <button 
+            onClick={() => setActiveTab('backup')}
+            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'backup' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+          >
+            <Database className="w-4 h-4" /> Sao lưu dữ liệu
+          </button>
+          <button 
+            onClick={() => setActiveTab('ai_config')}
+            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'ai_config' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+          >
+            <Sparkles className="w-4 h-4" /> Cấu hình AI
+          </button>
+          <button 
+            onClick={() => setActiveTab('firebase')}
+            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'firebase' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+          >
+            <Cloud className="w-4 h-4" /> Kết nối Firebase
+          </button>
         </div>
 
         {activeTab === 'classes' && (

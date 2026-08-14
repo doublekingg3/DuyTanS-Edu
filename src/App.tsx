@@ -60,6 +60,10 @@ export default function App() {
         studentsLoaded = true;
         checkLoading();
       }
+    }, (error) => {
+      console.error("Error fetching students:", error);
+      studentsLoaded = true;
+      checkLoading();
     });
 
     const unsubscribeClasses = onSnapshot(classesRef, async (snapshot) => {
@@ -73,22 +77,37 @@ export default function App() {
         classesLoaded = true;
         checkLoading();
       }
+    }, (error) => {
+      console.error("Error fetching classes:", error);
+      classesLoaded = true;
+      checkLoading();
     });
 
     const unsubscribeUsers = onSnapshot(usersRef, async (snapshot) => {
       if (snapshot.empty) {
-        const batch = writeBatch(db);
-        initialUsers.forEach(u => {
-          const docRef = doc(usersRef, u.id);
-          batch.set(docRef, u);
-        });
-        await batch.commit();
+        try {
+          const batch = writeBatch(db);
+          initialUsers.forEach(u => {
+            const docRef = doc(usersRef, u.id);
+            batch.set(docRef, u);
+          });
+          await batch.commit();
+        } catch (error) {
+          console.error("Error creating initial users:", error);
+        }
+        setUsers([]);
+        usersLoaded = true;
+        checkLoading();
       } else {
         const loadedUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserAccount));
         setUsers(loadedUsers);
         usersLoaded = true;
         checkLoading();
       }
+    }, (error) => {
+      console.error("Error fetching users:", error);
+      usersLoaded = true;
+      checkLoading();
     });
 
     
@@ -103,6 +122,10 @@ export default function App() {
         schoolYearsLoaded = true;
         checkLoading();
       }
+    }, (error) => {
+      console.error("Error fetching schoolYears:", error);
+      schoolYearsLoaded = true;
+      checkLoading();
     });
 
 
@@ -111,8 +134,16 @@ export default function App() {
       if (snapshot.exists()) {
         setSettings(snapshot.data() as AppSettings);
       } else {
-        await setDoc(settingsRef, defaultSettings);
+        try {
+          await setDoc(settingsRef, defaultSettings);
+        } catch (error) {
+          console.error("Error creating default settings:", error);
+        }
       }
+      settingsLoaded = true;
+      checkLoading();
+    }, (error) => {
+      console.error("Error fetching settings:", error);
       settingsLoaded = true;
       checkLoading();
     });
