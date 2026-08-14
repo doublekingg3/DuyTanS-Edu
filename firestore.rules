@@ -1,20 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all read and write access for the demo app
-    match /students/{studentId} {
-      allow read, write: if true;
-      match /schedules/{scheduleId} {
-      allow read, write: if true;
-    }
-  }
-    match /classes/{classId} {
-      allow read, write: if true;
-    }
-    match /users/{userId} {
-      allow read, write: if true;
-    }
-    match /schoolYears/{schoolYearId} {
+    // WARNING: This allows anyone to read and write to your database.
+    // This is useful for testing but VERY INSECURE for production.
+    match /{document=**} {
       allow read, write: if true;
     }
   }

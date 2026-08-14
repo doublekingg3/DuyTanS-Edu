@@ -5,6 +5,7 @@ import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
 import { db } from '../lib/firebase';
+import { defaultDb } from '../lib/firebase_default';
 import { doc, setDoc, deleteDoc, writeBatch, addDoc, collection } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import AdminReports from './AdminReports';
@@ -1723,8 +1724,11 @@ export default function AdminView({ classes, students, users, schoolYears, setti
 
                 <div className="flex items-center gap-3 pt-4">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!firebaseConfigStr.trim()) {
+                        try {
+                          await deleteDoc(doc(defaultDb, 'system', 'firebaseConfig'));
+                        } catch(e) {}
                         localStorage.removeItem('customFirebaseConfig');
                         showAlert('Đã xóa cấu hình riêng. Đang quay lại cơ sở dữ liệu mặc định...', 'success');
                         setTimeout(() => window.location.reload(), 1500);
@@ -1733,11 +1737,13 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                       
                       try {
                         JSON.parse(firebaseConfigStr);
+                        await setDoc(doc(defaultDb, 'system', 'firebaseConfig'), { configStr: firebaseConfigStr });
                         localStorage.setItem('customFirebaseConfig', firebaseConfigStr);
-                        showAlert('Lưu cấu hình thành công. Hệ thống sẽ khởi động lại...', 'success');
+                        showAlert('Lưu cấu hình thành công cho toàn hệ thống. Đang khởi động lại...', 'success');
                         setTimeout(() => window.location.reload(), 1500);
                       } catch (e) {
-                        showAlert('JSON cấu hình không hợp lệ. Vui lòng kiểm tra lại.', 'error');
+                        console.error(e);
+                        showAlert('Lỗi: JSON cấu hình không hợp lệ hoặc không có quyền lưu.', 'error');
                       }
                     }}
                     className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
@@ -1745,10 +1751,13 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                     <Save className="w-4 h-4" /> Lưu và Khởi động lại
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      try {
+                        await deleteDoc(doc(defaultDb, 'system', 'firebaseConfig'));
+                      } catch (e) { console.error(e) }
                       setFirebaseConfigStr('');
                       localStorage.removeItem('customFirebaseConfig');
-                      showAlert('Đã trở về cấu hình mặc định', 'info');
+                      showAlert('Đã trở về cấu hình mặc định cho toàn hệ thống.', 'info');
                       setTimeout(() => window.location.reload(), 1500);
                     }}
                     className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 font-medium rounded-lg hover:bg-slate-50 transition-colors"

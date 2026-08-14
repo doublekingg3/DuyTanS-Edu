@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
 const defaultConfig = {
@@ -21,7 +21,11 @@ if (customConfigStr) {
   }
 }
 
-const firebaseConfig = customConfig || defaultConfig;
+let app;
+if (customConfig) {
+  app = !getApps().some(a => a.name === "custom") ? initializeApp(customConfig, "custom") : getApp("custom");
+} else {
+  app = !getApps().some(a => a.name === "default") ? initializeApp(defaultConfig, "default") : getApp("default");
+}
 
-const app = initializeApp(firebaseConfig);
 export const db = customConfig ? getFirestore(app) : getFirestore(app, "ai-studio-edumanagepro-3db4613f-477a-4cf6-a5e6-2823c184867b");
