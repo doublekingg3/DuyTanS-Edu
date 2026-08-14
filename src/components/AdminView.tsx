@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { SchoolClass, Student, UserAccount, SchoolYear, AppSettings, defaultSettings } from '../data';
-import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate } from 'lucide-react';
+import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
 import { db } from '../lib/firebase';
 import { doc, setDoc, deleteDoc, writeBatch, addDoc, collection } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import AdminReports from './AdminReports';
 
 export default function AdminView({ classes, students, users, schoolYears, settings }: { classes: SchoolClass[], students: Student[], users: UserAccount[], schoolYears: SchoolYear[], settings?: AppSettings }) {
   const { showAlert, showConfirm } = useAlert();
@@ -88,7 +90,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     }
   };
 
-  const [activeTab, setActiveTab] = useState<'classes' | 'accounts' | 'school_years' | 'backup' | 'firebase' | 'ai_config'>('classes');
+  const [activeTab, setActiveTab] = useState<'classes' | 'accounts' | 'school_years' | 'backup' | 'firebase' | 'ai_config' | 'reports'>('classes');
   const [aiConfigText, setAiConfigText] = useState(localStorage.getItem('aiAdminConfig') || 'Fanpage: https://facebook.com/truong\nHotline: 0123.456.789\nCác khoá học hiện có: Tiếng Anh giao tiếp, Toán tư duy, Kỹ năng sống');
 
   
@@ -586,86 +588,55 @@ export default function AdminView({ classes, students, users, schoolYears, setti
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Tab Navigation */}
-        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200 inline-flex flex-wrap gap-1">
-          <button 
-            onClick={() => setActiveTab('classes')}
-            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'classes' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-          >
-            <Building2 className="w-4 h-4" /> Lớp học
-          </button>
-          <button 
-            onClick={() => setActiveTab('school_years')}
-            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'school_years' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-          >
-            <Calendar className="w-4 h-4" /> Năm học
-          </button>
-          <button 
-            onClick={() => setActiveTab('accounts')}
-            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'accounts' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-          >
-            <Shield className="w-4 h-4" /> Tài khoản & Phân quyền
-          </button>
-          <button 
-            onClick={() => setActiveTab('backup')}
-            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'backup' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-          >
-            <Database className="w-4 h-4" /> Sao lưu dữ liệu
-          </button>
-          <button 
-            onClick={() => setActiveTab('ai_config')}
-            className={`whitespace-nowrap px-6 py-2.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'ai_config' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-          >
-            <Sparkles className="w-4 h-4" /> Cấu hình AI
-          </button>
-          <button 
-            onClick={() => setActiveTab('firebase')}
-            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'firebase' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-          >
-            <Cloud className="w-4 h-4" /> Kết nối Firebase
-          </button>
+        <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 mb-6">
+          <div className="flex overflow-x-auto gap-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <button 
+              onClick={() => setActiveTab('classes')}
+              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'classes' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+            >
+              <Building2 className="w-4 h-4" /> Lớp học
+            </button>
+            <button 
+              onClick={() => setActiveTab('school_years')}
+              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'school_years' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+            >
+              <Calendar className="w-4 h-4" /> Năm học
+            </button>
+            <button 
+              onClick={() => setActiveTab('accounts')}
+              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'accounts' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+            >
+              <Shield className="w-4 h-4" /> Tài khoản & Phân quyền
+            </button>
+            <button 
+              onClick={() => setActiveTab('reports')}
+              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'reports' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+            >
+              <BarChart2 className="w-4 h-4" /> Báo cáo thống kê
+            </button>
+            <button 
+              onClick={() => setActiveTab('backup')}
+              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'backup' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+            >
+              <Database className="w-4 h-4" /> Sao lưu dữ liệu
+            </button>
+            <button 
+              onClick={() => setActiveTab('ai_config')}
+              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'ai_config' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+            >
+              <Sparkles className="w-4 h-4" /> Cấu hình AI
+            </button>
+            <button 
+              onClick={() => setActiveTab('firebase')}
+              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 shrink-0 ${activeTab === 'firebase' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+            >
+              <Cloud className="w-4 h-4" /> Kết nối Firebase
+            </button>
+          </div>
         </div>
 
         {activeTab === 'classes' && (
           <>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold font-display text-slate-800">Quản lý Lớp học</h1>
-                <p className="text-slate-500 mt-1">Báo cáo tổng quan số lượng học sinh và giáo viên chủ nhiệm</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <input 
-                  type="file" 
-                  accept=".xlsx" 
-                  ref={fileInputRef} 
-                  onChange={handleImportExcel} 
-                  className="hidden" 
-                />
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 border border-slate-200 bg-white text-slate-600 font-medium rounded-lg hover:bg-slate-50 flex items-center gap-2 transition-colors shadow-sm"
-                >
-                  <Upload className="w-4 h-4" /> Nhập Excel
-                </button>
-                <button 
-                  onClick={handleCleanupOrphanedData}
-                  className="px-4 py-2 border border-red-200 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 flex items-center gap-2 transition-colors shadow-sm"
-                >
-                  <Trash2 className="w-4 h-4" /> Dọn rác
-                </button>
-                <button 
-                  onClick={handleExportTemplate}
-                  className="px-4 py-2 border border-slate-200 bg-white text-slate-600 font-medium rounded-lg hover:bg-slate-50 flex items-center gap-2 transition-colors shadow-sm"
-                >
-                  <Download className="w-4 h-4" /> Mẫu Excel
-                </button>
-                <button 
-                  onClick={openAddModal}
-                  className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
-                >
-                  <Plus className="w-4 h-4" /> Thêm Lớp mới
-                </button>
-              </div>
-            </div>
 
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -1711,6 +1682,10 @@ export default function AdminView({ classes, students, users, schoolYears, setti
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <AdminReports students={students} />
         )}
 
         {activeTab === 'firebase' && (
