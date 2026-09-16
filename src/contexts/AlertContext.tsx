@@ -21,7 +21,7 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     message: ''
   });
 
-  const [resolveConfirm, setResolveConfirm] = useState<((value: boolean) => void) | null>(null);
+  const resolveConfirmRef = React.useRef<((value: boolean) => void) | null>(null);
 
   const showAlert = useCallback((message: string, type: AlertType = 'info') => {
     setAlertState({ isOpen: true, message, type });
@@ -34,21 +34,21 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   const showConfirm = useCallback((message: string) => {
     setConfirmState({ isOpen: true, message });
     return new Promise<boolean>((resolve) => {
-      setResolveConfirm(() => resolve);
+      resolveConfirmRef.current = resolve;
     });
   }, []);
 
   const handleConfirm = useCallback(() => {
-    if (resolveConfirm) resolveConfirm(true);
+    if (resolveConfirmRef.current) resolveConfirmRef.current(true);
     setConfirmState(prev => ({ ...prev, isOpen: false }));
-    setResolveConfirm(null);
-  }, [resolveConfirm]);
+    resolveConfirmRef.current = null;
+  }, []);
 
   const handleCancel = useCallback(() => {
-    if (resolveConfirm) resolveConfirm(false);
+    if (resolveConfirmRef.current) resolveConfirmRef.current(false);
     setConfirmState(prev => ({ ...prev, isOpen: false }));
-    setResolveConfirm(null);
-  }, [resolveConfirm]);
+    resolveConfirmRef.current = null;
+  }, []);
 
   return (
     <AlertContext.Provider value={{ showAlert, showConfirm }}>

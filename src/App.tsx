@@ -13,7 +13,7 @@ import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch, 
 export default function App() {
   const [appMode, setAppMode] = useState<'portal' | 'edu_manager' | 'tkb'>('portal');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [role, setRole] = useState<'admin' | 'teacher' | 'parent'>('admin');
+  const [role, setRole] = useState<'admin' | 'teacher' | 'parent' | 'staff'>('admin');
   const [loggedInUserId, setLoggedInUserId] = useState<string>('');
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -50,7 +50,7 @@ export default function App() {
         studentsLoaded = true;
         checkLoading();
       } else {
-        const loadedStudents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+        const loadedStudents = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
         // Sort by STT to maintain order
         loadedStudents.sort((a, b) => a.stt - b.stt);
         setStudents(loadedStudents);
@@ -72,7 +72,7 @@ export default function App() {
         classesLoaded = true;
         checkLoading();
       } else {
-        const loadedClasses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolClass));
+        const loadedClasses = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SchoolClass));
         setClasses(loadedClasses);
         classesLoaded = true;
         checkLoading();
@@ -99,7 +99,7 @@ export default function App() {
         usersLoaded = true;
         checkLoading();
       } else {
-        const loadedUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserAccount));
+        const loadedUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserAccount));
         setUsers(loadedUsers);
         usersLoaded = true;
         checkLoading();
@@ -117,7 +117,7 @@ export default function App() {
         schoolYearsLoaded = true;
         checkLoading();
       } else {
-        const loadedYears = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolYear));
+        const loadedYears = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SchoolYear));
         setSchoolYears(loadedYears);
         schoolYearsLoaded = true;
         checkLoading();
@@ -276,7 +276,7 @@ export default function App() {
   };
 
   const handleLogin = (selectedRole: 'admin' | 'teacher' | 'parent', studentId?: string, userId?: string) => {
-    setRole(selectedRole);
+    setRole(selectedRole as any);
     if (studentId) {
       setParentStudentId(studentId);
     }
@@ -355,6 +355,7 @@ export default function App() {
             <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg">
               {role === 'admin' && 'Ban Giám Hiệu'}
               {role === 'teacher' && 'Giáo viên'}
+              {role === 'staff' && 'Giáo vụ'}
               {role === 'parent' && 'Phụ huynh'}
             </span>
             <button
@@ -382,10 +383,11 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 relative">
-        {role === 'admin' ? (
-          <AdminView classes={classes} students={students} users={users} schoolYears={schoolYears} settings={settings} />
-        ) : role === 'teacher' ? (
+        {role === "admin" || role === "teacher" || role === "staff" ? (
           <TeacherView 
+            role={role}
+            users={users}
+            settings={settings}
             students={students}
             classes={classes}
             user={users.find(u => u.id === loggedInUserId)}

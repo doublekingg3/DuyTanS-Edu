@@ -13,11 +13,11 @@ export default function Login({
   classes: SchoolClass[],
   students: Student[],
   users: UserAccount[],
-  onLogin: (role: 'admin' | 'teacher' | 'parent', parentStudentId?: string, loggedInUserId?: string) => void,
+  onLogin: (role: 'admin' | 'teacher' | 'parent' | 'staff', parentStudentId?: string, loggedInUserId?: string) => void,
   onBack?: () => void,
   settings?: AppSettings
 }) {
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'teacher' | 'parent'>('admin');
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'teacher' | 'parent' | 'staff'>('teacher');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [studentCode, setStudentCode] = useState('');
@@ -27,12 +27,12 @@ export default function Login({
     e.preventDefault();
     setError('');
 
-    if (selectedRole === 'admin' || selectedRole === 'teacher') {
-      const user = users.find(u => u.username === username && u.password === password && u.role === selectedRole);
+    if (selectedRole === 'teacher' || selectedRole === 'admin' || selectedRole === 'staff') {
+      const user = users.find(u => u.username === username && u.password === password && ['admin', 'teacher', 'staff'].includes(u.role));
       if (user) {
-        onLogin(selectedRole, undefined, user.id);
+        onLogin(user.role, undefined, user.id);
       } else {
-        setError(`Tài khoản hoặc mật khẩu ${selectedRole === 'admin' ? 'quản trị' : 'giáo viên'} không đúng.`);
+        setError(`Tài khoản hoặc mật khẩu không đúng.`);
       }
     } else if (selectedRole === 'parent') {
       if (!studentCode.trim()) {
@@ -92,7 +92,7 @@ export default function Login({
         </button>
       )}
 
-      <div className="w-full max-w-md relative z-10 mx-auto lg:mx-0 lg:ml-auto lg:mr-[100px]">
+      <div className="w-full max-w-lg relative z-10 mx-auto lg:mx-0 lg:ml-auto lg:mr-[100px]">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div className="bg-indigo-600 p-8 text-center text-white">
           {settings?.loginLogo ? (
@@ -103,24 +103,17 @@ export default function Login({
             </div>
           )}
           <h1 className="text-2xl font-bold font-display">{settings?.appName || "EduManage Pro"}</h1>
-          <p className="text-indigo-100 mt-2">Hệ thống quản lý điểm số thông minh</p>
+          <p className="text-indigo-100 mt-2">Hệ thống quản lý học sinh online</p>
         </div>
 
         <div className="p-8">
-          <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
-            <button 
-              type="button"
-              onClick={() => { setSelectedRole('admin'); setError(''); }}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 ${selectedRole === 'admin' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <Shield className="w-4 h-4" /> Admin
-            </button>
+          <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl mb-6">
             <button 
               type="button"
               onClick={() => { setSelectedRole('teacher'); setError(''); }}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 ${selectedRole === 'teacher' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 ${(selectedRole === 'teacher' || selectedRole === 'admin' || selectedRole === 'staff') ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <BookOpen className="w-4 h-4" /> Giáo viên
+              <BookOpen className="w-4 h-4" /> Giáo viên / Nhân viên
             </button>
             <button 
               type="button"
@@ -148,7 +141,7 @@ export default function Login({
               </div>
             )}
             
-            {(selectedRole === 'admin' || selectedRole === 'teacher') && (
+            {(selectedRole === 'admin' || selectedRole === 'teacher' || selectedRole === 'staff') && (
               <>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Tài khoản</label>
@@ -158,7 +151,7 @@ export default function Login({
                       type="text" 
                       value={username}
                       onChange={e => setUsername(e.target.value)}
-                      placeholder={selectedRole === 'admin' ? 'admin' : 'teacher'}
+                      placeholder='Tài khoản'
                       className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                     />
                   </div>
@@ -213,11 +206,11 @@ export default function Login({
               </div>
             )}
 
-            {(selectedRole === 'admin' || selectedRole === 'teacher') && (
+            {(selectedRole === 'teacher' || selectedRole === 'admin' || selectedRole === 'staff') && (
               <div className="text-center mt-4">
                 <p className="text-xs text-slate-500">
                   Gợi ý đăng nhập mẫu:<br/>
-                  Tài khoản: <strong>{selectedRole}</strong> / Mật khẩu: <strong>{selectedRole}</strong>
+                  Tài khoản: <strong>admin</strong> / Mật khẩu: <strong>admin</strong>
                 </p>
               </div>
             )}

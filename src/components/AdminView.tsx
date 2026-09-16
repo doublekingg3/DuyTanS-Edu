@@ -1,16 +1,16 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { SchoolClass, Student, UserAccount, SchoolYear, AppSettings, defaultSettings } from '../data';
-import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2 } from 'lucide-react';
+import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
 import { db } from '../lib/firebase';
 import { defaultDb } from '../lib/firebase_default';
-import { doc, setDoc, deleteDoc, writeBatch, addDoc, collection } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, updateDoc, writeBatch, addDoc, collection } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import AdminReports from './AdminReports';
 
-export default function AdminView({ classes, students, users, schoolYears, settings }: { classes: SchoolClass[], students: Student[], users: UserAccount[], schoolYears: SchoolYear[], settings?: AppSettings }) {
+export default function AdminView({ classes, students, users, schoolYears, settings, externalActiveTab }: { classes: SchoolClass[], students: Student[], users: UserAccount[], schoolYears: SchoolYear[], settings?: AppSettings, externalActiveTab?: string }) {
   const { showAlert, showConfirm } = useAlert();
 
   const [appSettings, setAppSettings] = useState<AppSettings>(settings || defaultSettings);
@@ -91,7 +91,8 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     }
   };
 
-  const [activeTab, setActiveTab] = useState<'classes' | 'accounts' | 'school_years' | 'backup' | 'firebase' | 'ai_config' | 'reports'>('classes');
+  const [activeTabState, setActiveTab] = useState<'classes' | 'accounts' | 'school_years' | 'backup' | 'firebase' | 'ai_config' | 'reports'>('ai_config');
+  const activeTab = externalActiveTab || activeTabState;
   const [aiConfigText, setAiConfigText] = useState(localStorage.getItem('aiAdminConfig') || 'Fanpage: https://facebook.com/truong\nHotline: 0123.456.789\nCác khoá học hiện có: Tiếng Anh giao tiếp, Toán tư duy, Kỹ năng sống');
 
   
@@ -103,6 +104,11 @@ export default function AdminView({ classes, students, users, schoolYears, setti
   const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
   const [editingYear, setEditingYear] = useState<SchoolYear | null>(null);
   const [yearFormData, setYearFormData] = useState({ name: '' });
+  const activeYears = schoolYears.filter(y => !y.isDeleted);
+  const deletedYears = schoolYears.filter(y => y.isDeleted);
+  const [selectedYearIds, setSelectedYearIds] = useState<string[]>([]);
+  const [isYearTrashModalOpen, setIsYearTrashModalOpen] = useState(false);
+  const [selectedTrashYearIds, setSelectedTrashYearIds] = useState<string[]>([]);
   
   // Promote Class state
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
@@ -120,7 +126,8 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!window.confirm('Hành động này sẽ khôi phục dữ liệu từ tệp sao lưu. Dữ liệu hiện tại có thể bị ghi đè. Bạn có chắc chắn muốn tiếp tục?')) {
+    const confirmed = await showConfirm('Hành động này sẽ khôi phục dữ liệu từ tệp sao lưu. Dữ liệu hiện tại có thể bị ghi đè. Bạn có chắc chắn muốn tiếp tục?');
+    if (!confirmed) {
       if (e.target) e.target.value = '';
       return;
     }
@@ -158,14 +165,20 @@ export default function AdminView({ classes, students, users, schoolYears, setti
 
   // Users state
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [isClassTrashModalOpen, setIsClassTrashModalOpen] = useState(false);
+  const [selectedTrashClassIds, setSelectedTrashClassIds] = useState<string[]>([]);
+  const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
+  const [selectedTrashUserIds, setSelectedTrashUserIds] = useState<string[]>([]);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [userAssignmentYear, setUserAssignmentYear] = useState('');
-  const [userFormData, setUserFormData] = useState<{username: string, password: string, fullName: string, role: 'admin'|'teacher', isHomeroom: boolean, isSubject: boolean, subjects: string[], homeroomClasses: string[], subjectClasses: string[]}>({
+  const [userFormData, setUserFormData] = useState<{username: string, password: string, fullName: string, role: 'admin'|'teacher'|'staff', isHomeroom: boolean, isSubject: boolean, subjects: string[], homeroomClasses: string[], subjectClasses: string[]}>({
     username: '',
     password: '',
     fullName: '',
-    role: 'teacher' as 'admin' | 'teacher',
+    role: 'teacher' as 'admin' | 'teacher' | 'staff',
     isHomeroom: false,
     isSubject: false,
     subjects: [],
@@ -182,7 +195,9 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     specialization: ''
   });
 
-  const filteredClasses = classes.filter(c => 
+  const activeClasses = classes.filter(c => !c.isDeleted);
+  const deletedClasses = classes.filter(c => c.isDeleted);
+  const filteredClasses = activeClasses.filter(c => 
     ((c.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) || 
     (c.homeroomTeacher || '').toLowerCase().includes((searchTerm || '').toLowerCase())) &&
     (classFilterYear ? c.schoolYearId === classFilterYear : true)
@@ -267,71 +282,132 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     }
   };
 
+
+
   const handleSaveClass = async () => {
-    if (!formData.name.trim() || !formData.homeroomTeacher.trim() || !formData.schoolYearId) {
-      showAlert('Vui lòng điền đầy đủ thông tin (Năm học, Tên lớp, GVCN)', 'error');
+    if (!formData.name || !formData.homeroomTeacher) {
+      showAlert('Vui lòng nhập tên lớp và giáo viên chủ nhiệm.', 'error');
+      return;
+    }
+    try {
+      if (editingClass) {
+        await setDoc(doc(db, 'classes', editingClass.id), formData, { merge: true });
+        showAlert('Cập nhật lớp thành công.', 'success');
+      } else {
+        const newClass = { ...formData, id: uuidv4() };
+        await setDoc(doc(db, 'classes', newClass.id), newClass);
+        showAlert('Thêm lớp mới thành công.', 'success');
+      }
+      setIsAddModalOpen(false);
+    } catch (e) {
+      showAlert('Lỗi khi lưu lớp.', 'error');
+    }
+  };
+
+  const handleDeleteClass = async (classId: string) => {
+    const hasStudents = students.some(s => s.classId === classId && !s.isDeleted);
+    if (hasStudents) {
+      showAlert('Không thể xóa lớp học này vì đang có học sinh. Vui lòng chuyển học sinh sang lớp khác trước.', 'error');
+      return;
+    }
+    const isConfirmed = await showConfirm('Bạn có chắc chắn muốn chuyển lớp này vào thùng rác?');
+    if (isConfirmed) {
+      try {
+        await setDoc(doc(db, 'classes', classId), { isDeleted: true }, { merge: true });
+        showAlert('Đã chuyển lớp vào thùng rác.', 'success');
+      } catch (error) {
+        showAlert('Lỗi khi chuyển vào thùng rác.', 'error');
+      }
+    }
+  };
+
+  const handleDeleteSelectedClasses = async () => {
+    if (selectedClassIds.length === 0) return;
+    
+    // Check if any selected class has students
+    const classesWithStudents = selectedClassIds.filter(id => students.some(s => s.classId === id && !s.isDeleted));
+    if (classesWithStudents.length > 0) {
+      showAlert('Không thể xóa: Có lớp học đang có học sinh. Vui lòng chuyển học sinh sang lớp khác trước.', 'error');
       return;
     }
 
-    const classId = editingClass ? editingClass.id : `${formData.schoolYearId}-${formData.name.replace(/\s+/g, '')}`;
-    
-    const classData = {
-      id: classId,
-      name: formData.name,
-      homeroomTeacher: formData.homeroomTeacher,
-      schoolYearId: formData.schoolYearId,
-      specialization: formData.specialization
-    };
-
-    try {
-      const docRef = doc(db, 'classes', classId);
-      await setDoc(docRef, classData);
-      setIsAddModalOpen(false);
-      setEditingClass(null);
-      setFormData({ schoolYearId: schoolYears[0]?.id || '', name: '', homeroomTeacher: '', specialization: '' });
-      showAlert('Lưu lớp học thành công', 'success');
-    } catch (error) {
-      console.error('Lỗi khi lưu lớp:', error);
-      showAlert('Đã xảy ra lỗi khi lưu lớp học.', 'error');
+    const isConfirmed = await showConfirm(`Bạn có chắc chắn muốn chuyển ${selectedClassIds.length} lớp đã chọn vào thùng rác?`);
+    if (isConfirmed) {
+      try {
+        const batch = writeBatch(db);
+        selectedClassIds.forEach(id => {
+          batch.set(doc(db, 'classes', id), { isDeleted: true }, { merge: true });
+        });
+        await batch.commit();
+        setSelectedClassIds([]);
+        showAlert('Đã chuyển các lớp vào thùng rác.', 'success');
+      } catch (error) {
+        showAlert('Lỗi khi chuyển vào thùng rác.', 'error');
+      }
     }
   };
 
   const handleSaveYear = async () => {
-    if (!yearFormData.name.trim()) {
-      showAlert('Vui lòng nhập tên năm học', 'error');
+    if (!yearFormData.name) {
+      showAlert('Vui lòng nhập tên năm học.', 'error');
       return;
     }
-    
-    const yearId = editingYear ? editingYear.id : yearFormData.name.replace(/[^a-zA-Z0-9]/g, '');
-    
     try {
-      const docRef = doc(db, 'schoolYears', yearId);
-      await setDoc(docRef, { id: yearId, name: yearFormData.name });
+      const yearId = yearFormData.name.replace(/[^0-9]/g, '');
+      const data = { id: yearId, name: yearFormData.name };
+      await setDoc(doc(db, 'schoolYears', yearId), data, { merge: true });
+      showAlert('Lưu năm học thành công.', 'success');
       setIsAddYearModalOpen(false);
-      setEditingYear(null);
-      setYearFormData({ name: '' });
-      showAlert('Lưu năm học thành công', 'success');
-    } catch (error) {
-      console.error('Lỗi khi lưu năm học:', error);
-      showAlert('Đã xảy ra lỗi.', 'error');
+    } catch (e) {
+      showAlert('Lỗi khi lưu năm học.', 'error');
     }
   };
 
-  const handleDeleteYear = async (yearId: string) => {
-    const hasClasses = classes.some(c => c.id.startsWith(yearId + '-'));
+
+  const handleDeleteYear = async (id: string) => {
+    const hasClasses = classes.some(c => c.schoolYearId === id && !c.isDeleted);
     if (hasClasses) {
-      showAlert('Không thể xóa năm học vì đang có lớp học thuộc năm này.', 'error');
+      showAlert('Không thể xóa năm học này vì đang có lớp học. Vui lòng xóa hoặc chuyển các lớp trước.', 'error');
       return;
     }
-    if (await showConfirm('Bạn có chắc chắn muốn xóa năm học này?')) {
-      await deleteDoc(doc(db, 'schoolYears', yearId));
-      showAlert('Xóa năm học thành công.', 'success');
+    const isConfirmed = await showConfirm('Bạn có chắc chắn muốn chuyển năm học này vào thùng rác?');
+    if (isConfirmed) {
+      try {
+        await setDoc(doc(db, 'schoolYears', id), { isDeleted: true }, { merge: true });
+        showAlert('Đã chuyển năm học vào thùng rác.', 'success');
+      } catch (e) {
+        showAlert('Lỗi khi chuyển vào thùng rác.', 'error');
+      }
     }
   };
-  
+
+  const handleDeleteSelectedYears = async () => {
+    if (selectedYearIds.length === 0) return;
+    const yearsWithClasses = selectedYearIds.filter(id => classes.some(c => c.schoolYearId === id && !c.isDeleted));
+    if (yearsWithClasses.length > 0) {
+      showAlert('Không thể xóa: Có năm học đang chứa lớp học.', 'error');
+      return;
+    }
+    const isConfirmed = await showConfirm(`Bạn có chắc chắn muốn chuyển ${selectedYearIds.length} năm học đã chọn vào thùng rác?`);
+    if (isConfirmed) {
+      try {
+        const batch = writeBatch(db);
+        selectedYearIds.forEach(id => {
+          batch.set(doc(db, 'schoolYears', id), { isDeleted: true }, { merge: true });
+        });
+        await batch.commit();
+        setSelectedYearIds([]);
+        showAlert('Đã chuyển các năm học vào thùng rác.', 'success');
+      } catch (error) {
+        showAlert('Lỗi khi chuyển vào thùng rác.', 'error');
+      }
+    }
+  };
+
+
   const handlePromoteSubmit = async () => {
-    if (!promoteClassData?.targetClassId) {
-      showAlert('Vui lòng chọn lớp mới để chuyển học sinh đến.', 'error');
+    if (!promoteClassData || !promoteClassData.targetClassId) {
+      showAlert('Vui lòng chọn lớp đích.', 'error');
       return;
     }
     if (promoteClassData.studentsToPromote.size === 0) {
@@ -340,79 +416,15 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     }
     try {
       const batch = writeBatch(db);
-      let count = 0;
-      Array.from(promoteClassData.studentsToPromote as Set<string>).forEach((studentId: string) => {
-        const student = students.find(s => s.id === studentId);
-        if (student) {
-          const oldClass = classes.find(c => c.id === student.classId);
-          const historyEntry = {
-            classId: student.classId,
-            className: oldClass?.name || '',
-            schoolYearId: oldClass?.schoolYearId || '',
-            grades: student.grades || {},
-            term1Grades: student.term1Grades || {},
-            term2Grades: student.term2Grades || {},
-            yearGrades: student.yearGrades || {},
-            academicPerformance: student.academicPerformance || '',
-            conduct: student.conduct || '',
-            cp: student.cp || 0,
-            kp: student.kp || 0,
-            award: student.award || ''
-          };
-          
-          const docRef = doc(db, 'students', student.id);
-          const updatedStudent = {
-            classId: promoteClassData.targetClassId,
-            historicalRecords: [...(student.historicalRecords || []), historyEntry],
-            status: 'Đang học',
-            academicPerformance: '',
-            conduct: '',
-            cp: 0,
-            kp: 0,
-            award: '',
-            grades: {
-              math: 0, physics: 0, chemistry: 0, biology: 0, it: 0, localEdu: 'Đ', literature: 0, history: 0, foreignLanguage: 0, pe: 'Đ', defense: 0, japanese: 0, experiential: 'Đ', technology: 0, geography: 0, civicEdu: 0
-            },
-            term1Grades: {},
-            term2Grades: {},
-            yearGrades: {},
-            term1Details: {},
-            term2Details: {},
-            displayGrades: {},
-            comments: [],
-            notifications: [],
-            attendanceRecords: {}
-          };
-          
-          batch.update(docRef, updatedStudent);
-          count++;
-        }
+      promoteClassData.studentsToPromote.forEach(studentId => {
+        batch.set(doc(db, 'students', studentId), { classId: promoteClassData.targetClassId }, { merge: true });
       });
       await batch.commit();
-      showAlert(`Đã chuyển thành công ${count} học sinh lên lớp mới.`, 'success');
+      showAlert('Chuyển lớp thành công.', 'success');
       setIsPromoteModalOpen(false);
       setPromoteClassData(null);
-    } catch (err) {
-      console.error(err);
-      showAlert('Đã xảy ra lỗi.', 'error');
-    }
-  };
-
-  const handleDeleteClass = async (classId: string) => {
-    const hasStudents = students.some(s => s.classId === classId);
-    if (hasStudents) {
-      showAlert('Không thể xóa lớp học này vì đang có học sinh. Vui lòng chuyển học sinh sang lớp khác trước.', 'error');
-      return;
-    }
-    const isConfirmed = await showConfirm('Bạn có chắc chắn muốn xóa lớp học này?');
-    if (isConfirmed) {
-      try {
-        const docRef = doc(db, 'classes', classId);
-        await deleteDoc(docRef);
-      } catch (error) {
-        console.error('Lỗi khi xóa lớp:', error);
-        showAlert('Đã xảy ra lỗi khi xóa lớp học.', 'error');
-      }
+    } catch (e) {
+      showAlert('Lỗi khi chuyển lớp.', 'error');
     }
   };
 
@@ -478,23 +490,57 @@ export default function AdminView({ classes, students, users, schoolYears, setti
       await setDoc(docRef, userData);
       setIsAddUserModalOpen(false);
       setEditingUser(null);
-      setUserFormData({ username: '', password: '', fullName: '', role: 'teacher', isHomeroom: false, isSubject: false, subjects: [], homeroomClasses: [], subjectClasses: [] });
+      setUserFormData({ username: '', password: '', fullName: '', role: 'teacher' as any, isHomeroom: false, isSubject: false, subjects: [], homeroomClasses: [], subjectClasses: [] });
     } catch (error) {
       console.error('Lỗi khi lưu tài khoản:', error);
       showAlert('Đã xảy ra lỗi khi lưu tài khoản.', 'error');
     }
   };
 
+  const handleDeleteSelectedUsers = async () => {
+
+    if (selectedUserIds.length === 0) return;
+    
+    const safeSelectedIds = selectedUserIds.filter(id => {
+      const u = users.find(user => user.id === id);
+      return u && u.username !== 'admin' && u.role !== 'admin';
+    });
+
+    if (safeSelectedIds.length === 0) {
+      showAlert('Không có tài khoản hợp lệ để xoá (không thể xoá tài khoản admin).', 'error');
+      return;
+    }
+
+    const isConfirmed = await showConfirm(`Bạn có chắc chắn muốn chuyển ${safeSelectedIds.length} tài khoản đã chọn vào thùng rác?`);
+    if (isConfirmed) {
+      try {
+        const batch = writeBatch(db);
+        safeSelectedIds.forEach(id => {
+          const docRef = doc(db, 'users', id);
+          batch.set(docRef, { isDeleted: true }, { merge: true });
+        });
+        await batch.commit();
+        setSelectedUserIds([]);
+        showAlert('Đã chuyển các tài khoản vào thùng rác.', 'success');
+      } catch (error) {
+        console.error('Lỗi khi xóa tài khoản hàng loạt:', error);
+        showAlert(`Lỗi xóa TK: ${error instanceof Error ? error.message : JSON.stringify(error)}`, 'error');
+      }
+    }
+  };
+
   const handleDeleteUser = async (userId: string) => {
 
-    const isConfirmed = await showConfirm('Bạn có chắc chắn muốn xóa tài khoản này?');
+
+    const isConfirmed = await showConfirm('Bạn có chắc chắn muốn chuyển tài khoản này vào thùng rác?');
     if (isConfirmed) {
       try {
         const docRef = doc(db, 'users', userId);
-        await deleteDoc(docRef);
+        await setDoc(docRef, { isDeleted: true }, { merge: true });
+        showAlert('Đã chuyển tài khoản vào thùng rác.', 'success');
       } catch (error) {
         console.error('Lỗi khi xóa tài khoản:', error);
-        showAlert('Đã xảy ra lỗi khi xóa tài khoản.', 'error');
+        showAlert(`Lỗi xóa TK: ${error instanceof Error ? error.message : JSON.stringify(error)}`, 'error');
       }
     }
   };
@@ -551,7 +597,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
             username: username.toString(),
             password: password ? password.toString() : '123456',
             fullName: fullName.toString(),
-            role: roleRaw === 'admin' ? 'admin' : 'teacher',
+            role: roleRaw === 'admin' ? 'admin' : roleRaw === 'staff' ? 'staff' : 'teacher',
             isHomeroom: false,
             isSubject: false,
             homeroomClasses: [],
@@ -559,15 +605,15 @@ export default function AdminView({ classes, students, users, schoolYears, setti
             subjects: []
           };
           
-          await addDoc(collection(db, 'users'), userData);
+          await setDoc(doc(db, 'users', userData.id), userData);
           successCount++;
         }
         
-        alert(`Đã nhập thành công ${successCount} tài khoản mới!`);
+        showAlert(`Đã nhập thành công ${successCount} tài khoản mới!`, 'success');
         if (fileInputRefUsers.current) fileInputRefUsers.current.value = '';
       } catch (err) {
         console.error(err);
-        alert('Có lỗi xảy ra khi đọc file Excel.');
+        showAlert('Có lỗi xảy ra khi đọc file Excel.', 'error');
       }
     };
     reader.readAsBinaryString(file);
@@ -575,11 +621,13 @@ export default function AdminView({ classes, students, users, schoolYears, setti
 
   const openAddUserModal = () => {
     setEditingUser(null);
-    setUserFormData({ username: '', password: '', fullName: '', role: 'teacher', isHomeroom: false, isSubject: false, subjects: [], homeroomClasses: [], subjectClasses: [] });
+    setUserFormData({ username: '', password: '', fullName: '', role: 'teacher' as any, isHomeroom: false, isSubject: false, subjects: [], homeroomClasses: [], subjectClasses: [] });
     setIsAddUserModalOpen(true);
   };
 
-  const filteredUsers = users.filter(u => 
+  const activeUsers = users.filter(u => !u.isDeleted);
+  const deletedUsers = users.filter(u => u.isDeleted);
+  const filteredUsers = activeUsers.filter(u => 
     (u.username || '').toLowerCase().includes((userSearchTerm || '').toLowerCase()) || 
     (u.fullName || '').toLowerCase().includes((userSearchTerm || '').toLowerCase())
   );
@@ -589,50 +637,26 @@ export default function AdminView({ classes, students, users, schoolYears, setti
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Tab Navigation */}
-        <div className="flex flex-wrap gap-2.5 mb-8">
-          <button 
-            onClick={() => setActiveTab('classes')}
-            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'classes' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
-          >
-            <Building2 className="w-4 h-4" /> Lớp học
-          </button>
-          <button 
-            onClick={() => setActiveTab('school_years')}
-            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'school_years' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
-          >
-            <Calendar className="w-4 h-4" /> Năm học
-          </button>
-          <button 
-            onClick={() => setActiveTab('accounts')}
-            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'accounts' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
-          >
-            <Shield className="w-4 h-4" /> Tài khoản & Phân quyền
-          </button>
-          <button 
-            onClick={() => setActiveTab('reports')}
-            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'reports' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
-          >
-            <BarChart2 className="w-4 h-4" /> Báo cáo thống kê
-          </button>
+        {!externalActiveTab && <div className="flex justify-center gap-3 mb-10 border-b border-slate-200 pb-2">
           <button 
             onClick={() => setActiveTab('backup')}
-            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'backup' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+            className={`px-6 py-3 text-sm font-semibold rounded-t-xl transition-all flex items-center gap-2 border-b-2 ${activeTab === 'backup' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/50' : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50 border-transparent'}`}
           >
             <Database className="w-4 h-4" /> Sao lưu dữ liệu
           </button>
           <button 
             onClick={() => setActiveTab('ai_config')}
-            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'ai_config' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+            className={`px-6 py-3 text-sm font-semibold rounded-t-xl transition-all flex items-center gap-2 border-b-2 ${activeTab === 'ai_config' ? 'text-purple-600 border-purple-600 bg-purple-50/50' : 'text-slate-500 hover:text-purple-600 hover:bg-slate-50 border-transparent'}`}
           >
-            <Sparkles className="w-4 h-4" /> Cấu hình AI
+            <Sparkles className="w-4 h-4" /> Cấu hình Trợ lý AI
           </button>
           <button 
             onClick={() => setActiveTab('firebase')}
-            className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all flex items-center gap-2 ${activeTab === 'firebase' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-600' : 'bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm'}`}
+            className={`px-6 py-3 text-sm font-semibold rounded-t-xl transition-all flex items-center gap-2 border-b-2 ${activeTab === 'firebase' ? 'text-slate-800 border-slate-800 bg-slate-100/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50 border-transparent'}`}
           >
-            <Cloud className="w-4 h-4" /> Kết nối Firebase
+            <Cloud className="w-4 h-4" /> Kết nối đám mây
           </button>
-        </div>
+        </div>}
 
         {activeTab === 'classes' && (
           <>
@@ -684,13 +708,43 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                 ))}
               </select>
             </div>
+
+            <div className="flex items-center gap-3">
+              {selectedClassIds.length > 0 && (
+                <button 
+                  onClick={handleDeleteSelectedClasses}
+                  className="px-4 py-2 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2 shadow-sm border border-red-200"
+                >
+                  <Trash2 className="w-4 h-4" /> Xóa {selectedClassIds.length} lớp
+                </button>
+              )}
+              <button 
+                onClick={() => setIsClassTrashModalOpen(true)}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <Trash2 className="w-4 h-4" /> Thùng rác ({deletedClasses.length})
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
+
                 <tr>
+                  <th className="px-6 py-4 border-b border-slate-100 bg-slate-50 w-12 text-center">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      checked={selectedClassIds.length > 0 && filteredClasses.length > 0 && selectedClassIds.length === filteredClasses.length}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedClassIds(filteredClasses.map(c => c.id));
+                        else setSelectedClassIds([]);
+                      }}
+                    />
+                  </th>
                   <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Tên Lớp</th>
+
                   <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Giáo viên Chủ nhiệm</th>
                   <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-center">Phân ban</th>
                   <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-center">Sĩ số Học sinh</th>
@@ -700,7 +754,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
               <tbody>
                 {filteredClasses.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                       Không tìm thấy dữ liệu lớp học
                     </td>
                   </tr>
@@ -708,8 +762,21 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   filteredClasses.map(c => {
                     const studentCount = students.filter(s => s.classId === c.id).length;
                     return (
+
                       <tr key={c.id} className="hover:bg-slate-50/80 transition-colors group">
+                        <td className="px-6 py-4 border-b border-slate-50 text-center">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            checked={selectedClassIds.includes(c.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedClassIds([...selectedClassIds, c.id]);
+                              else setSelectedClassIds(selectedClassIds.filter(id => id !== c.id));
+                            }}
+                          />
+                        </td>
                         <td className="px-6 py-4 border-b border-slate-50">
+
                           <span className="font-bold text-slate-800">{c.name}</span>
                         </td>
                         <td className="px-6 py-4 border-b border-slate-50">
@@ -735,9 +802,17 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                           </span>
                         </td>
                         <td className="px-6 py-4 border-b border-slate-50 text-right">
+
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            
-                            <button 
+                            <button
+                              onClick={() => handleDeleteClass(c.id)}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Chuyển vào thùng rác"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button
+ 
                               onClick={() => {
                                 const classStudents = students.filter(s => s.classId === c.id);
                                 if (classStudents.length === 0) {
@@ -763,13 +838,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button 
-                              onClick={() => handleDeleteClass(c.id)}
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Xóa lớp"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+
                           </div>
                         </td>
                       </tr>
@@ -786,39 +855,83 @@ export default function AdminView({ classes, students, users, schoolYears, setti
         
         {activeTab === 'school_years' && (
           <>
+
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h1 className="text-2xl font-bold font-display text-slate-800">Quản lý Năm học</h1>
                 <p className="text-slate-500 mt-1">Danh sách các năm học trong hệ thống</p>
               </div>
-              <button 
-                onClick={() => { setEditingYear(null); setYearFormData({ name: '' }); setIsAddYearModalOpen(true); }}
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
-              >
-                <Plus className="w-4 h-4" /> Thêm Năm học
-              </button>
+              <div className="flex items-center gap-3">
+                {selectedYearIds.length > 0 && (
+                  <button 
+                    onClick={handleDeleteSelectedYears}
+                    className="px-4 py-2 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2 shadow-sm border border-red-200"
+                  >
+                    <Trash2 className="w-4 h-4" /> Xóa {selectedYearIds.length} năm học
+                  </button>
+                )}
+                <button 
+                  onClick={() => setIsYearTrashModalOpen(true)}
+                  className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <Trash2 className="w-4 h-4" /> Thùng rác ({deletedYears.length})
+                </button>
+                <button 
+                  onClick={() => { setEditingYear(null); setYearFormData({ name: '' }); setIsAddYearModalOpen(true); }}
+                  className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <Plus className="w-4 h-4" /> Thêm Năm học
+                </button>
+              </div>
             </div>
+
             
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
               <table className="w-full text-left border-collapse">
                 <thead>
+
                   <tr>
+                    <th className="px-6 py-4 border-b border-slate-100 bg-slate-50 w-12 text-center">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        checked={selectedYearIds.length > 0 && activeYears.length > 0 && selectedYearIds.length === activeYears.length}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedYearIds(activeYears.map(y => y.id));
+                          else setSelectedYearIds([]);
+                        }}
+                      />
+                    </th>
                     <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Tên Năm học</th>
+
                     <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-center">Số lượng Lớp</th>
                     <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {schoolYears.length === 0 ? (
+                  {activeYears.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-6 py-8 text-center text-slate-500">Chưa có năm học nào</td>
+                      <td colSpan={4} className="px-6 py-8 text-center text-slate-500">Chưa có năm học nào</td>
                     </tr>
                   ) : (
-                    schoolYears.map(y => {
+                    activeYears.map(y => {
                       const classCount = classes.filter(c => c.schoolYearId === y.id).length;
                       return (
+
                         <tr key={y.id} className="hover:bg-slate-50/80 transition-colors group">
+                          <td className="px-6 py-4 border-b border-slate-50 text-center">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                              checked={selectedYearIds.includes(y.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) setSelectedYearIds([...selectedYearIds, y.id]);
+                                else setSelectedYearIds(selectedYearIds.filter(id => id !== y.id));
+                              }}
+                            />
+                          </td>
                           <td className="px-6 py-4 border-b border-slate-50 font-bold text-slate-800">{y.name}</td>
+
                           <td className="px-6 py-4 border-b border-slate-50 text-center text-slate-600 font-medium">
                             {classCount}
                           </td>
@@ -832,7 +945,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                               <button 
                                 onClick={() => handleDeleteYear(y.id)}
                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Xóa"
+                                title="Chuyển vào thùng rác"
                               ><Trash2 className="w-4 h-4" /></button>
                             </div>
                           </td>
@@ -879,7 +992,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   <p className="text-xs text-slate-500 mt-1">Sẽ hiển thị ở tiêu đề trang (thẻ browser).</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên Hiển thị (Login/EduManager)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên Hiển thị (Login/DuyTan School Manager)</label>
                   <input
                     type="text"
                     value={appSettings.appName}
@@ -1002,11 +1115,26 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                 <button onClick={() => fileInputRefUsers.current?.click()} className="px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-sm">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> Nhập (Import)
                 </button>
+                {/* Nút gán mã tự động tạm ẩn do trường sử dụng mã CSDL Ngành
+                <button 
+                  onClick={handleSortAndGenerateStudentIDs}
+                  className="px-4 py-2 bg-amber-500 text-white font-medium rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 shadow-sm"
+                  title="Tự động xếp Mã Học Sinh toàn trường theo A-Z (Ví dụ: 26270001)"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg> Sắp xếp mã học sinh
+                </button>
+*/}
                 <button 
                   onClick={openAddUserModal}
                   className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Thêm
+                </button>
+                <button 
+                  onClick={() => setIsTrashModalOpen(true)}
+                  className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <Trash2 className="w-4 h-4" /> Thùng rác ({deletedUsers.length})
                 </button>
               </div>
             </div>
@@ -1023,12 +1151,35 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                     className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   />
                 </div>
+                {selectedUserIds.length > 0 && (
+                  <button 
+                    onClick={handleDeleteSelectedUsers}
+                    className="px-4 py-2 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2 shadow-sm border border-red-200"
+                  >
+                    <Trash2 className="w-4 h-4" /> Xóa {selectedUserIds.length} tài khoản
+                  </button>
+                )}
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr>
+                      <th className="px-6 py-4 border-b border-slate-100 bg-slate-50 w-12 text-center">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          checked={selectedUserIds.length > 0 && filteredUsers.filter(u => u.username !== 'admin' && u.role !== 'admin').length > 0 && selectedUserIds.length === filteredUsers.filter(u => u.username !== 'admin' && u.role !== 'admin').length}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                                const ids = filteredUsers.filter(u => u.username !== 'admin' && u.role !== 'admin').map(u => u.id);
+                                setSelectedUserIds(ids);
+                            } else {
+                                setSelectedUserIds([]);
+                            }
+                          }}
+                        />
+                      </th>
                       <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Mã GV (Tài khoản)</th>
                       <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Tên hiển thị</th>
                       <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Phân quyền</th>
@@ -1039,13 +1190,28 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   <tbody>
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                        <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                           Không tìm thấy tài khoản
                         </td>
                       </tr>
                     ) : (
                       filteredUsers.map(u => (
-                        <tr key={u.id} className="hover:bg-slate-50/80 transition-colors group">
+                        <tr key={`${u.id}-${Math.random()}`} className="hover:bg-slate-50/80 transition-colors group">
+                          <td className="px-6 py-4 border-b border-slate-50 text-center">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50 cursor-pointer"
+                              disabled={u.username === 'admin' || u.role === 'admin'}
+                              checked={selectedUserIds.includes(u.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUserIds([...selectedUserIds, u.id]);
+                                } else {
+                                  setSelectedUserIds(selectedUserIds.filter(id => id !== u.id));
+                                }
+                              }}
+                            />
+                          </td>
                           <td className="px-6 py-4 border-b border-slate-50">
                             <span className="font-bold text-slate-800 font-mono">{u.username}</span>
                           </td>
@@ -1058,8 +1224,8 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                             </div>
                           </td>
                           <td className="px-6 py-4 border-b border-slate-50">
-                            <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full font-semibold text-sm ${u.role === 'admin' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
-                              {u.role === 'admin' ? 'Ban Giám Hiệu' : 'Giáo viên'}
+                            <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full font-semibold text-sm ${u.role === 'admin' ? 'bg-purple-50 text-purple-700' : u.role === 'staff' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
+                              {u.role === 'admin' ? 'Ban Giám Hiệu' : u.role === 'staff' ? 'Giáo vụ' : 'Giáo viên'}
                             </span>
                           </td>
                           <td className="px-6 py-4 border-b border-slate-50">
@@ -1086,8 +1252,9 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                               </button>
                               <button 
                                 onClick={() => handleDeleteUser(u.id)}
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Xóa tài khoản"
+                                disabled={u.username === 'admin' || u.role === 'admin'}
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Chuyển vào thùng rác"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1462,10 +1629,11 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                 <label className="block text-sm font-medium text-slate-700 mb-1">Phân quyền</label>
                 <select
                   value={userFormData.role}
-                  onChange={e => setUserFormData({...userFormData, role: e.target.value as 'admin' | 'teacher'})}
+                  onChange={e => setUserFormData({...userFormData, role: e.target.value as 'admin' | 'teacher' | 'staff'})}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 >
                   <option value="teacher">Giáo viên</option>
+                  <option value="staff">Giáo vụ</option>
                   <option value="admin">Ban Giám Hiệu (Admin)</option>
                 </select>
 
@@ -1655,28 +1823,34 @@ export default function AdminView({ classes, students, users, schoolYears, setti
         
         {activeTab === 'ai_config' && (
           <div className="max-w-3xl mx-auto">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold font-display text-slate-800">Cấu hình Trợ lý AI</h1>
-              <p className="text-slate-500 mt-1">Thông tin nhà trường cung cấp để AI sử dụng khi nhận xét học sinh</p>
+            <div className="mb-8 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-purple-100">
+                <Sparkles className="w-8 h-8 text-purple-600" />
+              </div>
+              <h1 className="text-3xl font-bold font-display text-slate-800">Cấu hình Trợ Lý AI</h1>
+              <p className="text-slate-500 mt-2 max-w-lg">Định hướng phong cách và cung cấp thông tin chuẩn của nhà trường để AI hỗ trợ giáo viên tốt nhất.</p>
             </div>
             
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <label className="block text-sm font-bold text-slate-700 mb-2">Thông tin chính thống (Fanpage, SĐT, Khoá học,...)</label>
-              <textarea
-                className="w-full h-48 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none transition-all"
-                value={aiConfigText}
-                onChange={(e) => setAiConfigText(e.target.value)}
-                placeholder="Nhập thông tin tại đây..."
-              />
-              <div className="mt-4 flex justify-end">
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+              <div className="mb-6">
+                <label className="block text-lg font-bold text-slate-800 mb-2">Thông tin nền của Nhà trường</label>
+                <p className="text-slate-500 text-sm mb-4">Nhập Fanpage, Số điện thoại, các khóa học kỹ năng, hoặc triết lý giáo dục để Trợ lý AI tự động lồng ghép vào lời nhận xét.</p>
+                <textarea
+                  className="w-full h-56 px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none transition-all text-slate-700 leading-relaxed"
+                  value={aiConfigText}
+                  onChange={(e) => setAiConfigText(e.target.value)}
+                  placeholder="Ví dụ: Trường THPT Duy Tân. Slogan: 'Vươn tầm tri thức'. Hotlines: 0901234567..."
+                />
+              </div>
+              <div className="flex justify-end border-t border-slate-100 pt-6">
                 <button
                   onClick={() => {
                     localStorage.setItem('aiAdminConfig', aiConfigText);
-                    showAlert('Đã lưu cấu hình AI', 'success');
+                    showAlert('Cập nhật cấu hình Trợ lý AI thành công!', 'success');
                   }}
-                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors flex items-center gap-2"
+                  className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-all shadow-md shadow-purple-500/20 flex items-center gap-2"
                 >
-                  <Save className="w-4 h-4" /> Lưu cấu hình
+                  <Save className="w-5 h-5" /> Lưu Cấu Hình
                 </button>
               </div>
             </div>
@@ -1769,6 +1943,486 @@ export default function AdminView({ classes, students, users, schoolYears, setti
             </div>
           </div>
         )}
+
+
+      {/* CLASS TRASH MODAL */}
+      {isClassTrashModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Thùng rác lớp học</h2>
+                <p className="text-sm text-slate-500 mt-1">Các lớp học đã bị xóa. Bạn có thể khôi phục hoặc xóa vĩnh viễn.</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsClassTrashModalOpen(false);
+                  setSelectedTrashClassIds([]);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-slate-100 flex justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                {selectedTrashClassIds.length > 0 && (
+                  <>
+                    <button 
+                      onClick={async () => {
+                        const isConfirmed = await showConfirm(`Khôi phục ${selectedTrashClassIds.length} lớp học đã chọn?`);
+                        if (isConfirmed) {
+                          try {
+                            const batch = writeBatch(db);
+                            selectedTrashClassIds.forEach(id => {
+                              batch.set(doc(db, 'classes', id), { isDeleted: false }, { merge: true });
+                            });
+                            await batch.commit();
+                            setSelectedTrashClassIds([]);
+                            showAlert('Đã khôi phục các lớp học.', 'success');
+                          } catch (e) {
+                            showAlert('Lỗi khi khôi phục.', 'error');
+                          }
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1 border border-green-200"
+                    >
+                      <RefreshCcw className="w-4 h-4" /> Khôi phục đã chọn
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        const isConfirmed = await showConfirm(`Xóa vĩnh viễn ${selectedTrashClassIds.length} lớp học? Hành động này KHÔNG THỂ hoàn tác.`);
+                        if (isConfirmed) {
+                          try {
+                            const batch = writeBatch(db);
+                            selectedTrashClassIds.forEach(id => {
+                              batch.delete(doc(db, 'classes', id));
+                            });
+                            await batch.commit();
+                            setSelectedTrashClassIds([]);
+                            showAlert('Đã xóa vĩnh viễn.', 'success');
+                          } catch (e) {
+                            showAlert('Lỗi khi xóa vĩnh viễn.', 'error');
+                          }
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-red-50 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1 border border-red-200"
+                    >
+                      <Trash2 className="w-4 h-4" /> Xóa vĩnh viễn
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6">
+              {deletedClasses.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                    <Trash2 className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-700">Thùng rác trống</h3>
+                  <p className="text-slate-500 mt-1">Không có lớp học nào trong thùng rác.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-3 border-b border-slate-200 bg-slate-50 w-12 text-center">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          checked={selectedTrashClassIds.length > 0 && selectedTrashClassIds.length === deletedClasses.length}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedTrashClassIds(deletedClasses.map(c => c.id));
+                            else setSelectedTrashClassIds([]);
+                          }}
+                        />
+                      </th>
+                      <th className="px-4 py-3 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Tên Lớp</th>
+                      <th className="px-4 py-3 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deletedClasses.map(c => (
+                      <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            checked={selectedTrashClassIds.includes(c.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedTrashClassIds([...selectedTrashClassIds, c.id]);
+                              else setSelectedTrashClassIds(selectedTrashClassIds.filter(id => id !== c.id));
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-slate-800">{c.name}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await setDoc(doc(db, 'classes', c.id), { isDeleted: false }, { merge: true });
+                                  showAlert('Đã khôi phục lớp học', 'success');
+                                } catch(e) {}
+                              }}
+                              className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Khôi phục"
+                            >
+                              <RefreshCcw className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const isConfirmed = await showConfirm('Xóa vĩnh viễn lớp học này?');
+                                if (isConfirmed) {
+                                  try {
+                                    await deleteDoc(doc(db, 'classes', c.id));
+                                    showAlert('Đã xóa vĩnh viễn', 'success');
+                                  } catch(e) {}
+                                }
+                              }}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Xóa vĩnh viễn"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* YEAR TRASH MODAL */}
+      {isYearTrashModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Thùng rác năm học</h2>
+                <p className="text-sm text-slate-500 mt-1">Các năm học đã bị xóa. Bạn có thể khôi phục hoặc xóa vĩnh viễn.</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsYearTrashModalOpen(false);
+                  setSelectedTrashYearIds([]);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-slate-100 flex justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                {selectedTrashYearIds.length > 0 && (
+                  <>
+                    <button 
+                      onClick={async () => {
+                        const isConfirmed = await showConfirm(`Khôi phục ${selectedTrashYearIds.length} năm học đã chọn?`);
+                        if (isConfirmed) {
+                          try {
+                            const batch = writeBatch(db);
+                            selectedTrashYearIds.forEach(id => {
+                              batch.set(doc(db, 'schoolYears', id), { isDeleted: false }, { merge: true });
+                            });
+                            await batch.commit();
+                            setSelectedTrashYearIds([]);
+                            showAlert('Đã khôi phục các năm học.', 'success');
+                          } catch (e) {
+                            showAlert('Lỗi khi khôi phục.', 'error');
+                          }
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1 border border-green-200"
+                    >
+                      <RefreshCcw className="w-4 h-4" /> Khôi phục đã chọn
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        const isConfirmed = await showConfirm(`Xóa vĩnh viễn ${selectedTrashYearIds.length} năm học? Hành động này KHÔNG THỂ hoàn tác.`);
+                        if (isConfirmed) {
+                          try {
+                            const batch = writeBatch(db);
+                            selectedTrashYearIds.forEach(id => {
+                              batch.delete(doc(db, 'schoolYears', id));
+                            });
+                            await batch.commit();
+                            setSelectedTrashYearIds([]);
+                            showAlert('Đã xóa vĩnh viễn.', 'success');
+                          } catch (e) {
+                            showAlert('Lỗi khi xóa vĩnh viễn.', 'error');
+                          }
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-red-50 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1 border border-red-200"
+                    >
+                      <Trash2 className="w-4 h-4" /> Xóa vĩnh viễn
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6">
+              {deletedYears.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                    <Trash2 className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-700">Thùng rác trống</h3>
+                  <p className="text-slate-500 mt-1">Không có năm học nào trong thùng rác.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-3 border-b border-slate-200 bg-slate-50 w-12 text-center">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          checked={selectedTrashYearIds.length > 0 && selectedTrashYearIds.length === deletedYears.length}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedTrashYearIds(deletedYears.map(y => y.id));
+                            else setSelectedTrashYearIds([]);
+                          }}
+                        />
+                      </th>
+                      <th className="px-4 py-3 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Tên Năm học</th>
+                      <th className="px-4 py-3 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deletedYears.map(y => (
+                      <tr key={y.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            checked={selectedTrashYearIds.includes(y.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedTrashYearIds([...selectedTrashYearIds, y.id]);
+                              else setSelectedTrashYearIds(selectedTrashYearIds.filter(id => id !== y.id));
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-slate-800">{y.name}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await setDoc(doc(db, 'schoolYears', y.id), { isDeleted: false }, { merge: true });
+                                  showAlert('Đã khôi phục năm học', 'success');
+                                } catch(e) {}
+                              }}
+                              className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Khôi phục"
+                            >
+                              <RefreshCcw className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const isConfirmed = await showConfirm('Xóa vĩnh viễn năm học này?');
+                                if (isConfirmed) {
+                                  try {
+                                    await deleteDoc(doc(db, 'schoolYears', y.id));
+                                    showAlert('Đã xóa vĩnh viễn', 'success');
+                                  } catch(e) {}
+                                }
+                              }}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Xóa vĩnh viễn"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TRASH MODAL */}
+      {isTrashModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Thùng rác tài khoản</h2>
+                <p className="text-sm text-slate-500 mt-1">Các tài khoản đã bị xóa. Bạn có thể khôi phục hoặc xóa vĩnh viễn.</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsTrashModalOpen(false);
+                  setSelectedTrashUserIds([]);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-slate-100 flex justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                {selectedTrashUserIds.length > 0 && (
+                  <>
+                    <button 
+                      onClick={async () => {
+                        const isConfirmed = await showConfirm(`Khôi phục ${selectedTrashUserIds.length} tài khoản đã chọn?`);
+                        if (isConfirmed) {
+                          try {
+                            const batch = writeBatch(db);
+                            selectedTrashUserIds.forEach(id => {
+                              batch.set(doc(db, 'users', id), { isDeleted: false }, { merge: true });
+                            });
+                            await batch.commit();
+                            setSelectedTrashUserIds([]);
+                            showAlert('Đã khôi phục các tài khoản.', 'success');
+                          } catch (e) {
+                            showAlert('Lỗi khi khôi phục.', 'error');
+                          }
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1 border border-green-200"
+                    >
+                      <RefreshCcw className="w-4 h-4" /> Khôi phục đã chọn
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        const isConfirmed = await showConfirm(`Xóa vĩnh viễn ${selectedTrashUserIds.length} tài khoản? Hành động này KHÔNG THỂ hoàn tác.`);
+                        if (isConfirmed) {
+                          try {
+                            const batch = writeBatch(db);
+                            selectedTrashUserIds.forEach(id => {
+                              batch.delete(doc(db, 'users', id));
+                            });
+                            await batch.commit();
+                            setSelectedTrashUserIds([]);
+                            showAlert('Đã xóa vĩnh viễn.', 'success');
+                          } catch (e) {
+                            showAlert('Lỗi khi xóa vĩnh viễn.', 'error');
+                          }
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-red-50 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1 border border-red-200"
+                    >
+                      <Trash2 className="w-4 h-4" /> Xóa vĩnh viễn
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6">
+              {deletedUsers.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                    <Trash2 className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-700">Thùng rác trống</h3>
+                  <p className="text-slate-500 mt-1">Không có tài khoản nào trong thùng rác.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-3 border-b border-slate-200 bg-slate-50 w-12 text-center">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          checked={selectedTrashUserIds.length > 0 && selectedTrashUserIds.length === deletedUsers.length}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedTrashUserIds(deletedUsers.map(u => u.id));
+                            else setSelectedTrashUserIds([]);
+                          }}
+                        />
+                      </th>
+                      <th className="px-4 py-3 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Tài khoản / Tên</th>
+                      <th className="px-4 py-3 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Phân quyền</th>
+                      <th className="px-4 py-3 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deletedUsers.map(u => (
+                      <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            checked={selectedTrashUserIds.includes(u.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedTrashUserIds([...selectedTrashUserIds, u.id]);
+                              else setSelectedTrashUserIds(selectedTrashUserIds.filter(id => id !== u.id));
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-slate-800">{u.username}</div>
+                          <div className="text-sm text-slate-500">{u.fullName}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                            {u.role === 'admin' ? 'Ban Giám Hiệu' : 'Giáo viên'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await setDoc(doc(db, 'users', u.id), { isDeleted: false }, { merge: true });
+                                  showAlert('Đã khôi phục tài khoản', 'success');
+                                } catch(e) {}
+                              }}
+                              className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Khôi phục"
+                            >
+                              <RefreshCcw className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const isConfirmed = await showConfirm('Xóa vĩnh viễn tài khoản này?');
+                                if (isConfirmed) {
+                                  try {
+                                    await deleteDoc(doc(db, 'users', u.id));
+                                    showAlert('Đã xóa vĩnh viễn', 'success');
+                                  } catch(e) {}
+                                }
+                              }}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Xóa vĩnh viễn"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

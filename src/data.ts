@@ -68,10 +68,11 @@ export interface Notification {
 }
 
 export interface UserAccount {
+  isDeleted?: boolean;
   id: string;
   username: string;
   password?: string;
-  role: 'admin' | 'teacher';
+  role: 'admin' | 'teacher' | 'staff';
   fullName: string;
   homeroomClasses?: string[];
   subjectClasses?: string[];
@@ -82,6 +83,7 @@ export interface UserAccount {
 export interface SchoolYear {
   id: string;
   name: string; // e.g., 2024-2025
+  isDeleted?: boolean;
 }
 
 export const initialSchoolYears: SchoolYear[] = [
@@ -89,6 +91,7 @@ export const initialSchoolYears: SchoolYear[] = [
 ];
 
 export interface SchoolClass {
+  isDeleted?: boolean;
   id: string;
   name: string;
   homeroomTeacher: string;
@@ -115,6 +118,7 @@ export interface Student {
   ethnicity: string;
   dob?: string;
   pob?: string;
+  isDeleted?: boolean;
   grades: Grades;
   term1Grades?: Grades;
   term2Grades?: Grades;
@@ -145,7 +149,8 @@ export interface Student {
 
 export const initialUsers: UserAccount[] = [
   { id: 'u1', username: 'admin', password: 'admin', role: 'admin', fullName: 'Ban Giám Hiệu' },
-  { id: 'u2', username: 'teacher', password: 'teacher', role: 'teacher', fullName: 'Giáo viên' }
+  { id: 'u2', username: 'teacher', password: 'teacher', role: 'teacher', fullName: 'Giáo viên' },
+  { id: 'u3', username: 'staff', password: 'staff', role: 'staff', fullName: 'Giáo vụ' }
 ];
 
 export const initialClasses: SchoolClass[] = [

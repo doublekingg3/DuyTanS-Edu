@@ -19,7 +19,7 @@ export default function Portal({ onSelectEduManager, settings }: { onSelectEduMa
               <GraduationCap className="w-8 h-8 text-white" />
             </div>
           )}
-          <h1 className="text-4xl font-bold font-display text-slate-800 mb-4">Ứng dụng quản lý lớp học thông minh và ứng dụng sắp xếp thời khoá biểu AI.</h1>
+          <h1 className="text-4xl font-bold font-display text-slate-800 mb-4">Ứng dụng quản lý học sinh online.</h1>
           <p className="text-slate-500 text-lg">Vui lòng chọn hệ thống bạn muốn truy cập</p>
         </div>
 
@@ -57,12 +57,12 @@ export default function Portal({ onSelectEduManager, settings }: { onSelectEduMa
             <div className="w-20 h-20 bg-indigo-100 rounded-2xl flex items-center justify-center mb-6 text-indigo-600 group-hover:scale-110 transition-transform duration-300 relative z-10">
               <GraduationCap className="w-10 h-10" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 mb-3 relative z-10">EduManager Pro</h2>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3 relative z-10">DuyTan School Manager</h2>
             <p className="text-slate-500 mb-8 relative z-10">
-              Hệ thống quản lý học sinh, điểm số, và thông tin học vụ toàn diện.
+              Hệ thống quản lý học sinh online.
             </p>
             <div className="mt-auto flex items-center text-indigo-600 font-semibold relative z-10 group-hover:gap-2 transition-all">
-              <span>Truy cập EduManager</span>
+              <span>Truy cập Ứng dụng</span>
               <ArrowRight className="w-5 h-5 ml-1 transition-transform group-hover:translate-x-1" />
             </div>
           </button>

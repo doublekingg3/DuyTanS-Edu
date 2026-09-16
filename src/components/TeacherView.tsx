@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
 import { Student, SchoolClass, UserAccount, SchoolYear, ClassSchedule, SchedulePeriod } from '../data';
-import { LayoutDashboard, Users, FileSpreadsheet, Calendar as CalendarIcon, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, FileSpreadsheet, Calendar as CalendarIcon, Settings, Building2, Shield, BarChart2, Calendar } from 'lucide-react';
 import TeacherStudents from './TeacherStudents';
 import TeacherGrades from './TeacherGrades';
 import TeacherSchedule from './TeacherSchedule';
+import AdminView from './AdminView';
+import AdminDashboard from './AdminDashboard';
+import TeacherDashboard from './TeacherDashboard';
+import TeacherWeeklyPlan from './TeacherWeeklyPlan';
+import TeacherLunchMenu from './TeacherLunchMenu';
+import { AppSettings } from '../data';
+import { ClipboardList, Utensils } from 'lucide-react';
 
 export default function TeacherView({ 
+  role,
+  users,
+  settings,
   students, 
   classes, 
   user,
@@ -19,6 +29,9 @@ export default function TeacherView({
   onUpdateGrade,
   onUpdateMultipleGrades
 }: { 
+  role?: string,
+  users?: UserAccount[],
+  settings?: AppSettings,
   students: Student[],
   classes?: SchoolClass[],
   user?: UserAccount,
@@ -39,10 +52,11 @@ const [activeMenu, setActiveMenu] = useState('overview');
   const [selectedYearId, setSelectedYearId] = useState(schoolYears && schoolYears.length > 0 ? schoolYears[schoolYears.length - 1].id : '');
   
   const allowedClasses = classes?.filter(c => 
-    (user?.homeroomClasses?.includes(c.id) || 
-    user?.subjectClasses?.includes(c.id) ||
-    c.homeroomTeacher === user?.fullName) && // fallback for old data
-    (!selectedYearId || c.schoolYearId === selectedYearId)
+    (role === 'admin' || role === 'staff' || 
+     user?.homeroomClasses?.includes(c.id) || 
+     user?.subjectClasses?.includes(c.id) ||
+     c.homeroomTeacher === user?.fullName) &&
+    (!selectedYearId || c.schoolYearId === selectedYearId || (!c.schoolYearId && selectedYearId === (schoolYears && schoolYears.length > 0 ? schoolYears[schoolYears.length - 1].id : '')))
   ) || [];
 
   const [selectedClassId, setSelectedClassId] = useState(allowedClasses[0]?.id || '');
@@ -55,12 +69,19 @@ const [activeMenu, setActiveMenu] = useState('overview');
 
   const filteredStudents = students.filter(s => s.classId === selectedClassId);
 
-  const menuItems = [
+  const adminMenuItems = role === 'admin' ? [
+    { id: "admin_classes", icon: Building2, label: "Quản lý Lớp học" },
+    { id: "admin_school_years", icon: Calendar, label: "Quản lý Năm học" },
+    { id: "admin_accounts", icon: Shield, label: "Tài khoản & Quyền" },
+        { id: "admin_settings", icon: Settings, label: "Cấu hình hệ thống" },
+  ] : [];
 
-    { id: 'overview', icon: LayoutDashboard, label: 'Tổng quan' },
-    { id: 'students', icon: Users, label: 'Quản lý học sinh' },
-    { id: 'grades', icon: FileSpreadsheet, label: 'Quản lý điểm số' },
-    { id: 'schedule', icon: CalendarIcon, label: 'Thời khóa biểu' },
+  const menuItems = [
+    { id: "overview", icon: LayoutDashboard, label: "Tổng quan" },
+    ...(role !== 'staff' ? [{ id: "students", icon: Users, label: "Danh sách lớp" }] : []),
+    ...(role !== 'staff' ? [{ id: "weekly_plan", icon: ClipboardList, label: "Kế hoạch tuần" }] : []),
+    { id: "lunch_menu", icon: Utensils, label: "Thực đơn ăn trưa" },
+    ...adminMenuItems
   ];
 
   return (
@@ -91,14 +112,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
               );
             })}
           </div>
-          <div className="p-4 border-t border-slate-100">
-            <button className="w-full flex items-center gap-4 px-3 py-3 text-slate-500 hover:bg-slate-50 hover:text-slate-700 rounded-xl font-medium transition-colors">
-              <Settings className="w-5 h-5 flex-shrink-0 text-slate-400" />
-              <span className={`transition-opacity duration-300 ${isSidebarHovered ? 'opacity-100' : 'opacity-0'}`}>
-                Cấu hình
-              </span>
-            </button>
-          </div>
+
         </div>
       </div>
 
@@ -107,7 +121,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
         <div className="bg-white px-8 py-4 border-b border-slate-200 flex justify-between items-center z-10 shadow-sm shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold font-display text-slate-800">
-              {menuItems.find(m => m.id === activeMenu)?.label}
+              {activeMenu === 'settings' ? 'Cấu hình' : menuItems.find(m => m.id === activeMenu)?.label}
             </h2>
             <div className="h-6 w-px bg-slate-200"></div>
             <div className="flex items-center gap-4">
@@ -134,11 +148,11 @@ const [activeMenu, setActiveMenu] = useState('overview');
                   {allowedClasses.length > 0 ? (
                     allowedClasses.map(c => (
                       <option key={c.id} value={c.id}>
-                        {c.name} {user?.homeroomClasses?.includes(c.id) || c.homeroomTeacher === user?.fullName ? '(GVCN)' : '(GVBM)'}
+                        {c.name} {(role === 'admin' || role === 'staff') ? '' : (user?.homeroomClasses?.includes(c.id) || c.homeroomTeacher === user?.fullName ? '(GVCN)' : '(GVBM)')}
                       </option>
                     ))
                   ) : (
-                    <option value="">Không có lớp phân công</option>
+                    <option value="">{(role === 'admin' || role === 'staff') ? 'Chưa có lớp nào' : 'Không có lớp phân công'}</option>
                   )}
                 </select>
               </div>
@@ -147,32 +161,15 @@ const [activeMenu, setActiveMenu] = useState('overview');
         </div>
 
         <div className="flex-1 overflow-y-auto">
-        {activeMenu === 'overview' && (
-          <div className="p-8 h-full">
-            <h2 className="text-2xl font-bold font-display text-slate-800 mb-2">Tổng quan lớp {allowedClasses.find(c => c.id === selectedClassId)?.name || ''}</h2>
-            <p className="text-slate-500 mb-6 font-medium">Năm học: {schoolYears?.find(y => y.id === (allowedClasses.find(c => c.id === selectedClassId)?.schoolYearId))?.name || 'Không xác định'}</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
-                 <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
-                   <Users className="w-8 h-8 text-indigo-600" />
-                 </div>
-                 <h3 className="text-3xl font-bold text-slate-800 mb-1">{filteredStudents.length}</h3>
-                 <p className="text-slate-500 font-medium">Học sinh trong lớp</p>
-               </div>
-               
-               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
-                 <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
-                   <LayoutDashboard className="w-8 h-8 text-emerald-600" />
-                 </div>
-                 <h3 className="text-lg font-bold text-slate-800 mb-1">
-                    {allowedClasses.find(c => c.id === selectedClassId)?.name || 'Chưa chọn lớp'}
-                 </h3>
-                 <p className="text-slate-500">
-                   {user?.homeroomClasses?.includes(selectedClassId) || allowedClasses.find(c => c.id === selectedClassId)?.homeroomTeacher === user?.fullName ? 'Giáo viên Chủ nhiệm' : 'Giáo viên Bộ môn'}
-                 </p>
-               </div>
-            </div>
-          </div>
+        {activeMenu === 'overview' && (role === 'admin' || role === 'staff') && (
+          <AdminDashboard classes={classes} students={students} schoolYearId={selectedYearId} />
+        )}
+        {activeMenu === 'overview' && role !== 'admin' && role !== 'staff' && (
+          <TeacherDashboard 
+            classId={selectedClassId}
+            className={allowedClasses.find(c => c.id === selectedClassId)?.name || ''}
+            students={filteredStudents}
+          />
         )}
         {activeMenu === 'students' && (
           <TeacherStudents 
@@ -197,8 +194,37 @@ const [activeMenu, setActiveMenu] = useState('overview');
           />
         )}
 
-        {activeMenu === 'schedule' && (
-          <TeacherSchedule classId={selectedClassId} />
+        {activeMenu === 'weekly_plan' && (
+          <TeacherWeeklyPlan 
+            classId={selectedClassId} 
+            role={role} 
+            className={allowedClasses.find(c => c.id === selectedClassId)?.name}
+            schoolYearName={schoolYears?.find(y => y.id === (allowedClasses.find(c => c.id === selectedClassId)?.schoolYearId || selectedYearId))?.name || 'Không xác định'}
+          />
+        )}
+        {activeMenu === 'lunch_menu' && (
+          <TeacherLunchMenu classId={selectedClassId} role={role} />
+        )}
+        {activeMenu.startsWith('admin_') && (
+          role === 'admin' && users && settings ? (
+             <div className="p-6 h-full overflow-auto">
+                <AdminView 
+                  classes={classes || []} 
+                  students={students} 
+                  users={users} 
+                  schoolYears={schoolYears || []} 
+                  settings={settings} 
+                  externalActiveTab={
+                    activeMenu === 'admin_classes' ? 'classes' :
+                    activeMenu === 'admin_school_years' ? 'school_years' :
+                    activeMenu === 'admin_accounts' ? 'accounts' :
+                                        undefined
+                  }
+                />
+             </div>
+          ) : (
+             <div className="p-8"><p>Không có quyền truy cập.</p></div>
+          )
         )}
         </div>
       </div>

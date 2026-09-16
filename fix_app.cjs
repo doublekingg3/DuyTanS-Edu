@@ -1,15 +1,48 @@
 const fs = require('fs');
-const file = 'src/App.tsx';
-let content = fs.readFileSync(file, 'utf8');
+let c = fs.readFileSync('src/App.tsx', 'utf8');
 
-content = content.replace(
-  "const isTopLevelField = ['academicPerformance', 'conduct', 'cp', 'kp', 'award', 'term1IsExcellent', 'term2IsExcellent', 'yearIsExcellent'].includes(field);",
-  "const isTopLevelField = ['academicPerformance', 'conduct', 'cp', 'kp', 'award', 'term1IsExcellent', 'term2IsExcellent', 'yearIsExcellent', 'term1RankOverride', 'term2RankOverride', 'yearRankOverride'].includes(field);"
-);
+const oldRender = `{role === 'admin' ? (
+          <AdminView classes={classes} students={students} users={users} schoolYears={schoolYears} settings={settings} />
+        ) : role === 'teacher' ? (
+          <TeacherView 
+            students={students}
+            classes={classes}
+            user={users.find(u => u.id === loggedInUserId)}
+            schoolYears={schoolYears}
+            onAddComment={handleAddComment}
+            onSendNotification={handleSendNotification}
+            onAddStudent={handleAddStudent}
+            onAddMultipleStudents={handleAddMultipleStudents}
+            onEditStudent={handleEditStudent}
+            onDeleteStudent={handleDeleteStudent}
+            onUpdateGrade={handleUpdateGrade}
+            onUpdateMultipleGrades={handleUpdateMultipleGrades}
+          />
+        ) : (
+          <ParentView studentId={parentStudentId} />
+        )}`;
 
-content = content.replace(
-  "const isTopLevelField = ['academicPerformance', 'conduct', 'cp', 'kp', 'award', 'term1IsExcellent', 'term2IsExcellent', 'yearIsExcellent'].includes(update.field);",
-  "const isTopLevelField = ['academicPerformance', 'conduct', 'cp', 'kp', 'award', 'term1IsExcellent', 'term2IsExcellent', 'yearIsExcellent', 'term1RankOverride', 'term2RankOverride', 'yearRankOverride'].includes(update.field);"
-);
+const newRender = `{role === 'admin' || role === 'teacher' ? (
+          <TeacherView 
+            role={role}
+            users={users}
+            settings={settings}
+            students={students}
+            classes={classes}
+            user={users.find(u => u.id === loggedInUserId)}
+            schoolYears={schoolYears}
+            onAddComment={handleAddComment}
+            onSendNotification={handleSendNotification}
+            onAddStudent={handleAddStudent}
+            onAddMultipleStudents={handleAddMultipleStudents}
+            onEditStudent={handleEditStudent}
+            onDeleteStudent={handleDeleteStudent}
+            onUpdateGrade={handleUpdateGrade}
+            onUpdateMultipleGrades={handleUpdateMultipleGrades}
+          />
+        ) : (
+          <ParentView studentId={parentStudentId} />
+        )}`;
 
-fs.writeFileSync(file, content);
+c = c.replace(oldRender, newRender);
+fs.writeFileSync('src/App.tsx', c);

@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Student, getSubjectName, Grades, computeMonthlyGamificationData } from '../data';
 import { Bell, BookOpen, User, Calendar, Trophy, AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Medal, AlertTriangle, AlertOctagon, Bot, Loader2, Sparkles, CalendarCheck, UserCheck, UserX } from 'lucide-react';
 import ParentSchedule from './ParentSchedule';
+import ParentLunchMenu from './ParentLunchMenu';
+import { Utensils } from 'lucide-react';
 import Markdown from 'react-markdown';
 import {
   ResponsiveContainer,
@@ -17,7 +19,7 @@ import {
 type PeriodType = 'week' | 'month' | 'term1' | 'term2' | 'year';
 
 export default function ParentView({ student: initialStudent, allStudents, classes, schoolYears }: { student: Student, allStudents: Student[], classes: import('../data').SchoolClass[], schoolYears: import('../data').SchoolYear[] }) {
-  const [activeTab, setActiveTab] = useState<'grades' | 'schedule' | 'notifications' | 'attendance' | 'history'>('grades');
+  const [activeTab, setActiveTab] = useState<'grades' | 'schedule' | 'notifications' | 'attendance' | 'history' | 'lunch_menu'>('grades');
   const [periodType, setPeriodType] = useState<PeriodType>('year');
   
   // Find all historical records for this student based on their unique code
@@ -59,14 +61,29 @@ export default function ParentView({ student: initialStudent, allStudents, class
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student: currentViewStudent, periodType, adminInfo })
       });
-      const data = await res.json();
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        // Fallback for non-JSON response (e.g. 502 Bad Gateway)
+        throw new Error('Máy chủ phản hồi không đúng định dạng. Có thể do lỗi kết nối hoặc cấu hình API.');
+      }
+      
+      if (!res.ok) {
+        if (data.error && data.error.includes('GEMINI_API_KEY')) {
+          throw new Error('Chưa cấu hình GEMINI_API_KEY trên máy chủ. Vui lòng liên hệ Admin (hoặc cài đặt trong AI Studio).');
+        }
+        throw new Error(data.error || 'Lỗi không xác định từ máy chủ AI.');
+      }
+      
       if (data.error) {
-        setAiReviewText('❌ Lỗi: ' + data.error);
+        throw new Error(data.error);
       } else {
         setAiReviewText(data.text);
       }
-    } catch (e) {
-      setAiReviewText('❌ Lỗi kết nối tới máy chủ AI.');
+    } catch (e: any) {
+      setAiReviewText('❌ Lỗi: ' + (e.message || 'Không thể kết nối tới máy chủ AI.'));
     } finally {
       setIsAiLoading(false);
     }
@@ -271,6 +288,14 @@ export default function ParentView({ student: initialStudent, allStudents, class
             <Calendar className="w-4 h-4" /> Thời khoá biểu
             {activeTab === 'schedule' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full" />}
           </button>
+          
+          <button 
+            className={`whitespace-nowrap flex-shrink-0 pb-4 px-2 font-medium text-sm transition-colors relative flex items-center gap-2 ${activeTab === 'lunch_menu' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+            onClick={() => setActiveTab('lunch_menu')}
+          >
+            <Utensils className="w-4 h-4" /> Thực đơn ăn trưa
+            {activeTab === 'lunch_menu' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full" />}
+          </button>
                   <button 
             className={`whitespace-nowrap flex-shrink-0 pb-4 px-2 font-medium text-sm transition-colors relative flex items-center gap-2 ${activeTab === 'history' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
             onClick={() => setActiveTab('history')}
@@ -347,6 +372,12 @@ export default function ParentView({ student: initialStudent, allStudents, class
         {activeTab === 'schedule' && (
           <div className="max-w-4xl mx-auto">
             <ParentSchedule classId={student?.classId || ''} />
+          </div>
+        )}
+        
+        {activeTab === 'lunch_menu' && (
+          <div className="max-w-4xl mx-auto">
+            <ParentLunchMenu />
           </div>
         )}
 
