@@ -709,7 +709,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
               </select>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap justify-end">
               {selectedClassIds.length > 0 && (
                 <button 
                   onClick={handleDeleteSelectedClasses}
@@ -723,6 +723,29 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                 className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
               >
                 <Trash2 className="w-4 h-4" /> Thùng rác ({deletedClasses.length})
+              </button>
+              <button 
+                onClick={handleExportTemplate}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <Download className="w-4 h-4" /> Tải mẫu Excel
+              </button>
+              <button 
+                onClick={() => document.getElementById('upload-classes-file')?.click()}
+                className="px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <Upload className="w-4 h-4" /> Nhập Excel
+              </button>
+              <input type="file" id="upload-classes-file" className="hidden" accept=".xlsx, .xls" onChange={handleImportExcel} />
+              <button 
+                onClick={() => {
+                  setEditingClass(null);
+                  setFormData({ name: '', homeroomTeacher: '', schoolYearId: classFilterYear || (schoolYears[0]?.id || ''), specialization: '' });
+                  setIsAddModalOpen(true);
+                }}
+                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <Plus className="w-4 h-4" /> Thêm Lớp
               </button>
             </div>
           </div>
