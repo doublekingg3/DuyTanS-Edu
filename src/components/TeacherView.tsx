@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Student, SchoolClass, UserAccount, SchoolYear, ClassSchedule, SchedulePeriod } from '../data';
-import { LayoutDashboard, Users, FileSpreadsheet, Calendar as CalendarIcon, Settings, Building2, Shield, BarChart2, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, FileSpreadsheet, Calendar as CalendarIcon, Settings, Building2, Shield, BarChart2 } from 'lucide-react';
 import TeacherStudents from './TeacherStudents';
 import TeacherGrades from './TeacherGrades';
 import TeacherSchedule from './TeacherSchedule';
@@ -71,7 +71,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
 
   const adminMenuItems = role === 'admin' ? [
     { id: "admin_classes", icon: Building2, label: "Quản lý Lớp học" },
-    { id: "admin_school_years", icon: Calendar, label: "Quản lý Năm học" },
+    { id: "admin_school_years", icon: CalendarIcon, label: "Quản lý Năm học" },
     { id: "admin_accounts", icon: Shield, label: "Tài khoản & Quyền" },
         { id: "admin_settings", icon: Settings, label: "Cấu hình hệ thống" },
   ] : [];
@@ -79,6 +79,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
   const menuItems = [
     { id: "overview", icon: LayoutDashboard, label: "Tổng quan" },
     ...(role !== 'staff' ? [{ id: "students", icon: Users, label: "Danh sách lớp" }] : []),
+    ...(role !== 'staff' ? [{ id: "schedule", icon: CalendarIcon, label: "Thời khoá biểu" }] : []),
     ...(role !== 'staff' ? [{ id: "weekly_plan", icon: ClipboardList, label: "Kế hoạch tuần" }] : []),
     { id: "lunch_menu", icon: Utensils, label: "Thực đơn ăn trưa" },
     ...adminMenuItems
@@ -171,6 +172,9 @@ const [activeMenu, setActiveMenu] = useState('overview');
             students={filteredStudents}
           />
         )}
+        {activeMenu === 'schedule' && (
+          <TeacherSchedule classId={selectedClassId} />
+        )}
         {activeMenu === 'students' && (
           <TeacherStudents 
             students={filteredStudents}
@@ -203,7 +207,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
           />
         )}
         {activeMenu === 'lunch_menu' && (
-          <TeacherLunchMenu classId={selectedClassId} role={role} />
+          <TeacherLunchMenu classId={selectedClassId} role={role} schoolYearName={schoolYears?.find(y => y.id === (allowedClasses.find(c => c.id === selectedClassId)?.schoolYearId || selectedYearId))?.name || 'Không xác định'} />
         )}
         {activeMenu.startsWith('admin_') && (
           role === 'admin' && users && settings ? (
