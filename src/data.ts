@@ -7,6 +7,7 @@ export interface AppSettings {
   loginLogo: string;
   loginBackground: string;
   appName: string;
+  disablePortal?: boolean;
 }
 
 export const defaultSettings: AppSettings = {
@@ -16,7 +17,8 @@ export const defaultSettings: AppSettings = {
   portalLogo: "",
   loginLogo: "",
   loginBackground: "",
-  appName: "EduManage Pro"
+  appName: "EduManage Pro",
+  disablePortal: false
 };
 
 export interface GamificationData {
@@ -349,3 +351,19 @@ export interface ClassSchedule {
   periods: SchedulePeriod[];
   updatedAt: number;
 }
+
+export const sortClasses = <T extends { name: string }>(classes: T[]): T[] => {
+  return [...classes].sort((a, b) => {
+    const parse = (name: string) => {
+      const match = name.match(/^(\d+)(.*)$/);
+      if (match) {
+        return { num: parseInt(match[1], 10), str: match[2] };
+      }
+      return { num: 0, str: name };
+    };
+    const pA = parse(a.name);
+    const pB = parse(b.name);
+    if (pA.num !== pB.num) return pA.num - pB.num;
+    return pA.str.localeCompare(pB.str);
+  });
+};

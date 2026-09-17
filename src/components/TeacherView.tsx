@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, SchoolClass, UserAccount, SchoolYear, ClassSchedule, SchedulePeriod } from '../data';
+import { Student, SchoolClass, UserAccount, SchoolYear, ClassSchedule, SchedulePeriod, sortClasses } from '../data';
 import { LayoutDashboard, Users, FileSpreadsheet, Calendar as CalendarIcon, Settings, Building2, Shield, BarChart2 } from 'lucide-react';
 import TeacherStudents from './TeacherStudents';
 import TeacherGrades from './TeacherGrades';
@@ -51,13 +51,13 @@ const [activeMenu, setActiveMenu] = useState('overview');
   // Compute classes available to this teacher
   const [selectedYearId, setSelectedYearId] = useState(schoolYears && schoolYears.length > 0 ? schoolYears[schoolYears.length - 1].id : '');
   
-  const allowedClasses = classes?.filter(c => 
+  const allowedClasses = sortClasses(classes?.filter(c => 
     (role === 'admin' || role === 'staff' || 
      user?.homeroomClasses?.includes(c.id) || 
      user?.subjectClasses?.includes(c.id) ||
      c.homeroomTeacher === user?.fullName) &&
     (!selectedYearId || c.schoolYearId === selectedYearId || (!c.schoolYearId && selectedYearId === (schoolYears && schoolYears.length > 0 ? schoolYears[schoolYears.length - 1].id : '')))
-  ) || [];
+  ) || []);
 
   const [selectedClassId, setSelectedClassId] = useState(allowedClasses[0]?.id || '');
 
@@ -243,6 +243,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
                     activeMenu === 'admin_classes' ? 'classes' :
                     activeMenu === 'admin_school_years' ? 'school_years' :
                     activeMenu === 'admin_accounts' ? 'accounts' :
+                    activeMenu === 'admin_settings' ? 'settings' :
                                         undefined
                   }
                 />

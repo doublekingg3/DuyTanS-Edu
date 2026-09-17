@@ -86,7 +86,7 @@ export default function Login({
     }}>
       {settings?.loginBackground && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-0"></div>}
       
-      {onBack && (
+      {onBack && !settings?.disablePortal && (
         <button 
           onClick={onBack}
           className="absolute top-4 left-4 sm:top-8 sm:left-8 flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-white/20 text-slate-700 hover:text-indigo-600 transition-all font-medium z-20"
@@ -222,14 +222,6 @@ export default function Login({
               </div>
             )}
 
-            {(selectedRole === 'teacher' || selectedRole === 'admin' || selectedRole === 'staff') && (
-              <div className="text-center mt-4">
-                <p className="text-xs text-slate-500">
-                  Gợi ý đăng nhập mẫu:<br/>
-                  Tài khoản: <strong>admin</strong> / Mật khẩu: <strong>admin</strong>
-                </p>
-              </div>
-            )}
           </form>
         </div>
       </div>

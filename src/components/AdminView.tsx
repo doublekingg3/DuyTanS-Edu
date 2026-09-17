@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { SchoolClass, Student, UserAccount, SchoolYear, AppSettings, defaultSettings } from '../data';
+import { SchoolClass, Student, UserAccount, SchoolYear, AppSettings, defaultSettings, sortClasses } from '../data';
 import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
@@ -91,7 +91,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     }
   };
 
-  const [activeTabState, setActiveTab] = useState<'classes' | 'accounts' | 'school_years' | 'backup' | 'firebase' | 'ai_config' | 'reports'>('ai_config');
+  const [activeTabState, setActiveTab] = useState<'classes' | 'accounts' | 'school_years' | 'backup' | 'firebase' | 'ai_config' | 'reports' | 'settings'>('ai_config');
   const activeTab = externalActiveTab || activeTabState;
   const [aiConfigText, setAiConfigText] = useState(localStorage.getItem('aiAdminConfig') || 'Fanpage: https://facebook.com/truong\nHotline: 0123.456.789\nCác khoá học hiện có: Tiếng Anh giao tiếp, Toán tư duy, Kỹ năng sống');
 
@@ -195,8 +195,8 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     specialization: ''
   });
 
-  const activeClasses = classes.filter(c => !c.isDeleted);
-  const deletedClasses = classes.filter(c => c.isDeleted);
+  const activeClasses = sortClasses(classes.filter(c => !c.isDeleted));
+  const deletedClasses = sortClasses(classes.filter(c => c.isDeleted));
   const filteredClasses = activeClasses.filter(c => 
     ((c.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) || 
     (c.homeroomTeacher || '').toLowerCase().includes((searchTerm || '').toLowerCase())) &&
@@ -983,7 +983,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
         )}
 
 
-        {activeTab === 'accounts' && (
+        {activeTab === 'settings' && (
           <>
 
             {/* Cấu hình Giao diện */}
@@ -1025,6 +1025,23 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   />
                   <p className="text-xs text-slate-500 mt-1">Sẽ hiển thị ở trang đăng nhập thay cho EduManage Pro.</p>
                 </div>
+
+                <div className="col-span-1 md:col-span-2 bg-indigo-50 p-4 rounded-xl flex items-center justify-between border border-indigo-100">
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Tắt trang Portal (Vào thẳng trang đăng nhập)</h3>
+                    <p className="text-sm text-slate-600">Khi bật tính năng này, hệ thống sẽ bỏ qua trang Portal giới thiệu và đi thẳng vào giao diện đăng nhập.</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={appSettings.disablePortal || false}
+                      onChange={(e) => setAppSettings({ ...appSettings, disablePortal: e.target.checked })}
+                    />
+                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Hình nền Giao diện Portal \(URL\)</label>
                   <div className="flex gap-2">
@@ -1118,7 +1135,11 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                 </div>
               </div>
             </div>
+          </>
+        )}
 
+        {activeTab === 'accounts' && (
+          <>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h1 className="text-2xl font-bold font-display text-slate-800">Tài khoản & Phân quyền</h1>

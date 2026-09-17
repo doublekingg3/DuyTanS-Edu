@@ -3,7 +3,8 @@ import { Student, getSubjectName, Grades, computeMonthlyGamificationData } from 
 import { Bell, BookOpen, User, Calendar, Trophy, AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Medal, AlertTriangle, AlertOctagon, Bot, Loader2, Sparkles, CalendarCheck, UserCheck, UserX } from 'lucide-react';
 import ParentSchedule from './ParentSchedule';
 import ParentLunchMenu from './ParentLunchMenu';
-import { Utensils } from 'lucide-react';
+import ParentWeeklyPlan from './ParentWeeklyPlan';
+import { Utensils, ClipboardList } from 'lucide-react';
 import Markdown from 'react-markdown';
 import {
   ResponsiveContainer,
@@ -19,7 +20,7 @@ import {
 type PeriodType = 'week' | 'month' | 'term1' | 'term2' | 'year';
 
 export default function ParentView({ student: initialStudent, allStudents, classes, schoolYears }: { student: Student, allStudents: Student[], classes: import('../data').SchoolClass[], schoolYears: import('../data').SchoolYear[] }) {
-  const [activeTab, setActiveTab] = useState<'grades' | 'schedule' | 'notifications' | 'attendance' | 'history' | 'lunch_menu'>('attendance');
+  const [activeTab, setActiveTab] = useState<'grades' | 'schedule' | 'notifications' | 'attendance' | 'history' | 'lunch_menu' | 'weekly_plan'>('weekly_plan');
   const [periodType, setPeriodType] = useState<PeriodType>('year');
   
   // Find all historical records for this student based on their unique code
@@ -239,6 +240,14 @@ export default function ParentView({ student: initialStudent, allStudents, class
         {/* Navigation Tabs */}
         <div className="flex gap-4 border-b border-slate-200 overflow-x-auto hide-scrollbar">
           <button 
+            className={`whitespace-nowrap flex-shrink-0 pb-4 px-2 font-medium text-sm transition-colors relative flex items-center gap-2 ${activeTab === 'weekly_plan' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+            onClick={() => setActiveTab('weekly_plan')}
+          >
+            <ClipboardList className="w-4 h-4" /> Kế hoạch tuần
+            {activeTab === 'weekly_plan' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full" />}
+          </button>
+          
+          <button 
             className={`whitespace-nowrap flex-shrink-0 pb-4 px-2 font-medium text-sm transition-colors relative flex items-center gap-2 ${activeTab === 'attendance' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
             onClick={() => setActiveTab('attendance')}
           >
@@ -325,6 +334,10 @@ export default function ParentView({ student: initialStudent, allStudents, class
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'weekly_plan' && (
+          <ParentWeeklyPlan classId={currentViewStudent.classId} schoolYearName={schoolYearName} />
         )}
 
         {activeTab === 'schedule' && (

@@ -295,7 +295,16 @@ export default function App() {
     setLoggedInUserId('');
   };
 
-  if (appMode === 'portal') {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
+        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
+        <h2 className="text-xl font-bold font-display text-slate-800">Đang tải dữ liệu...</h2>
+      </div>
+    );
+  }
+
+  if (appMode === 'portal' && !settings?.disablePortal) {
     return <Portal onSelectEduManager={() => setAppMode('edu_manager')} settings={settings} />;
   }
 
@@ -303,6 +312,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col relative">
         <div className="bg-white border-b border-slate-200 p-4 flex items-center shadow-sm z-10">
+          {!settings?.disablePortal && (
           <button 
             onClick={() => setAppMode('portal')}
             className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200 text-slate-700 font-medium transition-colors"
@@ -310,6 +320,7 @@ export default function App() {
             <ArrowLeft className="w-5 h-5" />
             <span>Về Portal</span>
           </button>
+          )}
           <h1 className="text-xl font-bold font-display text-slate-800 ml-6">Hệ thống Thời Khoá Biểu</h1>
         </div>
         <div className="flex-1 w-full bg-slate-100">
@@ -324,15 +335,6 @@ export default function App() {
           />
           {/* ↑↑↑ DÁN LINK VÀO ĐOẠN TRÊN ↑↑↑ */}
         </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
-        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
-        <h2 className="text-xl font-bold font-display text-slate-800">Đang tải dữ liệu...</h2>
       </div>
     );
   }
@@ -360,6 +362,7 @@ export default function App() {
               {role === 'staff' && 'Giáo vụ'}
               {role === 'parent' && 'Phụ huynh'}
             </span>
+            {!settings?.disablePortal && (
             <button
               onClick={() => {
                 handleLogout();
@@ -371,6 +374,7 @@ export default function App() {
               <ArrowLeft className="w-4 h-4" />
               <span className="text-sm font-medium hidden sm:inline">Về Portal</span>
             </button>
+            )}
             
             <button
               onClick={() => setIsChangePasswordModalOpen(true)}
