@@ -72,7 +72,7 @@ export interface UserAccount {
   id: string;
   username: string;
   password?: string;
-  role: 'admin' | 'teacher' | 'staff';
+  role: 'admin' | 'teacher' | 'subject_teacher' | 'staff';
   fullName: string;
   homeroomClasses?: string[];
   subjectClasses?: string[];

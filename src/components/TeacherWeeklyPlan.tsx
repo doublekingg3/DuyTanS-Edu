@@ -113,11 +113,11 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
   }, [currentWeekData?.tasks]);
 
   if (loading) {
-    return <div className="p-8 h-full bg-slate-50 flex items-center justify-center text-slate-500">Đang tải dữ liệu...</div>;
+    return <div className="p-4 md:p-6 lg:p-8 h-full bg-slate-50 flex items-center justify-center text-slate-500">Đang tải dữ liệu...</div>;
   }
 
   return (
-    <div className="p-8 h-full bg-slate-50 overflow-y-auto">
+    <div className="p-4 md:p-6 lg:p-8 h-full bg-slate-50 overflow-y-auto">
       {/* Header Info */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>

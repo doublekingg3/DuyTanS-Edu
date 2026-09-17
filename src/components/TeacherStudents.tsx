@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { Student, SchoolClass, SchoolYear } from '../data';
-import { Search, Plus, Upload, Download, Save, User as UserIcon, X, Check, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { Search, Plus, Upload, Download, Save, User as UserIcon, X, Check, FileSpreadsheet, Trash2, CheckCircle } from 'lucide-react';
 import { useAlert } from '../contexts/AlertContext';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../lib/firebase';
 import { doc, runTransaction, writeBatch, deleteDoc } from 'firebase/firestore';
 
 export default function TeacherStudents({ 
+  role,
   students, 
   classId,
   onAddComment, 
@@ -18,6 +19,7 @@ export default function TeacherStudents({
   classes,
   schoolYears
 }: { 
+  role?: string,
   students: Student[],
   classId: string,
   onAddComment: (studentId: string, text: string) => void,
@@ -230,14 +232,14 @@ export default function TeacherStudents({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative p-6">
+    <div className="flex flex-col h-full bg-slate-50 relative p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-bold font-display text-slate-800">Danh sách Học sinh & Điểm danh</h2>
           <p className="text-slate-500 mt-1">Quản lý thông tin và điểm danh hàng ngày</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {selectedStudentIds.length > 0 && (
+          {selectedStudentIds.length > 0 && role !== 'subject_teacher' && (
             <button
               onClick={handleDeleteSelected}
               className="px-4 py-2 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2 shadow-sm border border-red-200"
@@ -245,6 +247,20 @@ export default function TeacherStudents({
               <Trash2 className="w-4 h-4" /> Xóa {selectedStudentIds.length} HS
             </button>
           )}
+          
+                    <button
+            onClick={() => {
+              const records = {};
+              students.forEach(s => {
+                records[s.id] = { status: 'present', reason: '' };
+              });
+              setQuickAttendanceRecords(records);
+              setIsQuickAttendanceModalOpen(true);
+            }}
+            className="px-4 py-2 bg-emerald-50 text-emerald-600 font-medium rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2 shadow-sm border border-emerald-200"
+          >
+            <CheckCircle className="w-4 h-4" /> Điểm danh nhanh
+          </button>
           <input 
             type="date" 
             value={attendanceDate}
@@ -261,7 +277,7 @@ export default function TeacherStudents({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button 
+          {role !== 'subject_teacher' && (<><button 
             onClick={() => setShowAddStudentModal(true)}
             className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors flex items-center justify-center"
             title="Thêm học sinh mới"
@@ -288,7 +304,7 @@ export default function TeacherStudents({
             title="Tải mẫu Excel (Dùng để nhập HS mới)"
           >
             <Download className="w-5 h-5" />
-          </button>
+          </button></>)}
         </div>
       </div>
 
@@ -298,6 +314,7 @@ export default function TeacherStudents({
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-medium">
               <tr>
+                {role !== 'subject_teacher' && (
                 <th className="px-4 py-3 text-center w-12">
                   <input
                     type="checkbox"
@@ -309,12 +326,13 @@ export default function TeacherStudents({
                     }}
                   />
                 </th>
+)}
                 <th className="px-4 py-3 text-center w-12">STT</th>
                 <th className="px-4 py-3">Mã HS</th>
                 <th className="px-4 py-3">Họ và Tên</th>
                 <th className="px-4 py-3">Trạng thái điểm danh ({new Date(attendanceDate).toLocaleDateString('vi-VN')})</th>
                 <th className="px-4 py-3 w-64">Lý do (Nếu vắng/trễ)</th>
-                <th className="px-4 py-3 text-center">Thao tác</th>
+                {role !== 'subject_teacher' && <th className="px-4 py-3 text-center">Thao tác</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -332,6 +350,7 @@ export default function TeacherStudents({
                   
                   return (
                     <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
+                      {role !== 'subject_teacher' && (
                       <td className="px-4 py-4 text-center">
                         <input
                           type="checkbox"
@@ -343,6 +362,7 @@ export default function TeacherStudents({
                           }}
                         />
                       </td>
+)}
                       <td className="px-4 py-4 text-center text-slate-500">{idx + 1}</td>
                       <td className="px-4 py-4 font-mono text-xs text-slate-500">{student.code}</td>
                       <td className="px-4 py-4 font-medium text-slate-800">{student.fullName}</td>
@@ -393,6 +413,7 @@ export default function TeacherStudents({
                           />
                         </div>
                       </td>
+                      {role !== 'subject_teacher' && (
                       <td className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button 
@@ -410,6 +431,7 @@ export default function TeacherStudents({
                           </button>
                         </div>
                       </td>
+)}
                     </tr>
                   );
                 })
@@ -573,8 +595,8 @@ export default function TeacherStudents({
                   <tr>
                     <th className="px-6 py-3 text-sm font-semibold text-slate-600 border-b border-slate-200">STT</th>
                     <th className="px-6 py-3 text-sm font-semibold text-slate-600 border-b border-slate-200">Họ và Tên</th>
-                    <th className="px-6 py-3 text-sm font-semibold text-slate-600 border-b border-slate-200">Trạng thái</th>
-                    <th className="px-6 py-3 text-sm font-semibold text-slate-600 border-b border-slate-200 w-1/3">Lý do</th>
+                    <th className="px-6 py-3 text-sm font-semibold text-slate-600 border-b border-slate-200 text-center">Có mặt</th>
+                    <th className="px-6 py-3 text-sm font-semibold text-slate-600 border-b border-slate-200 w-1/3">Ghi chú (nếu vắng/trễ)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -585,36 +607,14 @@ export default function TeacherStudents({
                         <td className="px-6 py-3 text-slate-500">{idx + 1}</td>
                         <td className="px-6 py-3 font-medium text-slate-800">{student.fullName}</td>
                         <td className="px-6 py-3">
-                          <div className="flex items-center gap-4">
-                            <label className="flex items-center gap-1.5 cursor-pointer">
+                          <div className="flex items-center justify-center">
+                            <label className="flex items-center gap-2 cursor-pointer">
                               <input 
-                                type="radio" 
-                                name={`quick-status-${student.id}`}
+                                type="checkbox" 
                                 checked={record?.status === 'present'}
-                                onChange={() => setQuickAttendanceRecords(prev => ({...prev, [student.id]: {...prev[student.id], status: 'present'}}))}
-                                className="w-4 h-4 text-emerald-600 focus:ring-emerald-600"
+                                onChange={(e) => setQuickAttendanceRecords(prev => ({...prev, [student.id]: {...prev[student.id], status: e.target.checked ? 'present' : 'absent'}}))}
+                                className="w-5 h-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 transition-colors"
                               />
-                              <span className="text-sm text-slate-700">Có mặt</span>
-                            </label>
-                            <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input 
-                                type="radio" 
-                                name={`quick-status-${student.id}`}
-                                checked={record?.status === 'absent'}
-                                onChange={() => setQuickAttendanceRecords(prev => ({...prev, [student.id]: {...prev[student.id], status: 'absent'}}))}
-                                className="w-4 h-4 text-red-600 focus:ring-red-600"
-                              />
-                              <span className="text-sm text-slate-700">Vắng</span>
-                            </label>
-                            <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input 
-                                type="radio" 
-                                name={`quick-status-${student.id}`}
-                                checked={record?.status === 'late'}
-                                onChange={() => setQuickAttendanceRecords(prev => ({...prev, [student.id]: {...prev[student.id], status: 'late'}}))}
-                                className="w-4 h-4 text-amber-500 focus:ring-amber-500"
-                              />
-                              <span className="text-sm text-slate-700">Trễ</span>
                             </label>
                           </div>
                         </td>
@@ -670,9 +670,7 @@ export default function TeacherStudents({
                   }
                 }}
                 className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
-              >
-                Lưu điểm danh
-              </button>
+              >OK</button>
             </div>
           </div>
         </div>

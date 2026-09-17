@@ -5,15 +5,17 @@ import ParentView from './components/ParentView';
 import AdminView from './components/AdminView';
 import Login from './components/Login';
 import Portal from './components/Portal';
-import { GraduationCap, Calendar, Users, UserCircle, Shield, Loader2, LogOut, ArrowLeft } from 'lucide-react';
+import { GraduationCap, Calendar, Users, UserCircle, Shield, Loader2, LogOut, ArrowLeft, KeyRound } from 'lucide-react';
+import ChangePasswordModal from './components/ChangePasswordModal';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from './lib/firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 
 export default function App() {
   const [appMode, setAppMode] = useState<'portal' | 'edu_manager' | 'tkb'>('portal');
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [role, setRole] = useState<'admin' | 'teacher' | 'parent' | 'staff'>('admin');
+  const [role, setRole] = useState<'admin' | 'teacher' | 'subject_teacher' | 'parent' | 'staff'>('admin');
   const [loggedInUserId, setLoggedInUserId] = useState<string>('');
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -275,7 +277,7 @@ export default function App() {
     }
   };
 
-  const handleLogin = (selectedRole: 'admin' | 'teacher' | 'parent', studentId?: string, userId?: string) => {
+  const handleLogin = (selectedRole: 'admin' | 'teacher' | 'subject_teacher' | 'staff' | 'parent', studentId?: string, userId?: string) => {
     setRole(selectedRole as any);
     if (studentId) {
       setParentStudentId(studentId);
@@ -369,6 +371,16 @@ export default function App() {
               <ArrowLeft className="w-4 h-4" />
               <span className="text-sm font-medium hidden sm:inline">Về Portal</span>
             </button>
+            
+            <button
+              onClick={() => setIsChangePasswordModalOpen(true)}
+              className="ml-2 p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2"
+              title="Đổi mật khẩu"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span className="text-sm font-medium hidden md:inline">Đổi mật khẩu</span>
+            </button>
+            
             <button
               onClick={handleLogout}
               className="ml-2 p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
@@ -381,8 +393,16 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content Area */}
+            {/* Main Content Area */}
       <main className="flex-1 relative">
+        {isChangePasswordModalOpen && (
+          <ChangePasswordModal 
+            onClose={() => setIsChangePasswordModalOpen(false)}
+            userRole={role as any}
+            currentUser={users.find(u => u.id === loggedInUserId)}
+            currentStudent={students.find(s => s.id === parentStudentId)}
+          />
+        )}
         {role === "admin" || role === "teacher" || role === "staff" ? (
           <TeacherView 
             role={role}

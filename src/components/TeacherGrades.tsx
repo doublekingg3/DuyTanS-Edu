@@ -558,7 +558,7 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
   }, [students, periodType, selectedWeek, selectedMonth, visibleSubjects]);
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 p-6 overflow-hidden">
+    <div className="h-full flex flex-col bg-slate-50 p-4 md:p-6 overflow-hidden">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold font-display text-slate-800">Quản lý Điểm số</h2>

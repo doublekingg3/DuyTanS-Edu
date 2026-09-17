@@ -79,16 +79,16 @@ const [activeMenu, setActiveMenu] = useState('overview');
   const menuItems = [
     { id: "overview", icon: LayoutDashboard, label: "Tổng quan" },
     ...(role !== 'staff' ? [{ id: "students", icon: Users, label: "Danh sách lớp" }] : []),
-    ...(role !== 'staff' ? [{ id: "schedule", icon: CalendarIcon, label: "Thời khoá biểu" }] : []),
-    ...(role !== 'staff' ? [{ id: "weekly_plan", icon: ClipboardList, label: "Kế hoạch tuần" }] : []),
-    { id: "lunch_menu", icon: Utensils, label: "Thực đơn ăn trưa" },
+       ...(role !== 'staff' && role !== 'subject_teacher' ? [{ id: "schedule", icon: CalendarIcon, label: "Thời khoá biểu" }] : []),
+    ...(role !== 'staff' && role !== 'subject_teacher' ? [{ id: "weekly_plan", icon: ClipboardList, label: "Kế hoạch tuần" }] : []),
+    ...(role !== 'subject_teacher' ? [{ id: "lunch_menu", icon: Utensils, label: "Thực đơn ăn trưa" }] : []),
     ...adminMenuItems
   ];
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-slate-50 relative">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-64px)] overflow-hidden bg-slate-50 relative">
       {/* Sidebar - Hover to expand */}
-      <div className="relative h-full flex-shrink-0 z-20" style={{ width: '64px' }}>
+      <div className="hidden md:block relative h-full flex-shrink-0 z-20" style={{ width: '64px' }}>
         <div 
           className={`absolute top-0 left-0 h-full bg-white border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col whitespace-nowrap overflow-hidden ${isSidebarHovered ? 'w-64 shadow-xl' : 'w-[64px]'}`}
           onMouseEnter={() => setIsSidebarHovered(true)}
@@ -117,8 +117,27 @@ const [activeMenu, setActiveMenu] = useState('overview');
         </div>
       </div>
 
+      
+      {/* Mobile Bottom Nav */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 px-2 py-2 flex justify-start items-center overflow-x-auto snap-x snap-mandatory shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] hide-scrollbar gap-2">
+        {menuItems.map(item => {
+          const Icon = item.icon;
+          const isActive = activeMenu === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveMenu(item.id)}
+              style={{ minWidth: '4.5rem' }} className={`snap-center flex-shrink-0 flex flex-col items-center justify-center p-2 rounded-xl transition-colors ${isActive ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}
+            >
+              <Icon className={`w-6 h-6 mb-1 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <span className="text-[10px] whitespace-nowrap">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      
       {/* Main Content Area */}
-      <div className="flex-1 overflow-hidden relative flex flex-col">
+      <div className="flex-1 overflow-hidden relative flex flex-col pb-20 md:pb-0">
         <div className="bg-white px-8 py-4 border-b border-slate-200 flex justify-between items-center z-10 shadow-sm shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold font-display text-slate-800">
@@ -177,6 +196,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
         )}
         {activeMenu === 'students' && (
           <TeacherStudents 
+            role={role}
             students={filteredStudents}
             classId={selectedClassId}
             classes={classes}
@@ -211,7 +231,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
         )}
         {activeMenu.startsWith('admin_') && (
           role === 'admin' && users && settings ? (
-             <div className="p-6 h-full overflow-auto">
+             <div className="p-0 h-full overflow-hidden">
                 <AdminView 
                   classes={classes || []} 
                   students={students} 

@@ -174,7 +174,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [userAssignmentYear, setUserAssignmentYear] = useState('');
-  const [userFormData, setUserFormData] = useState<{username: string, password: string, fullName: string, role: 'admin'|'teacher'|'staff', isHomeroom: boolean, isSubject: boolean, subjects: string[], homeroomClasses: string[], subjectClasses: string[]}>({
+  const [userFormData, setUserFormData] = useState<{username: string, password: string, fullName: string, role: 'admin'|'teacher'|'subject_teacher'|'staff', isHomeroom: boolean, isSubject: boolean, subjects: string[], homeroomClasses: string[], subjectClasses: string[]}>({
     username: '',
     password: '',
     fullName: '',
@@ -633,7 +633,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
   );
 
   return (
-    <div className="h-full bg-slate-50 p-8 overflow-y-auto">
+    <div className="h-full bg-slate-50 p-4 md:p-6 lg:p-8 overflow-y-auto">
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Tab Navigation */}
@@ -909,7 +909,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
             </div>
 
             
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto flex flex-col">
               <table className="w-full text-left border-collapse">
                 <thead>
 
@@ -1248,7 +1248,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                           </td>
                           <td className="px-6 py-4 border-b border-slate-50">
                             <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full font-semibold text-sm ${u.role === 'admin' ? 'bg-purple-50 text-purple-700' : u.role === 'staff' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
-                              {u.role === 'admin' ? 'Ban Giám Hiệu' : u.role === 'staff' ? 'Giáo vụ' : 'Giáo viên'}
+                              {u.role === 'admin' ? 'Ban Giám Hiệu' : u.role === 'staff' ? 'Giáo vụ' : u.role === 'subject_teacher' ? 'Giáo viên Bộ môn' : 'Giáo viên'}
                             </span>
                           </td>
                           <td className="px-6 py-4 border-b border-slate-50">
@@ -1398,7 +1398,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   </select>
                 </div>
               </div>
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="border border-slate-200 rounded-xl overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
 
@@ -1652,10 +1652,11 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                 <label className="block text-sm font-medium text-slate-700 mb-1">Phân quyền</label>
                 <select
                   value={userFormData.role}
-                  onChange={e => setUserFormData({...userFormData, role: e.target.value as 'admin' | 'teacher' | 'staff'})}
+                  onChange={e => setUserFormData({...userFormData, role: e.target.value as 'admin' | 'teacher' | 'subject_teacher' | 'staff'})}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 >
-                  <option value="teacher">Giáo viên</option>
+                  <option value="teacher">Giáo viên Chủ nhiệm</option>
+                  <option value="subject_teacher">Giáo viên Bộ môn</option>
                   <option value="staff">Giáo vụ</option>
                   <option value="admin">Ban Giám Hiệu (Admin)</option>
                 </select>
@@ -2049,6 +2050,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   <p className="text-slate-500 mt-1">Không có lớp học nào trong thùng rác.</p>
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr>
@@ -2119,6 +2121,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </div>
@@ -2207,6 +2210,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   <p className="text-slate-500 mt-1">Không có năm học nào trong thùng rác.</p>
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr>
@@ -2277,6 +2281,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </div>
@@ -2364,6 +2369,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   <p className="text-slate-500 mt-1">Không có tài khoản nào trong thùng rác.</p>
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr>
@@ -2441,6 +2447,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </div>

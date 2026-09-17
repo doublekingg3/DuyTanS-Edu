@@ -52,10 +52,10 @@ export default function ParentLunchMenu() {
               <button 
                 key={week.id}
                 onClick={() => setSelectedWeek(week.id)}
-                className={`flex-shrink-0 flex flex-col items-center justify-center w-24 py-2 rounded-xl border transition-all \${selectedWeek === week.id ? 'bg-amber-500 border-amber-500 text-white shadow-md' : 'bg-white border-slate-200 hover:border-amber-400'}`}
+                className={`flex-shrink-0 flex flex-col items-center justify-center w-24 py-2 rounded-xl border transition-all ${selectedWeek === week.id ? 'bg-amber-500 border-amber-500 text-white shadow-md' : 'bg-white border-slate-200 hover:border-amber-400'}`}
               >
                 <span className="font-bold text-sm">{week.name}</span>
-                {week.status === 'approved' && <span className={`text-xs mt-1 \${selectedWeek === week.id ? 'text-amber-100' : 'text-emerald-600'}`}>Đã chốt</span>}
+                {week.status === 'approved' && <span className={`text-xs mt-1 ${selectedWeek === week.id ? 'text-amber-100' : 'text-emerald-600'}`}>Đã chốt</span>}
               </button>
             ))}
           </div>

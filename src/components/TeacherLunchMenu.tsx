@@ -168,7 +168,7 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
   }
 
   return (
-    <div className="p-8 h-full bg-slate-50 overflow-y-auto">
+    <div className="p-4 md:p-6 lg:p-8 h-full bg-slate-50 overflow-y-auto">
       {/* Header Info */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
