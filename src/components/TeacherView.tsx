@@ -224,6 +224,7 @@ const [activeMenu, setActiveMenu] = useState('overview');
             role={role} 
             className={allowedClasses.find(c => c.id === selectedClassId)?.name}
             schoolYearName={schoolYears?.find(y => y.id === (allowedClasses.find(c => c.id === selectedClassId)?.schoolYearId || selectedYearId))?.name || 'Không xác định'}
+            teacherName={user?.fullName}
           />
         )}
         {activeMenu === 'lunch_menu' && (

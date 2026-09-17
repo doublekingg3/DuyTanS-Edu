@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { exportWeeklyPlanToDocx } from '../lib/docxExport';
 
-export default function TeacherWeeklyPlan({ classId, role, className, schoolYearName }: { classId: string, role?: string, className?: string, schoolYearName?: string }) {
+export default function TeacherWeeklyPlan({ classId, role, className, schoolYearName, teacherName }: { classId: string, role?: string, className?: string, schoolYearName?: string, teacherName?: string }) {
   const { showAlert, showConfirm } = useAlert();
   
   const [weeks, setWeeks] = useState<{
@@ -137,7 +137,7 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
             <FileText className="w-4 h-4" /> Xem Sổ lũy kế (3/42)
           </button>
           <button 
-            onClick={() => exportWeeklyPlanToDocx(className || 'Chưa rõ', schoolYearName || '2024-2025', currentWeekData)}
+            onClick={() => exportWeeklyPlanToDocx(className || 'Chưa rõ', schoolYearName || '2024-2025', currentWeekData, teacherName || '')}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors">
             <Download className="w-4 h-4" /> Xuất Kế hoạch Tuần {selectedWeek} (.docx)
           </button>

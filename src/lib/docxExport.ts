@@ -4,18 +4,24 @@ import { saveAs } from 'file-saver';
 export async function exportWeeklyPlanToDocx(
   className: string, 
   schoolYearName: string, 
-  weekData: any
+  weekData: any,
+  teacherName: string
 ) {
   if (!weekData) {
     alert("Không có dữ liệu tuần để xuất.");
     return;
   }
 
+  // Màu sắc chủ đạo
+  const lightBlue = "2E74B5"; // Xanh dương nhẹ (theme chuẩn Office)
+  const lightBgColor = "D9E2F3"; // Xanh lạt làm nền cho header bảng
+
   const doc = new Document({
     sections: [
       {
         properties: {},
         children: [
+          // Phần tiêu ngữ và quốc hiệu
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             borders: {
@@ -35,7 +41,7 @@ export async function exportWeeklyPlanToDocx(
                         alignment: AlignmentType.CENTER,
                         children: [
                           new TextRun({
-                            text: "TRƯỜNG THCS & THPT",
+                            text: "TRƯỜNG PT DUY TÂN",
                             bold: true,
                             font: "Times New Roman",
                             size: 26, // 13pt
@@ -93,7 +99,7 @@ export async function exportWeeklyPlanToDocx(
             spacing: { after: 400 },
           }),
           
-          // Title
+          // Tiêu đề KẾ HOẠCH CHỦ NHIỆM
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
@@ -102,99 +108,244 @@ export async function exportWeeklyPlanToDocx(
                 bold: true,
                 font: "Times New Roman",
                 size: 32, // 16pt
+                color: lightBlue, // Màu xanh nhẹ nhàng
               }),
             ],
-            spacing: { after: 200 },
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({
-                text: `Lớp: ${className} - Năm học: ${schoolYearName}`,
-                bold: true,
-                font: "Times New Roman",
-                size: 28, // 14pt
-              }),
-            ],
-            spacing: { after: 400 },
+            spacing: { after: 300 },
           }),
 
-          // Week Info
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `TUẦN ${weekData.id}: `,
-                bold: true,
-                font: "Times New Roman",
-                size: 28, // 14pt
+          // BẢNG THÔNG TIN CHUNG
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              left: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              right: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              insideVertical: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+            },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    shading: { fill: lightBgColor },
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: "Lớp:", bold: true, font: "Times New Roman", size: 28, color: lightBlue })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: className, font: "Times New Roman", size: 28 })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    shading: { fill: lightBgColor },
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: "Năm học:", bold: true, font: "Times New Roman", size: 28, color: lightBlue })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: schoolYearName, font: "Times New Roman", size: 28 })],
+                      }),
+                    ],
+                  }),
+                ],
               }),
-              new TextRun({
-                text: `Từ ngày ${new Date(weekData.startDate).toLocaleDateString('vi-VN')} đến ngày ${new Date(weekData.endDate).toLocaleDateString('vi-VN')}`,
-                italics: true,
-                font: "Times New Roman",
-                size: 26, // 13pt
+              new TableRow({
+                children: [
+                  new TableCell({
+                    shading: { fill: lightBgColor },
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: "Tuần:", bold: true, font: "Times New Roman", size: 28, color: lightBlue })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: `${weekData.id}`, font: "Times New Roman", size: 28 })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    shading: { fill: lightBgColor },
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: "Tổ trực nhật:", bold: true, font: "Times New Roman", size: 28, color: lightBlue })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: weekData.dutyTeam, font: "Times New Roman", size: 28 })],
+                      }),
+                    ],
+                  }),
+                ],
               }),
-            ],
-            spacing: { after: 200 },
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `Tổ trực nhật: ${weekData.dutyTeam}`,
-                bold: true,
-                font: "Times New Roman",
-                size: 26, // 13pt
-              }),
-            ],
-            spacing: { after: 400 },
+              new TableRow({
+                children: [
+                  new TableCell({
+                    shading: { fill: lightBgColor },
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: "Từ ngày:", bold: true, font: "Times New Roman", size: 28, color: lightBlue })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: new Date(weekData.startDate).toLocaleDateString('vi-VN'), font: "Times New Roman", size: 28 })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    shading: { fill: lightBgColor },
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: "Đến ngày:", bold: true, font: "Times New Roman", size: 28, color: lightBlue })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: new Date(weekData.endDate).toLocaleDateString('vi-VN'), font: "Times New Roman", size: 28 })],
+                      }),
+                    ],
+                  }),
+                ],
+              })
+            ]
           }),
 
-          // Tasks section
           new Paragraph({
-            children: [
-              new TextRun({
-                text: "Nội dung công việc trong tuần:",
-                bold: true,
-                font: "Times New Roman",
-                size: 28, // 14pt
-              }),
-            ],
-            spacing: { after: 200 },
+            text: "",
+            spacing: { after: 300 },
           }),
 
-          ...(weekData.tasks && weekData.tasks.length > 0 
-            ? weekData.tasks.map((task: string, index: number) => 
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: `${index + 1}. ${task}`,
-                      font: "Times New Roman",
-                      size: 28, // 14pt
-                    }),
-                  ],
-                  spacing: { after: 120 },
-                })
-              )
-            : [
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: "Chưa có nội dung công việc.",
-                      italics: true,
-                      font: "Times New Roman",
-                      size: 28, // 14pt
-                    }),
-                  ],
-                })
-              ]
-          ),
+          // BẢNG NỘI DUNG CÔNG VIỆC
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              left: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              right: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+              insideVertical: { style: BorderStyle.SINGLE, size: 1, color: lightBlue },
+            },
+            rows: [
+              // Bảng NỘI DUNG CÔNG VIỆC - Header Table
+              new TableRow({
+                tableHeader: true,
+                children: [
+                  new TableCell({
+                    width: { size: 10, type: WidthType.PERCENTAGE },
+                    shading: { fill: lightBgColor },
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [new TextRun({ text: "STT", bold: true, font: "Times New Roman", size: 28, color: lightBlue })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    width: { size: 90, type: WidthType.PERCENTAGE },
+                    shading: { fill: lightBgColor },
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [new TextRun({ text: "NỘI DUNG CÔNG VIỆC", bold: true, font: "Times New Roman", size: 28, color: lightBlue })],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              // Nội dung map tasks
+              ...(weekData.tasks && weekData.tasks.length > 0 
+                ? weekData.tasks.map((task: string, index: number) => 
+                    new TableRow({
+                      children: [
+                        new TableCell({
+                          margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                          children: [
+                            new Paragraph({
+                              alignment: AlignmentType.CENTER,
+                              children: [new TextRun({ text: `${index + 1}`, font: "Times New Roman", size: 28 })],
+                            }),
+                          ],
+                        }),
+                        new TableCell({
+                          margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                          children: [
+                            new Paragraph({
+                              children: [new TextRun({ text: task, font: "Times New Roman", size: 28 })],
+                            }),
+                          ],
+                        }),
+                      ]
+                    })
+                  )
+                : [
+                    new TableRow({
+                      children: [
+                        new TableCell({
+                          margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                          children: [
+                            new Paragraph({
+                              alignment: AlignmentType.CENTER,
+                              children: [new TextRun({ text: "-", font: "Times New Roman", size: 28 })],
+                            }),
+                          ],
+                        }),
+                        new TableCell({
+                          margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                          children: [
+                            new Paragraph({
+                              children: [new TextRun({ text: "Chưa có nội dung công việc.", italics: true, font: "Times New Roman", size: 28 })],
+                            }),
+                          ],
+                        }),
+                      ]
+                    })
+                  ]
+              ),
+            ]
+          }),
           
           new Paragraph({
             text: "",
             spacing: { after: 600 },
           }),
 
-          // Signatures table
+          // Bảng chữ ký
           new Table({
             width: {
                 size: 100,
@@ -247,6 +398,18 @@ export async function exportWeeklyPlanToDocx(
                             italics: true,
                             font: "Times New Roman",
                             size: 24,
+                          }),
+                        ],
+                        spacing: { after: 1200 }, // Khoảng trống cho chữ ký
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                          new TextRun({
+                            text: teacherName || "",
+                            bold: true,
+                            font: "Times New Roman",
+                            size: 26,
                           }),
                         ],
                       }),
