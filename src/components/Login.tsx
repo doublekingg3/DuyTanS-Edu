@@ -185,7 +185,7 @@ export default function Login({
                       type="text" 
                       value={studentCode}
                       onChange={e => setStudentCode(e.target.value)}
-                      placeholder="VD: 20252026_0001"
+                      placeholder="VD: 54011xxxxxx"
                       className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
                     />
                   </div>
