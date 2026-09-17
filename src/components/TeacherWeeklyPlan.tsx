@@ -4,6 +4,7 @@ import { Calendar as CalendarIcon, CheckCircle, ChevronLeft, ChevronRight, FileT
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { exportWeeklyPlanToDocx } from '../lib/docxExport';
+import { exportCumulativePlanToDocx } from '../lib/docxCumulativeExport';
 
 export default function TeacherWeeklyPlan({ classId, role, className, schoolYearName, teacherName }: { classId: string, role?: string, className?: string, schoolYearName?: string, teacherName?: string }) {
   const { showAlert, showConfirm } = useAlert();
@@ -124,7 +125,7 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
         <div>
           <div className="flex items-center gap-3 mb-2">
             <span className="text-sm text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full font-medium border border-emerald-100">Năm học {schoolYearName || '2024 - 2025'} • Lớp {className || 'Chưa chọn lớp'}</span>
-            <span className="text-sm text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full font-medium border border-indigo-100">Đã duyệt: 3 / 42 tuần</span>
+            <span className="text-sm text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full font-medium border border-indigo-100">Đã duyệt: {weeks.filter(w => w.status === 'approved').length} / 42 tuần</span>
           </div>
           <h2 className="text-2xl font-bold font-display text-slate-800 flex items-center gap-2">
             <CalendarIcon className="w-6 h-6 text-indigo-600" />
@@ -133,8 +134,13 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
           <p className="text-slate-500 mt-1">Biên soạn công tác nề nếp, phân công tổ trực nhật và theo dõi phê duyệt của Ban Giám Hiệu</p>
         </div>
         <div className="flex flex-col gap-2">
-          <button className="flex items-center justify-center gap-2 px-4 py-2 text-indigo-600 bg-indigo-50 font-medium rounded-lg hover:bg-indigo-100 transition-colors">
-            <FileText className="w-4 h-4" /> Xem Sổ lũy kế (3/42)
+          <button 
+            onClick={() => {
+              const approvedWeeks = weeks.filter(w => w.status === 'approved');
+              exportCumulativePlanToDocx(className || 'Chưa rõ', schoolYearName || '2024-2025', approvedWeeks, teacherName || '');
+            }}
+            className="flex items-center justify-center gap-2 px-4 py-2 text-indigo-600 bg-indigo-50 font-medium rounded-lg hover:bg-indigo-100 transition-colors">
+            <FileText className="w-4 h-4" /> Tải Sổ lũy kế ({weeks.filter(w => w.status === 'approved').length}/42)
           </button>
           <button 
             onClick={() => exportWeeklyPlanToDocx(className || 'Chưa rõ', schoolYearName || '2024-2025', currentWeekData, teacherName || '')}
