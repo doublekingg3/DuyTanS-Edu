@@ -3,6 +3,7 @@ import { useAlert } from '../contexts/AlertContext';
 import { Calendar as CalendarIcon, CheckCircle, ChevronLeft, ChevronRight, FileText, Download, Save, Trash2, Plus, X } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { exportWeeklyPlanToDocx } from '../lib/docxExport';
 
 export default function TeacherWeeklyPlan({ classId, role, className, schoolYearName }: { classId: string, role?: string, className?: string, schoolYearName?: string }) {
   const { showAlert, showConfirm } = useAlert();
@@ -135,8 +136,10 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
           <button className="flex items-center justify-center gap-2 px-4 py-2 text-indigo-600 bg-indigo-50 font-medium rounded-lg hover:bg-indigo-100 transition-colors">
             <FileText className="w-4 h-4" /> Xem Sổ lũy kế (3/42)
           </button>
-          <button className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors">
-            <Download className="w-4 h-4" /> Xuất Sổ chủ nhiệm (.docx) — 3 tuần
+          <button 
+            onClick={() => exportWeeklyPlanToDocx(className || 'Chưa rõ', schoolYearName || '2024-2025', currentWeekData)}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors">
+            <Download className="w-4 h-4" /> Xuất Kế hoạch Tuần {selectedWeek} (.docx)
           </button>
         </div>
       </div>
