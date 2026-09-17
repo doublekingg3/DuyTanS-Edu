@@ -29,8 +29,8 @@ export default function ChangePasswordModal({ onClose, userRole, currentUser, cu
       return;
     }
     
-    if (newPassword.length < 6) {
-      setError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+    if (newPassword.length < 8) {
+      setError('Mật khẩu mới phải có ít nhất 8 ký tự.');
       return;
     }
 
@@ -108,6 +108,7 @@ export default function ChangePasswordModal({ onClose, userRole, currentUser, cu
             
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Mật khẩu mới</label>
+              <p className="text-xs text-red-500 font-medium mb-2">* Mật khẩu phải đủ 8 ký tự</p>
               <input 
                 type="password" 
                 value={newPassword}

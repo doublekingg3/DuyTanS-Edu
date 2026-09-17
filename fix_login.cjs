@@ -1,21 +1,14 @@
 const fs = require('fs');
 let c = fs.readFileSync('src/components/Login.tsx', 'utf8');
 
-c = c.replace(/selectedRole === 'admin' \|\| selectedRole === 'teacher'/g, "selectedRole === 'admin' || selectedRole === 'teacher' || selectedRole === 'staff'");
+const oldParentDemo = `<strong>Tài Khoản Demo</strong><br/>
+                  Phụ huynh đăng nhập theo mẫu: <strong>năm học-stt</strong><br/>
+                  Ví dụ: <strong>20252026_0001</strong><br/>Mật khẩu: <strong>12345678</strong>`;
 
-c = c.replace(/<BookOpen className="w-4 h-4" \/> Giáo viên\n            <\/button>\n            <button/g, 
-`<BookOpen className="w-4 h-4" /> Giáo viên
-            </button>
-            <button 
-              type="button"
-              onClick={() => { setSelectedRole('staff'); setError(''); }}
-              className={\`flex-1 py-2 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 \${selectedRole === 'staff' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}\`}
-            >
-              <User className="w-4 h-4" /> Giáo vụ
-            </button>
-            <button`);
+const newParentDemo = `Mã học sinh là <strong>Mã định danh</strong><br/>
+                  Mật khẩu mặc định: <strong>12345678</strong>`;
 
-c = c.replace(/onLogin: \(role: 'admin' \| 'teacher' \| 'parent'/g, "onLogin: (role: 'admin' | 'teacher' | 'parent' | 'staff'");
-c = c.replace(/useState\<'admin' \| 'teacher' \| 'parent'\>\('admin'\)/g, "useState<'admin' | 'teacher' | 'parent' | 'staff'>('admin')");
+c = c.replace(oldParentDemo, newParentDemo);
+c = c.replace(oldParentDemo, newParentDemo); // replace twice if it appears in both desktop and mobile views
 
 fs.writeFileSync('src/components/Login.tsx', c);

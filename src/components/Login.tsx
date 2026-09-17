@@ -138,9 +138,8 @@ export default function Login({
             {selectedRole === 'parent' && (
               <div className="text-center mt-4">
                 <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <strong>Tài Khoản Demo</strong><br/>
-                  Phụ huynh đăng nhập theo mẫu: <strong>năm học-stt</strong><br/>
-                  Ví dụ: <strong>20252026_0001</strong><br/>Mật khẩu: <strong>12345678</strong>
+                  Mã học sinh là <strong>Mã định danh</strong><br/>
+                  Mật khẩu mặc định: <strong>12345678</strong>
                 </p>
               </div>
             )}
@@ -217,9 +216,8 @@ export default function Login({
             {selectedRole === 'parent' && (
               <div className="text-center mt-4">
                 <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <strong>Tài Khoản Demo</strong><br/>
-                  Phụ huynh đăng nhập theo mẫu: <strong>năm học-stt</strong><br/>
-                  Ví dụ: <strong>20252026_0001</strong><br/>Mật khẩu: <strong>12345678</strong>
+                  Mã học sinh là <strong>Mã định danh</strong><br/>
+                  Mật khẩu mặc định: <strong>12345678</strong>
                 </p>
               </div>
             )}
