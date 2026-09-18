@@ -28,23 +28,23 @@ export default function ParentLunchMenu() {
   ];
 
   return (
-    <div className="bg-slate-50 overflow-y-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="bg-slate-50 overflow-y-auto pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold font-display text-slate-800 flex items-center gap-2">
-            <Utensils className="w-6 h-6 text-amber-500" />
+          <h2 className="text-xl sm:text-2xl font-bold font-display text-slate-800 flex items-center gap-2">
+            <Utensils className="w-6 h-6 text-teal-700" />
             Thực Đơn Ăn Trưa
           </h2>
-          <p className="text-slate-500 mt-1">Dinh dưỡng hàng ngày của học sinh tại trường</p>
+          <p className="text-slate-500 text-xs sm:text-sm mt-1">Dinh dưỡng hàng ngày của học sinh tại trường</p>
         </div>
-        <button className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white font-medium rounded-lg hover:bg-amber-600 transition-colors">
+        <button className="self-start sm:self-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-medium text-sm rounded-xl transition-colors shadow-sm">
           <Download className="w-4 h-4" /> Tải về (.pdf)
         </button>
       </div>
 
       {/* Week Selector */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-6">
-        <h3 className="text-sm font-bold text-slate-500 mb-3 uppercase tracking-wider">Chọn tuần</h3>
+        <h3 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider font-display">Chọn tuần</h3>
         <div className="flex items-center gap-2">
           <button onClick={scrollLeft} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
           <div ref={scrollRef} className="flex flex-1 gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden" style={{ scrollBehavior: 'smooth' }}>
@@ -52,10 +52,10 @@ export default function ParentLunchMenu() {
               <button 
                 key={week.id}
                 onClick={() => setSelectedWeek(week.id)}
-                className={`flex-shrink-0 flex flex-col items-center justify-center w-24 py-2 rounded-xl border transition-all ${selectedWeek === week.id ? 'bg-amber-500 border-amber-500 text-white shadow-md' : 'bg-white border-slate-200 hover:border-amber-400'}`}
+                className={`flex-shrink-0 flex flex-col items-center justify-center w-24 py-2.5 rounded-xl border transition-all ${selectedWeek === week.id ? 'bg-teal-700 border-teal-700 text-white shadow-sm' : 'bg-white border-slate-200 hover:border-teal-400 text-slate-700'}`}
               >
                 <span className="font-bold text-sm">{week.name}</span>
-                {week.status === 'approved' && <span className={`text-xs mt-1 ${selectedWeek === week.id ? 'text-amber-100' : 'text-emerald-600'}`}>Đã chốt</span>}
+                {week.status === 'approved' && <span className={`text-[11px] mt-0.5 ${selectedWeek === week.id ? 'text-teal-100' : 'text-teal-600 font-medium'}`}>Đã chốt</span>}
               </button>
             ))}
           </div>
@@ -65,20 +65,22 @@ export default function ParentLunchMenu() {
 
       {/* Menu Area */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center"><Utensils className="w-5 h-5 text-amber-600" /></div>
-          <h3 className="text-xl font-bold font-display text-slate-800">Thực Đơn Tuần {selectedWeek}</h3>
+        <div className="p-4 sm:p-5 border-b border-slate-100 bg-teal-50/40 flex items-center gap-3">
+          <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center shrink-0">
+            <Utensils className="w-5 h-5 text-teal-700" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-bold font-display text-slate-800">Thực Đơn Tuần {selectedWeek}</h3>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           {menus.filter(m => m.dishes.length > 0).map((menu, idx) => (
-            <div key={idx} className="flex flex-col sm:flex-row items-start gap-4 p-4 border border-slate-200 rounded-xl bg-white hover:border-amber-300 transition-colors">
-              <div className="w-24 h-10 mt-1 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold shrink-0 border border-amber-100">
+            <div key={idx} className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 p-4 border border-slate-200 rounded-xl bg-white hover:border-teal-300 transition-colors">
+              <div className="w-full sm:w-24 h-9 sm:h-10 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center font-bold text-sm shrink-0 border border-teal-200/60">
                 {menu.day}
               </div>
-              <div className="flex-1 w-full space-y-2 pt-2">
+              <div className="flex-1 w-full space-y-1.5 pt-0.5">
                  <ul className="list-disc pl-5 space-y-1">
                    {menu.dishes.map((dish, dishIdx) => (
-                     <li key={dishIdx} className="text-slate-700 font-medium">{dish}</li>
+                     <li key={dishIdx} className="text-slate-700 text-sm font-medium">{dish}</li>
                    ))}
                  </ul>
               </div>

@@ -22,7 +22,11 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!classId) return;
+    if (!classId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const docRef = doc(db, 'class_weekly_plans', classId);
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       const data = snapshot.data();
@@ -65,6 +69,9 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
       });
       
       setWeeks(newWeeks);
+      setLoading(false);
+    }, (err) => {
+      console.error("Weekly plan snapshot error:", err);
       setLoading(false);
     });
     
@@ -114,8 +121,18 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
     setLocalTasks(currentWeekData?.tasks || []);
   }, [currentWeekData?.tasks]);
 
+  if (!classId) {
+    return (
+      <div className="p-8 h-full bg-[#f0fdfa]/30 flex flex-col items-center justify-center text-slate-500 gap-3">
+        <CalendarIcon className="w-12 h-12 text-teal-600/50" />
+        <p className="text-base font-semibold text-slate-700">Chưa chọn lớp học</p>
+        <p className="text-sm text-slate-500">Vui lòng chọn một lớp học ở thanh công cụ phía trên để xem và biên soạn kế hoạch tuần.</p>
+      </div>
+    );
+  }
+
   if (loading) {
-    return <div className="p-4 md:p-6 lg:p-8 h-full bg-slate-50 flex items-center justify-center text-slate-500">Đang tải dữ liệu...</div>;
+    return <div className="p-4 md:p-6 lg:p-8 h-full bg-slate-50 flex items-center justify-center text-slate-500">Đang tải kế hoạch tuần...</div>;
   }
 
   return (

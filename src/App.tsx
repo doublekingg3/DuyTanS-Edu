@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initialStudents, initialClasses, initialUsers, initialSchoolYears, Student, SchoolClass, Grades, UserAccount, SchoolYear, AppSettings, defaultSettings } from './data';
 import TeacherView from './components/TeacherView';
 import ParentView from './components/ParentView';
 import AdminView from './components/AdminView';
 import Login from './components/Login';
 import Portal from './components/Portal';
-import { GraduationCap, Calendar, Users, UserCircle, Shield, Loader2, LogOut, ArrowLeft, KeyRound } from 'lucide-react';
+import SchoolLogo from './components/SchoolLogo';
+import { GraduationCap, Calendar, Users, UserCircle, Shield, Loader2, LogOut, ArrowLeft, KeyRound, Bell, ChevronDown } from 'lucide-react';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from './lib/firebase';
@@ -26,6 +27,56 @@ export default function App() {
   // For parent view simulation, select the first student by default
   const [parentStudentId, setParentStudentId] = useState('');
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [selectedYearId, setSelectedYearId] = useState<string>('');
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState<boolean>(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleYearChange = (newYearId: string) => {
+    setSelectedYearId(newYearId);
+    const classesInNewYear = classes.filter(c => !c.isDeleted && (!newYearId || c.schoolYearId === newYearId));
+    if (classesInNewYear.length > 0) {
+      const classWithStudents = classesInNewYear.find(c => students.some(s => s.classId === c.id)) || classesInNewYear[0];
+      setSelectedClassId(classWithStudents.id);
+    }
+  };
+
+  useEffect(() => {
+    if (schoolYears.length > 0 && !selectedYearId) {
+      // Prefer year that has classes with active students, or first available year
+      const yearWithStudents = schoolYears.find(y => 
+        classes.some(c => !c.isDeleted && c.schoolYearId === y.id && students.some(s => s.classId === c.id))
+      );
+      const initialYear = yearWithStudents ? yearWithStudents.id : schoolYears[0].id;
+      setSelectedYearId(initialYear);
+
+      const matchingClasses = classes.filter(c => !c.isDeleted && (!initialYear || c.schoolYearId === initialYear));
+      const classWithStudents = matchingClasses.find(c => students.some(s => s.classId === c.id)) || matchingClasses[0];
+      if (classWithStudents) {
+        setSelectedClassId(classWithStudents.id);
+      }
+    }
+  }, [schoolYears, classes, students, selectedYearId]);
+
+  useEffect(() => {
+    if (classes.length > 0 && (!selectedClassId || !classes.some(c => c.id === selectedClassId && !c.isDeleted))) {
+      const matchingClasses = classes.filter(c => !c.isDeleted && (!selectedYearId || c.schoolYearId === selectedYearId));
+      const classWithStudents = matchingClasses.find(c => students.some(s => s.classId === c.id)) || matchingClasses[0] || classes.find(c => !c.isDeleted);
+      if (classWithStudents) {
+        setSelectedClassId(classWithStudents.id);
+      }
+    }
+  }, [classes, students, selectedYearId, selectedClassId]);
 
   useEffect(() => {
     const studentsRef = collection(db, 'students');
@@ -52,7 +103,19 @@ export default function App() {
         studentsLoaded = true;
         checkLoading();
       } else {
-        const loadedStudents = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
+        const loadedStudents = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            nationality: 'Việt Nam',
+            religion: 'Không',
+            pob: '',
+            currentAddress: '',
+            phone: data.phone || data.parentPhone || '',
+            citizenId: '',
+            ...data,
+            id: doc.id
+          } as Student;
+        });
         // Sort by STT to maintain order
         loadedStudents.sort((a, b) => a.stt - b.stt);
         setStudents(loadedStudents);
@@ -343,61 +406,165 @@ export default function App() {
     return <Login classes={classes} students={students} users={users} onLogin={handleLogin} onBack={() => setAppMode('portal')} settings={settings} />;
   }
 
+  // Active user info
+  const currentUser = users.find(u => u.id === loggedInUserId);
+  const currentUserDisplayName = currentUser?.fullName || (
+    role === 'admin' ? 'Ban Giám Hiệu Duy Tân' :
+    role === 'teacher' ? 'Giáo viên' :
+    role === 'staff' ? 'Giáo vụ' : 'Phụ huynh'
+  );
+  const currentUserInitial = currentUserDisplayName.charAt(0).toUpperCase() || 'T';
+
+  // Active class info
+  const activeClasses = classes.filter(c => !c.isDeleted);
+  const currentClass = activeClasses.find(c => c.id === selectedClassId) || (
+    role === 'parent'
+      ? activeClasses.find(c => c.id === students.find(s => s.id === parentStudentId)?.classId)
+      : activeClasses[0]
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
-      {/* Top Navigation */}
-      <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 z-10 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-200">
-            <GraduationCap className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-[#f0fdfa]/30 flex flex-col font-sans text-slate-900 overflow-hidden">
+      {/* Top Navigation styled to match Hình 1.jpg */}
+      <header className="bg-white border-b border-teal-100 h-17 flex items-center justify-between px-4 sm:px-6 z-30 shrink-0 shadow-2xs">
+        {/* Left: School Logo & Title & Sổ Chủ Nhiệm Số & Year Selector */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          <SchoolLogo src={settings?.portalLogo || settings?.loginLogo} className="w-10 h-10 sm:w-11 sm:h-11" />
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xs sm:text-sm font-extrabold tracking-wider text-teal-800 uppercase font-display">
+                {settings?.appName || "Trường Phổ Thông Duy Tân"}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm sm:text-base font-bold text-slate-800 tracking-tight">
+                SỔ CHỦ NHIỆM SỐ
+              </span>
+              {schoolYears && schoolYears.length > 0 && (
+                <div className="relative inline-flex items-center">
+                  <select
+                    value={selectedYearId}
+                    onChange={(e) => handleYearChange(e.target.value)}
+                    className="appearance-none bg-[#ccfbf1]/80 hover:bg-[#ccfbf1] border border-[#5eead4] text-[#0f766e] text-xs font-bold rounded-full py-0.5 pl-2.5 pr-6 cursor-pointer outline-none transition-colors"
+                  >
+                    {schoolYears.map(y => (
+                      <option key={y.id} value={y.id}>{y.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3 h-3 text-[#0f766e] absolute right-1.5 pointer-events-none" />
+                </div>
+              )}
+            </div>
           </div>
-          <h1 className="text-xl font-bold font-display text-slate-800 tracking-tight">EduManage Pro</h1>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg">
-              {role === 'admin' && 'Ban Giám Hiệu'}
-              {role === 'teacher' && 'Giáo viên'}
-              {role === 'staff' && 'Giáo vụ'}
-              {role === 'parent' && 'Phụ huynh'}
-            </span>
-            {!settings?.disablePortal && (
+
+        {/* Center: Tên lớp & GVCN */}
+        {currentClass && (
+          <div className="hidden lg:flex items-center gap-3 bg-[#f0fdfa] border border-[#5eead4] px-4 py-1.5 rounded-2xl shadow-2xs">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-500">Lớp:</span>
+              <span className="text-sm font-extrabold text-teal-800 bg-[#ccfbf1] px-2 py-0.5 rounded-lg">
+                {currentClass.name}
+              </span>
+            </div>
+            <span className="text-teal-300">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-500">GVCN:</span>
+              <span className="text-sm font-bold text-slate-800">
+                {currentClass.homeroomTeacher || 'Chưa phân công'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Right: Notification Bell & User Profile Dropdown */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Notification Bell */}
+          <button 
+            className="p-2 text-slate-400 hover:text-teal-700 hover:bg-[#f0fdfa] rounded-xl transition-colors relative"
+            title="Thông báo"
+          >
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
+          </button>
+
+          {/* User Menu Button */}
+          <div className="relative" ref={userMenuRef}>
             <button
-              onClick={() => {
-                handleLogout();
-                setAppMode('portal');
-              }}
-              className="ml-2 p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2"
-              title="Trở về"
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              className="flex items-center gap-2.5 p-1 sm:p-1.5 rounded-2xl hover:bg-[#f0fdfa] transition-all border border-transparent hover:border-teal-200"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm font-medium hidden sm:inline">Về Portal</span>
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#0d9488] text-white font-bold flex items-center justify-center text-sm shadow-xs shadow-teal-600/30">
+                {currentUserInitial}
+              </div>
+              <div className="text-left hidden sm:block">
+                <div className="text-xs sm:text-sm font-bold text-slate-800 leading-tight">
+                  {currentUserDisplayName}
+                </div>
+                <div className="text-[11px] text-slate-500 font-medium leading-tight">
+                  {role === 'admin' && 'Ban Giám Hiệu'}
+                  {role === 'teacher' && 'Giáo viên'}
+                  {role === 'staff' && 'Giáo vụ'}
+                  {role === 'parent' && 'Phụ huynh'}
+                </div>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
             </button>
+
+            {/* Dropdown Menu */}
+            {isUserMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-teal-100 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="px-4 py-2 border-b border-slate-100 sm:hidden">
+                  <div className="text-sm font-bold text-slate-800">{currentUserDisplayName}</div>
+                  <div className="text-xs text-slate-500">
+                    {role === 'admin' ? 'Ban Giám Hiệu' : role === 'teacher' ? 'Giáo viên' : 'Người dùng'}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    setIsChangePasswordModalOpen(true);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[#f0fdfa] hover:text-teal-700 flex items-center gap-2.5 transition-colors font-medium"
+                >
+                  <KeyRound className="w-4 h-4 text-teal-600" />
+                  <span>Đổi mật khẩu</span>
+                </button>
+
+                {!settings?.disablePortal && (
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      handleLogout();
+                      setAppMode('portal');
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[#f0fdfa] hover:text-teal-700 flex items-center gap-2.5 transition-colors font-medium"
+                  >
+                    <ArrowLeft className="w-4 h-4 text-teal-600" />
+                    <span>Về trang Portal</span>
+                  </button>
+                )}
+
+                <div className="border-t border-slate-100 my-1"></div>
+
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs sm:text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors font-medium"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
             )}
-            
-            <button
-              onClick={() => setIsChangePasswordModalOpen(true)}
-              className="ml-2 p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2"
-              title="Đổi mật khẩu"
-            >
-              <KeyRound className="w-4 h-4" />
-              <span className="text-sm font-medium hidden md:inline">Đổi mật khẩu</span>
-            </button>
-            
-            <button
-              onClick={handleLogout}
-              className="ml-2 p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
-              title="Đăng xuất"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="text-sm font-medium hidden md:inline">Đăng xuất</span>
-            </button>
           </div>
         </div>
       </header>
 
-            {/* Main Content Area */}
+      {/* Main Content Area */}
       <main className="flex-1 relative">
         {isChangePasswordModalOpen && (
           <ChangePasswordModal 
@@ -416,6 +583,10 @@ export default function App() {
             classes={classes}
             user={users.find(u => u.id === loggedInUserId)}
             schoolYears={schoolYears}
+            selectedYearId={selectedYearId}
+            onYearChange={setSelectedYearId}
+            selectedClassId={selectedClassId}
+            onClassChange={setSelectedClassId}
             onAddComment={handleAddComment}
             onSendNotification={handleSendNotification}
             onAddStudent={handleAddStudent}
@@ -426,9 +597,15 @@ export default function App() {
             onUpdateMultipleGrades={handleUpdateMultipleGrades}
           />
         ) : (
-          <div className="flex flex-col h-[calc(100vh-64px)]">
+          <div className="flex flex-col h-[calc(100vh-68px)]">
             <div className="flex-1 overflow-y-auto">
-              <ParentView student={students.find(s => s.id === parentStudentId) || students[0]} allStudents={students} classes={classes} schoolYears={schoolYears} />
+              <ParentView 
+                student={students.find(s => s.id === parentStudentId) || students[0]} 
+                allStudents={students} 
+                classes={classes} 
+                schoolYears={schoolYears} 
+                onEditStudent={handleEditStudent}
+              />
             </div>
           </div>
         )}

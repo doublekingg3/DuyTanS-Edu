@@ -32,7 +32,7 @@ export default function ParentSchedule({ classId }: { classId: string }) {
   if (isLoading) {
     return (
       <div className="p-8 h-[300px] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -40,10 +40,10 @@ export default function ParentSchedule({ classId }: { classId: string }) {
   if (!schedule || schedule.periods.length === 0) {
     return (
       <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-          <Calendar className="w-8 h-8 text-slate-400" />
+        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mb-4">
+          <Calendar className="w-8 h-8 text-teal-600" />
         </div>
-        <h3 className="text-xl font-bold text-slate-800 mb-2">Chưa có thời khoá biểu</h3>
+        <h3 className="text-xl font-bold font-display text-slate-800 mb-2">Chưa có thời khoá biểu</h3>
         <p className="text-slate-500">Giáo viên chủ nhiệm chưa cập nhật thời khoá biểu cho lớp.</p>
       </div>
     );
@@ -101,7 +101,7 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                       return (
                         <td key={day.key} className="px-4 py-4 border-r border-slate-200 last:border-0 text-center align-middle">
                           {cellValue ? (
-                            <div className="font-bold text-indigo-700 text-base">{cellValue}</div>
+                            <div className="font-bold text-teal-800 text-base">{cellValue}</div>
                           ) : (
                             <span className="text-slate-300">-</span>
                           )}
@@ -125,26 +125,24 @@ export default function ParentSchedule({ classId }: { classId: string }) {
           const morningPeriods = dayPeriods.filter(p => p.time.toLowerCase().includes('sáng') || p.time.toLowerCase().includes('s-t') || !p.time.toLowerCase().includes('chiều'));
           const afternoonPeriods = dayPeriods.filter(p => p.time.toLowerCase().includes('chiều') || p.time.toLowerCase().includes('c-t'));
 
-          // Nếu format time không có chữ sáng chiều, ta mặc định tất cả là sáng.
-
           return (
-            <div key={day.key} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="bg-indigo-600 px-6 py-4">
-                <h3 className="text-xl font-bold text-white text-center">{day.label}</h3>
+            <div key={day.key} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-[#0f766e] to-[#0d9488] px-5 py-3.5">
+                <h3 className="text-lg font-bold font-display text-white text-center">{day.label}</h3>
               </div>
               
-              <div className="p-4 space-y-6">
+              <div className="p-4 space-y-5">
                 {morningPeriods.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-2 mb-3 px-2">
-                      <Sun className="w-5 h-5 text-amber-500" />
-                      <h4 className="font-bold text-slate-800 text-lg">Buổi Sáng</h4>
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                      <Sun className="w-4 h-4 text-amber-500" />
+                      <h4 className="font-bold font-display text-slate-800 text-base">Buổi Sáng</h4>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {morningPeriods.map((period, idx) => (
-                        <div key={idx} className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
-                          <div className="shrink-0 flex flex-col items-center justify-center w-16 h-16 bg-white rounded-xl shadow-sm border border-slate-200">
-                            <span className="font-bold text-slate-800 text-sm">
+                        <div key={idx} className="bg-slate-50 rounded-xl p-3 flex items-center gap-3.5 border border-slate-100">
+                          <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 bg-white rounded-xl shadow-2xs border border-slate-200">
+                            <span className="font-bold text-slate-800 text-xs">
                               {period.time.split('(')[0]?.replace(/Sáng|Chiều|-/gi, '')?.trim() || `T${idx+1}`}
                             </span>
                             {period.time.includes('(') && (
@@ -154,7 +152,7 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                             )}
                           </div>
                           <div className="flex-1">
-                            <div className="text-xl font-bold text-indigo-700 uppercase tracking-tight">
+                            <div className="text-base font-bold font-display text-teal-800 uppercase tracking-tight">
                               {String(period[day.key as keyof SchedulePeriod])}
                             </div>
                           </div>
@@ -166,15 +164,15 @@ export default function ParentSchedule({ classId }: { classId: string }) {
 
                 {afternoonPeriods.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-2 mb-3 px-2 mt-4">
-                      <Moon className="w-5 h-5 text-indigo-400" />
-                      <h4 className="font-bold text-slate-800 text-lg">Buổi Chiều</h4>
+                    <div className="flex items-center gap-2 mb-3 px-1 mt-3">
+                      <Moon className="w-4 h-4 text-teal-600" />
+                      <h4 className="font-bold font-display text-slate-800 text-base">Buổi Chiều</h4>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {afternoonPeriods.map((period, idx) => (
-                        <div key={idx} className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
-                          <div className="shrink-0 flex flex-col items-center justify-center w-16 h-16 bg-white rounded-xl shadow-sm border border-slate-200">
-                            <span className="font-bold text-slate-800 text-sm">
+                        <div key={idx} className="bg-slate-50 rounded-xl p-3 flex items-center gap-3.5 border border-slate-100">
+                          <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 bg-white rounded-xl shadow-2xs border border-slate-200">
+                            <span className="font-bold text-slate-800 text-xs">
                               {period.time.split('(')[0]?.replace(/Sáng|Chiều|-/gi, '')?.trim() || `T${idx+1}`}
                             </span>
                             {period.time.includes('(') && (
@@ -184,7 +182,7 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                             )}
                           </div>
                           <div className="flex-1">
-                            <div className="text-xl font-bold text-indigo-700 uppercase tracking-tight">
+                            <div className="text-base font-bold font-display text-teal-800 uppercase tracking-tight">
                               {String(period[day.key as keyof SchedulePeriod])}
                             </div>
                           </div>

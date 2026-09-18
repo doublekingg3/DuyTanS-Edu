@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { SchoolClass, Student, UserAccount, SchoolYear, AppSettings, defaultSettings, sortClasses } from '../data';
-import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw } from 'lucide-react';
+import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw, Settings } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
 import { db } from '../lib/firebase';
@@ -10,7 +10,7 @@ import { doc, setDoc, deleteDoc, updateDoc, writeBatch, addDoc, collection } fro
 import { v4 as uuidv4 } from 'uuid';
 import AdminReports from './AdminReports';
 
-export default function AdminView({ classes, students, users, schoolYears, settings, externalActiveTab }: { classes: SchoolClass[], students: Student[], users: UserAccount[], schoolYears: SchoolYear[], settings?: AppSettings, externalActiveTab?: string }) {
+export default function AdminView({ classes, students, users, schoolYears, settings, externalActiveTab, onTabChange }: { classes: SchoolClass[], students: Student[], users: UserAccount[], schoolYears: SchoolYear[], settings?: AppSettings, externalActiveTab?: string, onTabChange?: (tab: string) => void }) {
   const { showAlert, showConfirm } = useAlert();
 
   const [appSettings, setAppSettings] = useState<AppSettings>(settings || defaultSettings);
@@ -91,8 +91,48 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     }
   };
 
-  const [activeTabState, setActiveTab] = useState<'classes' | 'accounts' | 'school_years' | 'backup' | 'firebase' | 'ai_config' | 'reports' | 'settings'>('ai_config');
-  const activeTab = externalActiveTab || activeTabState;
+  type TabType = 'classes' | 'accounts' | 'school_years' | 'backup' | 'firebase' | 'ai_config' | 'reports' | 'settings' | 'system_config';
+  type SystemConfigSubTab = 'settings' | 'backup' | 'ai_config' | 'firebase';
+
+  const [configSubTab, setConfigSubTab] = useState<SystemConfigSubTab>(() => {
+    if (externalActiveTab === 'backup' || externalActiveTab === 'ai_config' || externalActiveTab === 'firebase') {
+      return externalActiveTab;
+    }
+    return 'settings';
+  });
+
+  const [activeTabState, setActiveTabState] = useState<TabType>(() => {
+    if (externalActiveTab === 'settings' || externalActiveTab === 'backup' || externalActiveTab === 'ai_config' || externalActiveTab === 'firebase' || externalActiveTab === 'system_config') {
+      return 'system_config';
+    }
+    return (externalActiveTab as TabType) || 'classes';
+  });
+
+  React.useEffect(() => {
+    if (externalActiveTab) {
+      if (externalActiveTab === 'settings' || externalActiveTab === 'backup' || externalActiveTab === 'ai_config' || externalActiveTab === 'firebase') {
+        setActiveTabState('system_config');
+        setConfigSubTab(externalActiveTab as SystemConfigSubTab);
+      } else if (externalActiveTab === 'system_config') {
+        setActiveTabState('system_config');
+      } else {
+        setActiveTabState(externalActiveTab as TabType);
+      }
+    }
+  }, [externalActiveTab]);
+
+  const activeTab = activeTabState;
+
+  const setActiveTab = (tab: TabType) => {
+    if (tab === 'settings' || tab === 'backup' || tab === 'ai_config' || tab === 'firebase') {
+      setActiveTabState('system_config');
+      setConfigSubTab(tab as SystemConfigSubTab);
+      onTabChange?.('system_config');
+    } else {
+      setActiveTabState(tab);
+      onTabChange?.(tab);
+    }
+  };
   const [aiConfigText, setAiConfigText] = useState(localStorage.getItem('aiAdminConfig') || 'Fanpage: https://facebook.com/truong\nHotline: 0123.456.789\nCác khoá học hiện có: Tiếng Anh giao tiếp, Toán tư duy, Kỹ năng sống');
 
   
@@ -633,30 +673,36 @@ export default function AdminView({ classes, students, users, schoolYears, setti
   );
 
   return (
-    <div className="h-full bg-slate-50 p-4 md:p-6 lg:p-8 overflow-y-auto">
+    <div className="h-full bg-[#f0fdfa]/30 p-4 md:p-6 lg:p-8 overflow-y-auto">
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Tab Navigation */}
-        {!externalActiveTab && <div className="flex justify-center gap-3 mb-10 border-b border-slate-200 pb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-teal-100 pb-2">
           <button 
-            onClick={() => setActiveTab('backup')}
-            className={`px-6 py-3 text-sm font-semibold rounded-t-xl transition-all flex items-center gap-2 border-b-2 ${activeTab === 'backup' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/50' : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50 border-transparent'}`}
+            onClick={() => setActiveTab('classes')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${activeTab === 'classes' ? 'bg-teal-gradient text-white shadow-xs' : 'text-slate-600 hover:text-teal-700 hover:bg-[#f0fdfa]'}`}
           >
-            <Database className="w-4 h-4" /> Sao lưu dữ liệu
+            <Building2 className="w-4 h-4" /> Lớp học
           </button>
           <button 
-            onClick={() => setActiveTab('ai_config')}
-            className={`px-6 py-3 text-sm font-semibold rounded-t-xl transition-all flex items-center gap-2 border-b-2 ${activeTab === 'ai_config' ? 'text-purple-600 border-purple-600 bg-purple-50/50' : 'text-slate-500 hover:text-purple-600 hover:bg-slate-50 border-transparent'}`}
+            onClick={() => setActiveTab('school_years')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${activeTab === 'school_years' ? 'bg-teal-gradient text-white shadow-xs' : 'text-slate-600 hover:text-teal-700 hover:bg-[#f0fdfa]'}`}
           >
-            <Sparkles className="w-4 h-4" /> Cấu hình Trợ lý AI
+            <Calendar className="w-4 h-4" /> Năm học
           </button>
           <button 
-            onClick={() => setActiveTab('firebase')}
-            className={`px-6 py-3 text-sm font-semibold rounded-t-xl transition-all flex items-center gap-2 border-b-2 ${activeTab === 'firebase' ? 'text-slate-800 border-slate-800 bg-slate-100/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50 border-transparent'}`}
+            onClick={() => setActiveTab('accounts')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${activeTab === 'accounts' ? 'bg-teal-gradient text-white shadow-xs' : 'text-slate-600 hover:text-teal-700 hover:bg-[#f0fdfa]'}`}
           >
-            <Cloud className="w-4 h-4" /> Kết nối đám mây
+            <Shield className="w-4 h-4" /> Tài khoản & Quyền
           </button>
-        </div>}
+          <button 
+            onClick={() => setActiveTab('system_config')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${(activeTab === 'system_config' || activeTab === 'settings' || activeTab === 'backup' || activeTab === 'ai_config' || activeTab === 'firebase') ? 'bg-teal-gradient text-white shadow-xs' : 'text-slate-600 hover:text-teal-700 hover:bg-[#f0fdfa]'}`}
+          >
+            <Settings className="w-4 h-4" /> Cấu hình hệ thống
+          </button>
+        </div>
 
         {activeTab === 'classes' && (
           <>
@@ -982,162 +1028,6 @@ export default function AdminView({ classes, students, users, schoolYears, setti
           </>
         )}
 
-
-        {activeTab === 'settings' && (
-          <>
-
-            {/* Cấu hình Giao diện */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col mb-8">
-              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <LayoutTemplate className="w-5 h-5 text-indigo-600" />
-                  Cấu hình Giao diện
-                </h2>
-                <button
-                  onClick={handleSaveSettings}
-                  disabled={isSavingSettings}
-                  className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" />
-                  {isSavingSettings ? 'Đang lưu...' : 'Lưu Cấu hình'}
-                </button>
-              </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên Ứng dụng (Page Title)</label>
-                  <input
-                    type="text"
-                    value={appSettings.pageTitle}
-                    onChange={(e) => setAppSettings({ ...appSettings, pageTitle: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="EduManage Pro"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">Sẽ hiển thị ở tiêu đề trang (thẻ browser).</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên Hiển thị (Login/DuyTan School Manager)</label>
-                  <input
-                    type="text"
-                    value={appSettings.appName}
-                    onChange={(e) => setAppSettings({ ...appSettings, appName: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="EduManage Pro"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">Sẽ hiển thị ở trang đăng nhập thay cho EduManage Pro.</p>
-                </div>
-
-                <div className="col-span-1 md:col-span-2 bg-indigo-50 p-4 rounded-xl flex items-center justify-between border border-indigo-100">
-                  <div>
-                    <h3 className="font-semibold text-slate-800">Tắt trang Portal (Vào thẳng trang đăng nhập)</h3>
-                    <p className="text-sm text-slate-600">Khi bật tính năng này, hệ thống sẽ bỏ qua trang Portal giới thiệu và đi thẳng vào giao diện đăng nhập.</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer"
-                      checked={appSettings.disablePortal || false}
-                      onChange={(e) => setAppSettings({ ...appSettings, disablePortal: e.target.checked })}
-                    />
-                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hình nền Giao diện Portal \(URL\)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={appSettings.portalBackground}
-                      onChange={(e) => setAppSettings({ ...appSettings, portalBackground: e.target.value })}
-                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Nhập URL hoặc tải ảnh lên"
-                    />
-                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
-                      <Upload className="w-4 h-4" />
-                      <span className="hidden sm:inline">Tải lên</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'portalBackground')} />
-                    </label>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">URL hình ảnh nền cho trang Portal.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Icon Tiêu đề \(Favicon URL\)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={appSettings.pageIcon}
-                      onChange={(e) => setAppSettings({ ...appSettings, pageIcon: e.target.value })}
-                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Nhập URL hoặc tải ảnh lên"
-                    />
-                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
-                      <Upload className="w-4 h-4" />
-                      <span className="hidden sm:inline">Tải lên</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'pageIcon')} />
-                    </label>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">URL hình ảnh nhỏ trên thẻ trình duyệt.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Logo Giao diện Portal \(URL\)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={appSettings.portalLogo}
-                      onChange={(e) => setAppSettings({ ...appSettings, portalLogo: e.target.value })}
-                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Nhập URL hoặc tải ảnh lên"
-                    />
-                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
-                      <Upload className="w-4 h-4" />
-                      <span className="hidden sm:inline">Tải lên</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'portalLogo')} />
-                    </label>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">Sẽ thay thế icon cái mũ ở trang Portal.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Logo Trang Đăng nhập \(URL\)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={appSettings.loginLogo}
-                      onChange={(e) => setAppSettings({ ...appSettings, loginLogo: e.target.value })}
-                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Nhập URL hoặc tải ảnh lên"
-                    />
-                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
-                      <Upload className="w-4 h-4" />
-                      <span className="hidden sm:inline">Tải lên</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'loginLogo')} />
-                    </label>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">Sẽ thay thế icon cái mũ ở trang Đăng nhập.</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hình nền Trang Đăng nhập (URL)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={appSettings.loginBackground}
-                      onChange={(e) => setAppSettings({ ...appSettings, loginBackground: e.target.value })}
-                      className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Nhập URL hoặc tải ảnh lên"
-                    />
-                    <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1" title="Tải ảnh lên">
-                      <Upload className="w-4 h-4" />
-                      <span className="hidden sm:inline">Tải lên</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'loginBackground')} />
-                    </label>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">URL hình ảnh nền cho trang Đăng nhập.</p>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
         {activeTab === 'accounts' && (
           <>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1347,6 +1237,378 @@ export default function AdminView({ classes, students, users, schoolYears, setti
               </div>
             </div>
           </>
+        )}
+
+        {(activeTab === 'system_config' || activeTab === 'settings' || activeTab === 'backup' || activeTab === 'ai_config' || activeTab === 'firebase') && (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-teal-100">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold font-display text-slate-800 flex items-center gap-2">
+                  <Settings className="w-6 h-6 text-[#0f766e]" />
+                  Cấu hình hệ thống
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  Quản lý giao diện, sao lưu dự phòng, trợ lý AI và kết nối đám mây của nhà trường
+                </p>
+              </div>
+            </div>
+
+            {/* Sub-tab Navigation */}
+            <div className="bg-white p-1.5 rounded-2xl border border-teal-100 shadow-2xs flex flex-wrap gap-1.5 items-center">
+              <button
+                onClick={() => setConfigSubTab('settings')}
+                className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${
+                  configSubTab === 'settings'
+                    ? 'bg-teal-gradient text-white shadow-xs'
+                    : 'text-slate-600 hover:text-teal-700 hover:bg-[#f0fdfa]'
+                }`}
+              >
+                <LayoutTemplate className="w-4 h-4" /> Giao diện & Logo
+              </button>
+              <button
+                onClick={() => setConfigSubTab('backup')}
+                className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${
+                  configSubTab === 'backup'
+                    ? 'bg-teal-gradient text-white shadow-xs'
+                    : 'text-slate-600 hover:text-teal-700 hover:bg-[#f0fdfa]'
+                }`}
+              >
+                <Database className="w-4 h-4" /> Sao lưu dữ liệu
+              </button>
+              <button
+                onClick={() => setConfigSubTab('ai_config')}
+                className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${
+                  configSubTab === 'ai_config'
+                    ? 'bg-teal-gradient text-white shadow-xs'
+                    : 'text-slate-600 hover:text-teal-700 hover:bg-[#f0fdfa]'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" /> Trợ lý AI
+              </button>
+              <button
+                onClick={() => setConfigSubTab('firebase')}
+                className={`px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${
+                  configSubTab === 'firebase'
+                    ? 'bg-teal-gradient text-white shadow-xs'
+                    : 'text-slate-600 hover:text-teal-700 hover:bg-[#f0fdfa]'
+                }`}
+              >
+                <Cloud className="w-4 h-4" /> Đám mây
+              </button>
+            </div>
+
+            {/* Sub-tab 1: Giao diện & Logo */}
+            {configSubTab === 'settings' && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <LayoutTemplate className="w-5 h-5 text-[#0f766e]" />
+                    Cấu hình Giao diện & Thương hiệu
+                  </h2>
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings}
+                    className="px-4 py-2 bg-teal-gradient text-white font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 shadow-xs disabled:opacity-50 text-sm"
+                  >
+                    <Save className="w-4 h-4" />
+                    {isSavingSettings ? 'Đang lưu...' : 'Lưu Cấu hình'}
+                  </button>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Tên Ứng dụng (Page Title)</label>
+                    <input
+                      type="text"
+                      value={appSettings.pageTitle}
+                      onChange={(e) => setAppSettings({ ...appSettings, pageTitle: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-[#0f766e] text-sm"
+                      placeholder="Trường Phổ Thông Duy Tân"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Sẽ hiển thị ở tiêu đề trang (thẻ browser).</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Tên Hiển thị (Login/DuyTan School Manager)</label>
+                    <input
+                      type="text"
+                      value={appSettings.appName}
+                      onChange={(e) => setAppSettings({ ...appSettings, appName: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-[#0f766e] text-sm"
+                      placeholder="Trường Phổ Thông Duy Tân"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Sẽ hiển thị ở trang đăng nhập thay cho EduManage Pro.</p>
+                  </div>
+
+                  <div className="col-span-1 md:col-span-2 bg-[#f0fdfa] p-4 rounded-xl flex items-center justify-between border border-teal-100">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 text-sm">Tắt trang Portal (Vào thẳng trang đăng nhập)</h3>
+                      <p className="text-xs text-slate-600 mt-0.5">Khi bật tính năng này, hệ thống sẽ bỏ qua trang Portal giới thiệu và đi thẳng vào giao diện đăng nhập.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={appSettings.disablePortal || false}
+                        onChange={(e) => setAppSettings({ ...appSettings, disablePortal: e.target.checked })}
+                      />
+                      <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0f766e]"></div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Hình nền Giao diện Portal (URL)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={appSettings.portalBackground}
+                        onChange={(e) => setAppSettings({ ...appSettings, portalBackground: e.target.value })}
+                        className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-[#0f766e] text-sm"
+                        placeholder="Nhập URL hoặc tải ảnh lên"
+                      />
+                      <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors flex items-center gap-1 text-sm" title="Tải ảnh lên">
+                        <Upload className="w-4 h-4" />
+                        <span className="hidden sm:inline">Tải lên</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'portalBackground')} />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">URL hình ảnh nền cho trang Portal.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Icon Tiêu đề (Favicon URL)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={appSettings.pageIcon}
+                        onChange={(e) => setAppSettings({ ...appSettings, pageIcon: e.target.value })}
+                        className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-[#0f766e] text-sm"
+                        placeholder="Nhập URL hoặc tải ảnh lên"
+                      />
+                      <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors flex items-center gap-1 text-sm" title="Tải ảnh lên">
+                        <Upload className="w-4 h-4" />
+                        <span className="hidden sm:inline">Tải lên</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'pageIcon')} />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">URL hình ảnh nhỏ trên thẻ trình duyệt.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Logo Giao diện Portal (URL)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={appSettings.portalLogo}
+                        onChange={(e) => setAppSettings({ ...appSettings, portalLogo: e.target.value })}
+                        className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-[#0f766e] text-sm"
+                        placeholder="Nhập URL hoặc tải ảnh lên"
+                      />
+                      <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors flex items-center gap-1 text-sm" title="Tải ảnh lên">
+                        <Upload className="w-4 h-4" />
+                        <span className="hidden sm:inline">Tải lên</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'portalLogo')} />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">Sẽ thay thế icon cái mũ ở trang Portal.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Logo Trang Đăng nhập (URL)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={appSettings.loginLogo}
+                        onChange={(e) => setAppSettings({ ...appSettings, loginLogo: e.target.value })}
+                        className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-[#0f766e] text-sm"
+                        placeholder="Nhập URL hoặc tải ảnh lên"
+                      />
+                      <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors flex items-center gap-1 text-sm" title="Tải ảnh lên">
+                        <Upload className="w-4 h-4" />
+                        <span className="hidden sm:inline">Tải lên</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'loginLogo')} />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">Sẽ thay thế icon cái mũ ở trang Đăng nhập.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Hình nền Trang Đăng nhập (URL)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={appSettings.loginBackground}
+                        onChange={(e) => setAppSettings({ ...appSettings, loginBackground: e.target.value })}
+                        className="flex-1 min-w-0 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-[#0f766e] text-sm"
+                        placeholder="Nhập URL hoặc tải ảnh lên"
+                      />
+                      <label className="cursor-pointer shrink-0 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors flex items-center gap-1 text-sm" title="Tải ảnh lên">
+                        <Upload className="w-4 h-4" />
+                        <span className="hidden sm:inline">Tải lên</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'loginBackground')} />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">URL hình ảnh nền cho trang Đăng nhập.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-tab 2: Sao lưu dữ liệu */}
+            {configSubTab === 'backup' && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-16 h-16 bg-teal-50 text-[#0f766e] rounded-2xl flex items-center justify-center mb-4 border border-teal-100">
+                  <Database className="w-8 h-8" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-800 mb-2">Tạo bản sao lưu dữ liệu</h2>
+                <p className="text-slate-600 mb-8 max-w-md mx-auto text-sm">
+                  Tải xuống tệp JSON chứa toàn bộ dữ liệu hệ thống hiện tại, bao gồm danh sách năm học, lớp học, học sinh và tài khoản người dùng.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button
+                    onClick={() => {
+                      const dataToExport = {
+                        schoolYears,
+                        classes,
+                        students,
+                        users
+                      };
+                      const dataStr = JSON.stringify(dataToExport, null, 2);
+                      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+                      const exportFileDefaultName = `edumanage_backup_${new Date().toISOString().split('T')[0]}.json`;
+                      const linkElement = document.createElement('a');
+                      linkElement.setAttribute('href', dataUri);
+                      linkElement.setAttribute('download', exportFileDefaultName);
+                      linkElement.click();
+                      showAlert('Đã tạo bản sao lưu dữ liệu.', 'success');
+                    }}
+                    className="px-6 py-3 bg-teal-gradient text-white font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-xs text-sm"
+                  >
+                    <Download className="w-5 h-5" /> Tải xuống bản sao lưu
+                  </button>
+                  
+                  <button
+                    onClick={() => backupFileInputRef.current?.click()}
+                    className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 shadow-xs text-sm"
+                  >
+                    <Upload className="w-5 h-5" /> Phục hồi dữ liệu (Upload)
+                  </button>
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    ref={backupFileInputRef}
+                    onChange={handleRestoreBackup}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Sub-tab 3: Trợ lý AI */}
+            {configSubTab === 'ai_config' && (
+              <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center shrink-0 border border-purple-100">
+                    <Sparkles className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800">Cấu hình Trợ Lý AI</h2>
+                    <p className="text-slate-500 text-xs sm:text-sm">Định hướng phong cách và cung cấp thông tin chuẩn của nhà trường để AI hỗ trợ giáo viên tốt nhất.</p>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-slate-800 mb-1">Thông tin nền của Nhà trường</label>
+                  <p className="text-slate-500 text-xs mb-3">Nhập Fanpage, Số điện thoại, các khóa học kỹ năng, hoặc triết lý giáo dục để Trợ lý AI tự động lồng ghép vào lời nhận xét.</p>
+                  <textarea
+                    className="w-full h-52 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-[#0f766e] resize-none transition-all text-slate-700 text-sm leading-relaxed"
+                    value={aiConfigText}
+                    onChange={(e) => setAiConfigText(e.target.value)}
+                    placeholder="Ví dụ: Trường Phổ Thông Duy Tân. Slogan: 'Vươn tầm tri thức'. Hotlines: 0901234567..."
+                  />
+                </div>
+                <div className="flex justify-end border-t border-slate-100 pt-4">
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('aiAdminConfig', aiConfigText);
+                      showAlert('Cập nhật cấu hình Trợ lý AI thành công!', 'success');
+                    }}
+                    className="px-6 py-2.5 bg-teal-gradient hover:opacity-90 text-white font-semibold rounded-xl transition-all shadow-xs flex items-center gap-2 text-sm"
+                  >
+                    <Save className="w-4 h-4" /> Lưu Cấu Hình
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-tab 4: Đám mây Firebase */}
+            {configSubTab === 'firebase' && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <div className="flex items-start gap-4 mb-6 p-4 bg-teal-50 text-teal-900 rounded-xl border border-teal-100">
+                  <Server className="w-6 h-6 shrink-0 mt-1 text-[#0f766e]" />
+                  <div>
+                    <h3 className="font-bold mb-1">Tại sao cần cấu hình Firebase riêng?</h3>
+                    <p className="text-xs sm:text-sm text-teal-800/90 leading-relaxed">
+                      Theo mặc định, ứng dụng sử dụng cơ sở dữ liệu mẫu. Để đưa ứng dụng lên hệ thống thật cho giáo viên sử dụng, bạn cần cung cấp <strong>firebaseConfig</strong> của dự án Firebase (Firestore) do trường bạn quản lý. Dữ liệu sẽ được lưu trữ an toàn trên đó.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">JSON Cấu hình Firebase (firebaseConfig)</label>
+                    <textarea
+                      value={firebaseConfigStr}
+                      onChange={(e) => setFirebaseConfigStr(e.target.value)}
+                      placeholder={'{\n  "apiKey": "AIzaSy...",\n  "authDomain": "your-app.firebaseapp.com",\n  "projectId": "your-app",\n  ...\n}'}
+                      className="w-full h-44 p-4 font-mono text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      onClick={async () => {
+                        if (!firebaseConfigStr.trim()) {
+                          try {
+                            await deleteDoc(doc(defaultDb, 'system', 'firebaseConfig'));
+                          } catch(e) {}
+                          localStorage.removeItem('customFirebaseConfig');
+                          showAlert('Đã xóa cấu hình riêng. Đang quay lại cơ sở dữ liệu mặc định...', 'success');
+                          setTimeout(() => window.location.reload(), 1500);
+                          return;
+                        }
+                        
+                        try {
+                          JSON.parse(firebaseConfigStr);
+                          await setDoc(doc(defaultDb, 'system', 'firebaseConfig'), { configStr: firebaseConfigStr });
+                          localStorage.setItem('customFirebaseConfig', firebaseConfigStr);
+                          showAlert('Lưu cấu hình thành công cho toàn hệ thống. Đang khởi động lại...', 'success');
+                          setTimeout(() => window.location.reload(), 1500);
+                        } catch (e) {
+                          console.error(e);
+                          showAlert('Lỗi: JSON cấu hình không hợp lệ hoặc không có quyền lưu.', 'error');
+                        }
+                      }}
+                      className="px-5 py-2.5 bg-teal-gradient text-white font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 shadow-xs text-sm"
+                    >
+                      <Save className="w-4 h-4" /> Lưu và Khởi động lại
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteDoc(doc(defaultDb, 'system', 'firebaseConfig'));
+                        } catch (e) { console.error(e) }
+                        setFirebaseConfigStr('');
+                        localStorage.removeItem('customFirebaseConfig');
+                        showAlert('Đã trở về cấu hình mặc định cho toàn hệ thống.', 'info');
+                        setTimeout(() => window.location.reload(), 1500);
+                      }}
+                      className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 font-medium rounded-xl hover:bg-slate-50 transition-colors text-sm"
+                    >
+                      Dùng cấu hình mặc định
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
       </div>
@@ -1808,187 +2070,9 @@ export default function AdminView({ classes, students, users, schoolYears, setti
         </div>
       )}
 
-        {activeTab === 'backup' && (
-          <div className="max-w-3xl mx-auto">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold font-display text-slate-800">Sao lưu dữ liệu</h1>
-              <p className="text-slate-500 mt-1">Xuất toàn bộ dữ liệu của hệ thống để dự phòng</p>
-            </div>
-            
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4">
-                <Database className="w-8 h-8" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-800 mb-2">Tạo bản sao lưu cục bộ</h2>
-              <p className="text-slate-600 mb-8 max-w-md mx-auto">
-                Tải xuống tệp JSON chứa toàn bộ dữ liệu hệ thống hiện tại, bao gồm danh sách năm học, lớp học, học sinh và tài khoản người dùng.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  onClick={() => {
-                    const dataToExport = {
-                      schoolYears,
-                      classes,
-                      students,
-                      users
-                    };
-                    const dataStr = JSON.stringify(dataToExport, null, 2);
-                    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-                    const exportFileDefaultName = `edumanage_backup_${new Date().toISOString().split('T')[0]}.json`;
-                    const linkElement = document.createElement('a');
-                    linkElement.setAttribute('href', dataUri);
-                    linkElement.setAttribute('download', exportFileDefaultName);
-                    linkElement.click();
-                    showAlert('Đã tạo bản sao lưu dữ liệu.', 'success');
-                  }}
-                  className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Download className="w-5 h-5" /> Tải xuống bản sao lưu
-                </button>
-                
-                <button
-                  onClick={() => backupFileInputRef.current?.click()}
-                  className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Upload className="w-5 h-5" /> Phục hồi dữ liệu (Upload)
-                </button>
-                <input
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  ref={backupFileInputRef}
-                  onChange={handleRestoreBackup}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        
-        {activeTab === 'ai_config' && (
-          <div className="max-w-3xl mx-auto">
-            <div className="mb-8 flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-purple-100">
-                <Sparkles className="w-8 h-8 text-purple-600" />
-              </div>
-              <h1 className="text-3xl font-bold font-display text-slate-800">Cấu hình Trợ Lý AI</h1>
-              <p className="text-slate-500 mt-2 max-w-lg">Định hướng phong cách và cung cấp thông tin chuẩn của nhà trường để AI hỗ trợ giáo viên tốt nhất.</p>
-            </div>
-            
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
-              <div className="mb-6">
-                <label className="block text-lg font-bold text-slate-800 mb-2">Thông tin nền của Nhà trường</label>
-                <p className="text-slate-500 text-sm mb-4">Nhập Fanpage, Số điện thoại, các khóa học kỹ năng, hoặc triết lý giáo dục để Trợ lý AI tự động lồng ghép vào lời nhận xét.</p>
-                <textarea
-                  className="w-full h-56 px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none transition-all text-slate-700 leading-relaxed"
-                  value={aiConfigText}
-                  onChange={(e) => setAiConfigText(e.target.value)}
-                  placeholder="Ví dụ: Trường THPT Duy Tân. Slogan: 'Vươn tầm tri thức'. Hotlines: 0901234567..."
-                />
-              </div>
-              <div className="flex justify-end border-t border-slate-100 pt-6">
-                <button
-                  onClick={() => {
-                    localStorage.setItem('aiAdminConfig', aiConfigText);
-                    showAlert('Cập nhật cấu hình Trợ lý AI thành công!', 'success');
-                  }}
-                  className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-all shadow-md shadow-purple-500/20 flex items-center gap-2"
-                >
-                  <Save className="w-5 h-5" /> Lưu Cấu Hình
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'reports' && (
-          <AdminReports students={students} />
-        )}
-
-        {activeTab === 'firebase' && (
-          <div className="max-w-3xl mx-auto">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold font-display text-slate-800">Cấu hình kết nối Firebase</h1>
-              <p className="text-slate-500 mt-1">Thiết lập cơ sở dữ liệu riêng biệt để đưa ứng dụng vào sử dụng chính thức</p>
-            </div>
-            
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <div className="flex items-start gap-4 mb-6 p-4 bg-indigo-50 text-indigo-800 rounded-xl">
-                <Server className="w-6 h-6 flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-bold mb-1">Tại sao cần cấu hình Firebase riêng?</h3>
-                  <p className="text-sm">
-                    Theo mặc định, ứng dụng sử dụng cơ sở dữ liệu mẫu. Để đưa ứng dụng lên hệ thống thật cho giáo viên sử dụng, bạn cần cung cấp <strong>firebaseConfig</strong> của dự án Firebase (Firestore) do trường bạn quản lý. Dữ liệu sẽ được lưu trữ an toàn trên đó.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">JSON Cấu hình Firebase (firebaseConfig)</label>
-                  <textarea
-                    value={firebaseConfigStr}
-                    onChange={(e) => setFirebaseConfigStr(e.target.value)}
-                    placeholder="Dán cấu hình dạng JSON vào đây. Ví dụ:
-{
-  &quot;apiKey&quot;: &quot;AIzaSy...&quot;,
-  &quot;authDomain&quot;: &quot;your-app.firebaseapp.com&quot;,
-  &quot;projectId&quot;: &quot;your-app&quot;,
-  ...
-}"
-                    className="w-full h-48 p-4 font-mono text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                  ></textarea>
-                </div>
-
-                <div className="flex items-center gap-3 pt-4">
-                  <button
-                    onClick={async () => {
-                      if (!firebaseConfigStr.trim()) {
-                        try {
-                          await deleteDoc(doc(defaultDb, 'system', 'firebaseConfig'));
-                        } catch(e) {}
-                        localStorage.removeItem('customFirebaseConfig');
-                        showAlert('Đã xóa cấu hình riêng. Đang quay lại cơ sở dữ liệu mặc định...', 'success');
-                        setTimeout(() => window.location.reload(), 1500);
-                        return;
-                      }
-                      
-                      try {
-                        JSON.parse(firebaseConfigStr);
-                        await setDoc(doc(defaultDb, 'system', 'firebaseConfig'), { configStr: firebaseConfigStr });
-                        localStorage.setItem('customFirebaseConfig', firebaseConfigStr);
-                        showAlert('Lưu cấu hình thành công cho toàn hệ thống. Đang khởi động lại...', 'success');
-                        setTimeout(() => window.location.reload(), 1500);
-                      } catch (e) {
-                        console.error(e);
-                        showAlert('Lỗi: JSON cấu hình không hợp lệ hoặc không có quyền lưu.', 'error');
-                      }
-                    }}
-                    className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
-                  >
-                    <Save className="w-4 h-4" /> Lưu và Khởi động lại
-                  </button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await deleteDoc(doc(defaultDb, 'system', 'firebaseConfig'));
-                      } catch (e) { console.error(e) }
-                      setFirebaseConfigStr('');
-                      localStorage.removeItem('customFirebaseConfig');
-                      showAlert('Đã trở về cấu hình mặc định cho toàn hệ thống.', 'info');
-                      setTimeout(() => window.location.reload(), 1500);
-                    }}
-                    className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 font-medium rounded-lg hover:bg-slate-50 transition-colors"
-                  >
-                    Dùng cấu hình mặc định
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
+      {activeTab === 'reports' && (
+        <AdminReports students={students} />
+      )}
 
       {/* CLASS TRASH MODAL */}
       {isClassTrashModalOpen && (

@@ -25,7 +25,7 @@ export default function Bootloader() {
           localStorage.removeItem('customFirebaseConfig');
         }
       } catch (error) {
-        console.error("Failed to load global config:", error);
+        console.warn("Could not load remote firebase config, falling back to default configuration:", error);
       } finally {
         setReady(true);
       }

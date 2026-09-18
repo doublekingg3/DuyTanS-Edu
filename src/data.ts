@@ -11,13 +11,13 @@ export interface AppSettings {
 }
 
 export const defaultSettings: AppSettings = {
-  pageTitle: "EduManage Pro",
+  pageTitle: "Trường Phổ Thông Duy Tân",
   pageIcon: "",
   portalBackground: "",
   portalLogo: "",
   loginLogo: "",
   loginBackground: "",
-  appName: "EduManage Pro",
+  appName: "Trường Phổ Thông Duy Tân",
   disablePortal: false
 };
 
@@ -120,6 +120,11 @@ export interface Student {
   ethnicity: string;
   dob?: string;
   pob?: string;
+  nationality?: string;
+  religion?: string;
+  currentAddress?: string;
+  phone?: string;
+  citizenId?: string;
   isDeleted?: boolean;
   grades: Grades;
   term1Grades?: Grades;
@@ -160,15 +165,91 @@ export const initialClasses: SchoolClass[] = [
   { id: 'c2', name: '10QT3B', homeroomTeacher: 'Thầy Hùng', specialization: 'Xã Hội' },
 ];
 
-// Initial mock data based on the provided CSV
+// Initial mock data based on user specifications and Hình 2.jpg
 export const initialStudents: Student[] = [
+  {
+    id: 's-6694138270',
+    code: '6694138270',
+    classId: 'c1',
+    stt: 1,
+    fullName: 'Trần Ngọc Thi Ân',
+    dob: '20/04/2015',
+    gender: 'Nữ',
+    ethnicity: 'Kinh',
+    nationality: 'Việt Nam',
+    religion: 'Không',
+    pob: 'Tỉnh Đắk Lắk',
+    currentAddress: 'Khu phố Phú An, Phường Tuy Hòa, Tỉnh Phú Yên',
+    phone: '0903169946',
+    citizenId: '054315005221',
+    grades: {
+      math: 8.5, physics: 9.0, chemistry: 8.0, biology: 8.5, it: 9.5, technology: 8.5, geography: 8.0, civicEdu: 9.0, localEdu: 'Đ', literature: 8.0, history: 8.5, foreignLanguage: 9.0, pe: 'Đ', defense: 9.5, japanese: 9.0, experiential: 'Đ'
+    },
+    academicPerformance: 'T',
+    conduct: 'T',
+    cp: 0, kp: 0, award: 'HSG', status: 'Đang học',
+    comments: [], notifications: []
+  },
+  {
+    id: 's-5441588055',
+    code: '5441588055',
+    classId: 'c1',
+    stt: 2,
+    fullName: 'Nguyễn Hoàng Bách',
+    dob: '04/11/2015',
+    gender: 'Nam',
+    ethnicity: 'Kinh',
+    nationality: 'Việt Nam',
+    religion: 'Không',
+    pob: 'Thành phố Hồ Chí Minh',
+    currentAddress: 'Đường D1, khu phố Chu Văn An, phường Tuy Hòa',
+    phone: '0985768910',
+    citizenId: '054215004807',
+    grades: {
+      math: 9.0, physics: 9.0, chemistry: 8.5, biology: 8.5, it: 9.9, technology: 9.0, geography: 9.0, civicEdu: 9.0, localEdu: 'Đ', literature: 8.5, history: 9.0, foreignLanguage: 9.0, pe: 'Đ', defense: 9.5, japanese: 9.0, experiential: 'Đ'
+    },
+    academicPerformance: 'T',
+    conduct: 'T',
+    cp: 0, kp: 0, award: 'HSXS', status: 'Đang học',
+    comments: [], notifications: []
+  },
+  {
+    id: 's-5453341085',
+    code: '5453341085',
+    classId: 'c1',
+    stt: 3,
+    fullName: 'Nguyễn Sao Băng',
+    dob: '28/04/2015',
+    gender: 'Nữ',
+    ethnicity: 'Kinh',
+    nationality: 'Việt Nam',
+    religion: 'Không',
+    pob: 'Tỉnh Đắk Lắk',
+    currentAddress: 'Khu phố Phú Đông 3, Phường Tuy Hòa, tỉnh Phú Yên',
+    phone: '0976563868',
+    citizenId: '054315006108',
+    grades: {
+      math: 8.0, physics: 8.5, chemistry: 8.0, biology: 8.5, it: 9.0, technology: 8.5, geography: 8.5, civicEdu: 9.0, localEdu: 'Đ', literature: 8.0, history: 8.5, foreignLanguage: 8.5, pe: 'Đ', defense: 9.0, japanese: 8.5, experiential: 'Đ'
+    },
+    academicPerformance: 'T',
+    conduct: 'T',
+    cp: 0, kp: 0, award: 'HSG', status: 'Đang học',
+    comments: [], notifications: []
+  },
   {
     id: 's1', code: 'HS-001',
     classId: 'c1',
-    stt: 1,
+    stt: 4,
     fullName: 'Trần Phạm Băng Băng',
+    dob: '12/03/2015',
     gender: 'Nữ',
     ethnicity: 'Kinh',
+    nationality: 'Việt Nam',
+    religion: 'Không',
+    pob: 'Phú Yên',
+    currentAddress: 'Phường 7, TP. Tuy Hòa, Phú Yên',
+    phone: '0912345678',
+    citizenId: '054315009871',
     grades: {
       math: 7, physics: 9, chemistry: 7.6, biology: 8.2, it: 9.9, technology: 8, geography: 8, civicEdu: 9, localEdu: 'Đ', literature: 7.1, history: 9.1, foreignLanguage: 8.1, pe: 'Đ', defense: 9.5, japanese: 9.1, experiential: 'Đ'
     },
@@ -180,10 +261,17 @@ export const initialStudents: Student[] = [
   {
     id: 's2', code: 'HS-002',
     classId: 'c1',
-    stt: 2,
+    stt: 5,
     fullName: 'Phạm Ngọc Bội Bội',
+    dob: '19/08/2015',
     gender: 'Nữ',
     ethnicity: 'Kinh',
+    nationality: 'Việt Nam',
+    religion: 'Không',
+    pob: 'Phú Yên',
+    currentAddress: 'Phường 5, TP. Tuy Hòa, Phú Yên',
+    phone: '0923456789',
+    citizenId: '054315009872',
     grades: {
       math: 9, physics: 9, chemistry: 8.9, biology: 8.4, it: 9.9, technology: 9, geography: 9, civicEdu: 9, localEdu: 'Đ', literature: 7.3, history: 9.2, foreignLanguage: 8.7, pe: 'Đ', defense: 9.7, japanese: 9.4, experiential: 'Đ'
     },
@@ -195,10 +283,17 @@ export const initialStudents: Student[] = [
   {
     id: 's3', code: 'HS-003',
     classId: 'c1',
-    stt: 3,
+    stt: 6,
     fullName: 'Nguyễn Ngọc Yến Chi',
+    dob: '05/06/2015',
     gender: 'Nữ',
     ethnicity: 'Kinh',
+    nationality: 'Việt Nam',
+    religion: 'Không',
+    pob: 'Phú Yên',
+    currentAddress: 'Phường 9, TP. Tuy Hòa, Phú Yên',
+    phone: '0934567890',
+    citizenId: '054315009873',
     grades: {
       math: 9.2, physics: 9.3, chemistry: 9.5, biology: 8.1, it: 9.9, technology: 9, geography: 9, civicEdu: 9, localEdu: 'Đ', literature: 7.1, history: 9, foreignLanguage: 9.7, pe: 'Đ', defense: 9.5, japanese: 9.4, experiential: 'Đ'
     },
@@ -213,8 +308,15 @@ export const initialStudents: Student[] = [
     classId: 'c2',
     stt: 1,
     fullName: 'Ngô Mạnh Dũng',
+    dob: '22/01/2015',
     gender: 'Nam',
     ethnicity: 'Kinh',
+    nationality: 'Việt Nam',
+    religion: 'Không',
+    pob: 'Hà Nội',
+    currentAddress: 'Phường 4, TP. Tuy Hòa, Phú Yên',
+    phone: '0945678901',
+    citizenId: '054215009874',
     grades: {
       math: 9.3, physics: 9.6, chemistry: 9.4, biology: 9, it: 9.9, technology: 9.5, geography: 9, civicEdu: 9.2, localEdu: 'Đ', literature: 7.1, history: 9.4, foreignLanguage: 9.5, pe: 'Đ', defense: 9.5, japanese: 9.1, experiential: 'Đ'
     },
@@ -228,8 +330,15 @@ export const initialStudents: Student[] = [
     classId: 'c2',
     stt: 2,
     fullName: 'Võ Huỳnh Duy Đôn',
+    dob: '15/10/2015',
     gender: 'Nam',
     ethnicity: 'Kinh',
+    nationality: 'Việt Nam',
+    religion: 'Không',
+    pob: 'Phú Yên',
+    currentAddress: 'Phường 2, TP. Tuy Hòa, Phú Yên',
+    phone: '0956789012',
+    citizenId: '054215009875',
     grades: {
       math: 7.3, physics: 8, chemistry: 7.6, biology: 7.5, it: 9, technology: 8, geography: 8.5, civicEdu: 8, localEdu: 'Đ', literature: 5.5, history: 9, foreignLanguage: 6.5, pe: 'Đ', defense: 9.4, japanese: 8.3, experiential: 'Đ'
     },
