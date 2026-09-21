@@ -11,6 +11,7 @@ import {
   Users, 
   Percent,
   FileSpreadsheet,
+  Download,
   HelpCircle,
   ChevronLeft,
   ChevronRight,
@@ -260,13 +261,13 @@ export default function TeacherAttendance({
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] relative p-3 sm:p-4 md:p-6 pb-28 md:pb-6 overflow-y-auto">
       {/* Top Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-3">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-3 sm:mb-4 gap-2.5 sm:gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold font-display text-slate-800 tracking-tight">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <h2 className="text-lg sm:text-2xl font-bold font-display text-slate-800 tracking-tight">
               Điểm danh {className ? `- Lớp ${className}` : ''}
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-200">
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
               {isToday ? 'Hôm nay' : `Ngày ${formattedDisplayDate}`}
             </span>
           </div>
@@ -276,30 +277,30 @@ export default function TeacherAttendance({
         </div>
 
         {/* Date Selector & Action Controls */}
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
           {/* Quick Date Switcher */}
-          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
+          <div className="flex items-center justify-between sm:justify-start bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
             <button
               onClick={() => changeDateByDays(-1)}
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors shrink-0"
               title="Ngày hôm trước"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             
-            <div className="flex items-center px-2">
+            <div className="flex items-center px-1.5 sm:px-2 min-w-0">
               <Calendar className="w-3.5 h-3.5 text-teal-600 mr-1.5 shrink-0" />
               <input 
                 type="date" 
                 value={attendanceDate}
                 onChange={(e) => setAttendanceDate(e.target.value)}
-                className="bg-transparent text-xs sm:text-sm font-semibold text-slate-700 outline-none cursor-pointer"
+                className="bg-transparent text-xs sm:text-sm font-semibold text-slate-700 outline-none cursor-pointer max-w-[130px] sm:max-w-none"
               />
             </div>
 
             <button
               onClick={() => changeDateByDays(1)}
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors shrink-0"
               title="Ngày tiếp theo"
             >
               <ChevronRight className="w-4 h-4" />
@@ -308,7 +309,7 @@ export default function TeacherAttendance({
             {!isToday && (
               <button
                 onClick={handleSetToday}
-                className="ml-1 px-2 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-semibold rounded-lg transition-colors"
+                className="ml-1 px-2 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-semibold rounded-lg transition-colors shrink-0"
                 title="Về ngày hôm nay"
               >
                 Hôm nay
@@ -316,25 +317,27 @@ export default function TeacherAttendance({
             )}
           </div>
 
-          {/* Mark All Present Button */}
-          <button
-            onClick={handleMarkAllPresent}
-            className="flex-1 sm:flex-none px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs"
-            title="Đánh dấu tất cả học sinh có mặt hôm nay"
-          >
-            <CheckCircle className="w-4 h-4 shrink-0" />
-            <span>Tất cả có mặt</span>
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Mark All Present Button */}
+            <button
+              onClick={handleMarkAllPresent}
+              className="flex-1 sm:flex-none px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap"
+              title="Đánh dấu tất cả học sinh có mặt hôm nay"
+            >
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              <span>Tất cả có mặt</span>
+            </button>
 
-          {/* Export Excel */}
-          <button
-            onClick={handleExportAttendance}
-            className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs"
-            title="Xuất bảng điểm danh ngày này ra Excel"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="hidden sm:inline">Xuất Excel</span>
-          </button>
+            {/* Export Excel Button */}
+            <button
+              onClick={handleExportAttendance}
+              className="px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap"
+              title="Xuất bảng điểm danh ngày này ra Excel"
+            >
+              <Download className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="hidden sm:inline">Xuất</span> Excel
+            </button>
+          </div>
         </div>
       </div>
 

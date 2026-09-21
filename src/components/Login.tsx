@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Shield, BookOpen, UserCircle, GraduationCap, ArrowRight, Lock, User, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, BookOpen, UserCircle, GraduationCap, ArrowRight, Lock, User, ArrowLeft, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
 import { SchoolClass, Student, UserAccount, AppSettings } from '../data';
 
 export default function Login({ 
@@ -22,14 +22,79 @@ export default function Login({
   const [password, setPassword] = useState('');
   const [studentCode, setStudentCode] = useState('');
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Restore remembered credentials on initial mount
+  useEffect(() => {
+    try {
+      const isRemembered = localStorage.getItem('edumanage_remember_me') === 'true';
+      if (isRemembered) {
+        setRememberMe(true);
+        const savedUsername = localStorage.getItem('edumanage_saved_username') || '';
+        const savedPassword = localStorage.getItem('edumanage_saved_password') || '';
+        const savedRole = localStorage.getItem('edumanage_saved_role') as 'admin' | 'teacher' | 'parent' | 'staff';
+        const savedStudentCode = localStorage.getItem('edumanage_saved_student_code') || '';
+
+        if (savedRole) setSelectedRole(savedRole);
+        if (savedUsername) setUsername(savedUsername);
+        if (savedPassword) setPassword(savedPassword);
+        if (savedStudentCode) setStudentCode(savedStudentCode);
+      }
+    } catch (e) {
+      console.error('Error loading remembered credentials:', e);
+    }
+  }, []);
+
+  const handleClearSaved = () => {
+    try {
+      localStorage.removeItem('edumanage_remember_me');
+      localStorage.removeItem('edumanage_saved_username');
+      localStorage.removeItem('edumanage_saved_password');
+      localStorage.removeItem('edumanage_saved_role');
+      localStorage.removeItem('edumanage_saved_student_code');
+    } catch (e) {
+      console.error(e);
+    }
+    setUsername('');
+    setPassword('');
+    setStudentCode('');
+    setRememberMe(false);
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
+    // Save or clear remembered credentials upon login attempt
+    const persistCredentials = () => {
+      try {
+        if (rememberMe) {
+          localStorage.setItem('edumanage_remember_me', 'true');
+          localStorage.setItem('edumanage_saved_role', selectedRole);
+          if (selectedRole === 'parent') {
+            localStorage.setItem('edumanage_saved_student_code', studentCode.trim());
+            localStorage.setItem('edumanage_saved_password', password);
+          } else {
+            localStorage.setItem('edumanage_saved_username', username.trim());
+            localStorage.setItem('edumanage_saved_password', password);
+          }
+        } else {
+          localStorage.removeItem('edumanage_remember_me');
+          localStorage.removeItem('edumanage_saved_username');
+          localStorage.removeItem('edumanage_saved_password');
+          localStorage.removeItem('edumanage_saved_role');
+          localStorage.removeItem('edumanage_saved_student_code');
+        }
+      } catch (err) {
+        console.error('Error updating remembered credentials:', err);
+      }
+    };
+
     if (selectedRole === 'teacher' || selectedRole === 'admin' || selectedRole === 'staff') {
       const user = users.find(u => u.username === username && u.password === password && ['admin', 'teacher', 'staff'].includes(u.role));
       if (user) {
+        persistCredentials();
         onLogin(user.role, undefined, user.id);
       } else {
         setError(`Tài khoản hoặc mật khẩu không đúng.`);
@@ -54,6 +119,7 @@ export default function Login({
       );
       
       if (studentByCode) {
+        persistCredentials();
         onLogin('parent', studentByCode.id);
         return;
       }
@@ -68,6 +134,7 @@ export default function Login({
         if (classObj) {
           const student = students.find(s => s.classId === classObj.id && s.stt === stt);
           if (student) {
+            persistCredentials();
             onLogin('parent', student.id);
             return;
           }
@@ -164,12 +231,21 @@ export default function Login({
                   <div className="relative">
                     <Lock className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input 
-                      type="password" 
+                      type={showPassword ? "text" : "password"} 
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="••••••"
-                      className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      className="w-full pl-10 pr-10 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                      tabIndex={-1}
+                      title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
               </>
@@ -195,16 +271,49 @@ export default function Login({
                   <div className="relative">
                     <Lock className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input 
-                      type="password" 
+                      type={showPassword ? "text" : "password"} 
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="Mật khẩu"
-                      className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      className="w-full pl-10 pr-10 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                      tabIndex={-1}
+                      title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
               </>
             )}
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-slate-600 hover:text-slate-800">
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="font-medium text-slate-700">Ghi nhớ đăng nhập</span>
+              </label>
+
+              {rememberMe && (username || studentCode) && (
+                <button
+                  type="button"
+                  onClick={handleClearSaved}
+                  className="text-xs text-slate-400 hover:text-rose-500 transition-colors"
+                  title="Xoá thông tin tài khoản đã lưu trên thiết bị"
+                >
+                  Xoá tài khoản đã lưu
+                </button>
+              )}
+            </div>
 
             <button 
               type="submit"

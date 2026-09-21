@@ -349,6 +349,21 @@ export default function App() {
       setLoggedInUserId(userId);
     }
     setIsAuthenticated(true);
+    setAppMode('edu_manager');
+
+    try {
+      const sessionData = JSON.stringify({
+        role: selectedRole,
+        studentId: studentId || '',
+        userId: userId || ''
+      });
+      sessionStorage.setItem('edumanage_session', sessionData);
+      if (localStorage.getItem('edumanage_remember_me') === 'true') {
+        localStorage.setItem('edumanage_auto_session', sessionData);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleLogout = () => {
@@ -356,7 +371,40 @@ export default function App() {
     setRole('admin');
     setParentStudentId('');
     setLoggedInUserId('');
+    try {
+      sessionStorage.removeItem('edumanage_session');
+      localStorage.removeItem('edumanage_auto_session');
+    } catch (e) {
+      console.error(e);
+    }
   };
+
+  // Restore authenticated session on reload
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      try {
+        const rawSession = sessionStorage.getItem('edumanage_session') || 
+          (localStorage.getItem('edumanage_remember_me') === 'true' ? localStorage.getItem('edumanage_auto_session') : null);
+        if (rawSession) {
+          const session = JSON.parse(rawSession);
+          if (session.userId && users.some(u => u.id === session.userId)) {
+            setRole(session.role);
+            setLoggedInUserId(session.userId);
+            if (session.studentId) setParentStudentId(session.studentId);
+            setIsAuthenticated(true);
+            setAppMode('edu_manager');
+          } else if (session.role === 'parent' && session.studentId && students.some(s => s.id === session.studentId)) {
+            setRole('parent');
+            setParentStudentId(session.studentId);
+            setIsAuthenticated(true);
+            setAppMode('edu_manager');
+          }
+        }
+      } catch (e) {
+        console.error('Error restoring session:', e);
+      }
+    }
+  }, [loading, users, students, isAuthenticated]);
 
   if (loading) {
     return (
@@ -425,42 +473,40 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f0fdfa]/30 flex flex-col font-sans text-slate-900 overflow-hidden">
-      {/* Top Navigation styled to match Hình 1.jpg */}
-      <header className="bg-white border-b border-teal-100 h-17 flex items-center justify-between px-4 sm:px-6 z-30 shrink-0 shadow-2xs">
+      {/* Top Navigation styled to match Hình 1.jpg - Streamlined for Mobile & Desktop */}
+      <header className="bg-white border-b border-teal-100 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 z-30 shrink-0 shadow-2xs">
         {/* Left: School Logo & Title & Sổ Chủ Nhiệm Số & Year Selector */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <SchoolLogo src={settings?.portalLogo || settings?.loginLogo} className="w-10 h-10 sm:w-11 sm:h-11" />
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xs sm:text-sm font-extrabold tracking-wider text-teal-800 uppercase font-display">
-                {settings?.appName || "Trường Phổ Thông Duy Tân"}
-              </h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm sm:text-base font-bold text-slate-800 tracking-tight">
+        <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1 mr-2">
+          <SchoolLogo src={settings?.portalLogo || settings?.loginLogo} className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 object-contain" />
+          <div className="flex flex-col min-w-0 justify-center">
+            <h1 className="text-[10px] sm:text-xs font-bold tracking-wider text-teal-800 uppercase font-display truncate max-w-[130px] sm:max-w-xs md:max-w-none">
+              {settings?.appName || "Trường Phổ Thông Duy Tân"}
+            </h1>
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
+              <span className="text-xs sm:text-sm md:text-base font-extrabold text-slate-800 tracking-tight whitespace-nowrap">
                 SỔ CHỦ NHIỆM SỐ
               </span>
               {schoolYears && schoolYears.length > 0 && (
-                <div className="relative inline-flex items-center">
+                <div className="relative inline-flex items-center shrink-0">
                   <select
                     value={selectedYearId}
                     onChange={(e) => handleYearChange(e.target.value)}
-                    className="appearance-none bg-[#ccfbf1]/80 hover:bg-[#ccfbf1] border border-[#5eead4] text-[#0f766e] text-xs font-bold rounded-full py-0.5 pl-2.5 pr-6 cursor-pointer outline-none transition-colors"
+                    className="appearance-none bg-[#ccfbf1]/80 hover:bg-[#ccfbf1] border border-[#5eead4] text-[#0f766e] text-[10px] sm:text-xs font-bold rounded-full py-0.5 pl-2 sm:pl-2.5 pr-5 sm:pr-6 cursor-pointer outline-none transition-colors"
                   >
                     {schoolYears.map(y => (
                       <option key={y.id} value={y.id}>{y.name}</option>
                     ))}
                   </select>
-                  <ChevronDown className="w-3 h-3 text-[#0f766e] absolute right-1.5 pointer-events-none" />
+                  <ChevronDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#0f766e] absolute right-1 sm:right-1.5 pointer-events-none" />
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Center: Tên lớp & GVCN */}
+        {/* Center: Tên lớp & GVCN (Desktop Only) */}
         {currentClass && (
-          <div className="hidden lg:flex items-center gap-3 bg-[#f0fdfa] border border-[#5eead4] px-4 py-1.5 rounded-2xl shadow-2xs">
+          <div className="hidden lg:flex items-center gap-3 bg-[#f0fdfa] border border-[#5eead4] px-4 py-1.5 rounded-2xl shadow-2xs shrink-0 mx-2">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-slate-500">Lớp:</span>
               <span className="text-sm font-extrabold text-teal-800 bg-[#ccfbf1] px-2 py-0.5 rounded-lg">
@@ -478,23 +524,23 @@ export default function App() {
         )}
 
         {/* Right: Notification Bell & User Profile Dropdown */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Notification Bell */}
           <button 
-            className="p-2 text-slate-400 hover:text-teal-700 hover:bg-[#f0fdfa] rounded-xl transition-colors relative"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-teal-700 hover:bg-[#f0fdfa] rounded-xl transition-colors relative shrink-0"
             title="Thông báo"
           >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
+            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="absolute top-1 sm:top-1.5 right-1 sm:right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
           </button>
 
           {/* User Menu Button */}
-          <div className="relative" ref={userMenuRef}>
+          <div className="relative shrink-0" ref={userMenuRef}>
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center gap-2.5 p-1 sm:p-1.5 rounded-2xl hover:bg-[#f0fdfa] transition-all border border-transparent hover:border-teal-200"
+              className="flex items-center gap-1.5 sm:gap-2.5 p-1 sm:p-1.5 rounded-2xl hover:bg-[#f0fdfa] transition-all border border-transparent hover:border-teal-200"
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#0d9488] text-white font-bold flex items-center justify-center text-sm shadow-xs shadow-teal-600/30">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#0d9488] text-white font-bold flex items-center justify-center text-xs sm:text-sm shadow-xs shadow-teal-600/30 shrink-0">
                 {currentUserInitial}
               </div>
               <div className="text-left hidden sm:block">
@@ -508,12 +554,12 @@ export default function App() {
                   {role === 'parent' && 'Phụ huynh'}
                 </div>
               </div>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
             {isUserMenuOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-teal-100 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="absolute right-0 mt-2 w-60 sm:w-56 bg-white rounded-2xl shadow-xl border border-teal-100 py-2 z-50 animate-in fade-in slide-in-from-top-2">
                 <div className="px-4 py-2 border-b border-slate-100 sm:hidden">
                   <div className="text-sm font-bold text-slate-800">{currentUserDisplayName}</div>
                   <div className="text-xs text-slate-500">

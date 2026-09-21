@@ -271,61 +271,126 @@ export default function TeacherView({
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden relative flex flex-col pb-16 md:pb-0">
-        {/* Context Bar for Year & Class Selector */}
-        <div className="bg-white px-6 py-3 border-b border-teal-100 flex flex-wrap justify-between items-center z-10 shadow-2xs shrink-0 gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">
-              {activeMenu === 'overview' && 'Tổng quan hệ thống'}
-              {activeMenu === 'schedule' && 'Thời khóa biểu lớp'}
-              {activeMenu === 'attendance' && 'Điểm danh học sinh'}
-              {activeMenu === 'students' && 'Danh sách lớp & Học sinh'}
-              {activeMenu === 'weekly_plan' && 'Kế hoạch tuần'}
-              {activeMenu === 'lunch_menu' && 'Thực đơn ăn trưa'}
-              {activeMenu === 'admin_classes' && 'Quản lý Lớp học'}
-              {activeMenu === 'admin_school_years' && 'Quản lý Năm học'}
-              {activeMenu === 'admin_accounts' && 'Quản lý tài khoản & Phân quyền'}
-              {activeMenu === 'admin_settings' && 'Cấu hình hệ thống'}
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* School Year Select */}
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-semibold text-slate-500 hidden sm:block">Năm học:</label>
-              <select 
-                value={selectedYearId} 
-                onChange={e => handleYearChange(e.target.value)}
-                className="bg-[#f0fdfa] border border-teal-200 text-teal-900 text-xs rounded-xl focus:ring-[#0d9488] focus:border-[#0d9488] px-2.5 py-1.5 font-medium shadow-2xs"
-              >
-                <option value="">Tất cả năm học</option>
-                {schoolYears?.map(y => (
-                  <option key={y.id} value={y.id}>{y.name}</option>
-                ))}
-              </select>
+        {/* Context Bar for Year & Class Selector - Optimized for Mobile & Desktop */}
+        <div className="bg-white px-3 sm:px-6 py-2 sm:py-3 border-b border-teal-100 z-10 shadow-2xs shrink-0">
+          {/* Mobile Layout (< sm) */}
+          <div className="sm:hidden flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-xs font-bold text-slate-800 tracking-tight truncate flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
+                <span className="truncate">
+                  {activeMenu === 'overview' && 'Tổng quan hệ thống'}
+                  {activeMenu === 'schedule' && 'Thời khóa biểu lớp'}
+                  {activeMenu === 'attendance' && 'Điểm danh học sinh'}
+                  {activeMenu === 'students' && 'Danh sách lớp & Học sinh'}
+                  {activeMenu === 'weekly_plan' && 'Kế hoạch tuần'}
+                  {activeMenu === 'lunch_menu' && 'Thực đơn ăn trưa'}
+                  {activeMenu === 'admin_classes' && 'Quản lý Lớp học'}
+                  {activeMenu === 'admin_school_years' && 'Quản lý Năm học'}
+                  {activeMenu === 'admin_accounts' && 'Quản lý người dùng'}
+                  {activeMenu === 'admin_settings' && 'Cấu hình hệ thống'}
+                </span>
+              </h2>
+              <span className="px-2 py-0.5 rounded-full bg-[#ccfbf1] text-[#0f766e] text-[10px] font-bold shrink-0">
+                {roleBadgeLabel}
+              </span>
             </div>
 
-            {/* Class Select */}
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-semibold text-slate-500 hidden sm:block">Lớp:</label>
-              <select 
-                value={selectedClassId} 
-                onChange={e => handleClassChange(e.target.value)}
-                className="bg-[#f0fdfa] border border-teal-200 text-teal-900 text-xs rounded-xl focus:ring-[#0d9488] focus:border-[#0d9488] px-2.5 py-1.5 font-medium shadow-2xs"
-              >
-                {allowedClasses.length > 0 ? (
-                  allowedClasses.map(c => {
-                    const studentCount = students.filter(s => s.classId === c.id).length;
-                    const yearName = schoolYears?.find(y => y.id === c.schoolYearId)?.name;
-                    return (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {studentCount > 0 ? `(${studentCount} HS)` : '(0 HS)'} {(!selectedYearId && yearName) ? `• ${yearName}` : ''} {(role === 'admin' || role === 'staff') ? '' : (user?.homeroomClasses?.includes(c.id) || c.homeroomTeacher === user?.fullName ? '• GVCN' : '• GVBM')}
-                      </option>
-                    );
-                  })
-                ) : (
-                  <option value="">{(role === 'admin' || role === 'staff') ? 'Chưa có lớp nào' : 'Không có lớp phân công'}</option>
-                )}
-              </select>
+            <div className="grid grid-cols-2 gap-2 w-full">
+              {/* Year Select (Mobile) */}
+              <div className="min-w-0">
+                <select 
+                  value={selectedYearId} 
+                  onChange={e => handleYearChange(e.target.value)}
+                  className="w-full bg-[#f0fdfa] border border-teal-200 text-teal-900 text-xs rounded-xl focus:ring-[#0d9488] focus:border-[#0d9488] px-2 py-1.5 font-medium shadow-2xs truncate"
+                >
+                  <option value="">Tất cả năm học</option>
+                  {schoolYears?.map(y => (
+                    <option key={y.id} value={y.id}>{y.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Class Select (Mobile) */}
+              <div className="min-w-0">
+                <select 
+                  value={selectedClassId} 
+                  onChange={e => handleClassChange(e.target.value)}
+                  className="w-full bg-[#f0fdfa] border border-teal-200 text-teal-900 text-xs rounded-xl focus:ring-[#0d9488] focus:border-[#0d9488] px-2 py-1.5 font-medium shadow-2xs truncate"
+                >
+                  {allowedClasses.length > 0 ? (
+                    allowedClasses.map(c => {
+                      const studentCount = students.filter(s => s.classId === c.id).length;
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {studentCount > 0 ? `(${studentCount} HS)` : '(0 HS)'}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    <option value="">{(role === 'admin' || role === 'staff') ? 'Chưa có lớp' : 'Không có lớp'}</option>
+                  )}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Layout (>= sm) */}
+          <div className="hidden sm:flex justify-between items-center gap-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">
+                {activeMenu === 'overview' && 'Tổng quan hệ thống'}
+                {activeMenu === 'schedule' && 'Thời khóa biểu lớp'}
+                {activeMenu === 'attendance' && 'Điểm danh học sinh'}
+                {activeMenu === 'students' && 'Danh sách lớp & Học sinh'}
+                {activeMenu === 'weekly_plan' && 'Kế hoạch tuần'}
+                {activeMenu === 'lunch_menu' && 'Thực đơn ăn trưa'}
+                {activeMenu === 'admin_classes' && 'Quản lý Lớp học'}
+                {activeMenu === 'admin_school_years' && 'Quản lý Năm học'}
+                {activeMenu === 'admin_accounts' && 'Quản lý tài khoản & Phân quyền'}
+                {activeMenu === 'admin_settings' && 'Cấu hình hệ thống'}
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* School Year Select */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-slate-500">Năm học:</label>
+                <select 
+                  value={selectedYearId} 
+                  onChange={e => handleYearChange(e.target.value)}
+                  className="bg-[#f0fdfa] border border-teal-200 text-teal-900 text-xs rounded-xl focus:ring-[#0d9488] focus:border-[#0d9488] px-2.5 py-1.5 font-medium shadow-2xs"
+                >
+                  <option value="">Tất cả năm học</option>
+                  {schoolYears?.map(y => (
+                    <option key={y.id} value={y.id}>{y.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Class Select */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-slate-500">Lớp:</label>
+                <select 
+                  value={selectedClassId} 
+                  onChange={e => handleClassChange(e.target.value)}
+                  className="bg-[#f0fdfa] border border-teal-200 text-teal-900 text-xs rounded-xl focus:ring-[#0d9488] focus:border-[#0d9488] px-2.5 py-1.5 font-medium shadow-2xs max-w-xs"
+                >
+                  {allowedClasses.length > 0 ? (
+                    allowedClasses.map(c => {
+                      const studentCount = students.filter(s => s.classId === c.id).length;
+                      const yearName = schoolYears?.find(y => y.id === c.schoolYearId)?.name;
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {studentCount > 0 ? `(${studentCount} HS)` : '(0 HS)'} {(!selectedYearId && yearName) ? `• ${yearName}` : ''} {(role === 'admin' || role === 'staff') ? '' : (user?.homeroomClasses?.includes(c.id) || c.homeroomTeacher === user?.fullName ? '• GVCN' : '• GVBM')}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    <option value="">{(role === 'admin' || role === 'staff') ? 'Chưa có lớp nào' : 'Không có lớp phân công'}</option>
+                  )}
+                </select>
+              </div>
             </div>
           </div>
         </div>

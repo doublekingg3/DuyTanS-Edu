@@ -139,17 +139,17 @@ Chiều - Tiết 4 (16:15-17:00),,,,,,,`;
   }
 
   return (
-    <div className="p-8 h-full bg-slate-50 flex flex-col">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="p-3 sm:p-6 md:p-8 h-full bg-slate-50 flex flex-col overflow-y-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div>
-          <h2 className="text-2xl font-bold font-display text-slate-800 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-indigo-600" />
+          <h2 className="text-xl sm:text-2xl font-bold font-display text-slate-800 flex items-center gap-2">
+            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
             Thời khoá biểu
           </h2>
-          <p className="text-slate-500 mt-1">Quản lý và cập nhật thời khoá biểu cho lớp học</p>
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1">Quản lý và cập nhật thời khoá biểu cho lớp học</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm mr-2 hidden sm:flex">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-2xs mr-1 hidden sm:flex">
             <button 
               onClick={() => setViewMode('desktop')}
               className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm font-medium transition-colors ${viewMode === 'desktop' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
@@ -172,17 +172,17 @@ Chiều - Tiết 4 (16:15-17:00),,,,,,,`;
           />
           <button 
             onClick={handleDownloadTemplate}
-            className="px-4 py-2 bg-white text-slate-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white text-slate-700 font-medium rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 shadow-2xs text-xs sm:text-sm whitespace-nowrap"
           >
             <Download className="w-4 h-4 text-slate-500" />
-            Tải mẫu (CSV)
+            <span>Tải mẫu (CSV)</span>
           </button>
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 shadow-2xs text-xs sm:text-sm whitespace-nowrap"
           >
             <Upload className="w-4 h-4" />
-            Tải lên TKB (CSV/Excel)
+            <span>Tải lên TKB</span>
           </button>
         </div>
       </div>
