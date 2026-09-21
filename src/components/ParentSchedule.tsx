@@ -147,14 +147,14 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                     {days.map(day => {
                       const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
                       return (
-                        <td key={day.key} className="px-3.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
-                          {cellVal ? (
-                            <div className="inline-block px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200/80 text-teal-950 font-bold text-xs sm:text-sm shadow-2xs">
-                              {cellVal}
-                            </div>
-                          ) : (
-                            <span className="text-slate-300">-</span>
-                          )}
+                        <td key={day.key} className="px-2 sm:px-2.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
+                          <div className={`w-full h-[38px] px-2 py-1.5 rounded-lg text-xs sm:text-sm font-bold border transition-colors flex items-center justify-center ${
+                            cellVal
+                              ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
+                              : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
+                          }`}>
+                            <span className="truncate">{cellVal || '-'}</span>
+                          </div>
                         </td>
                       );
                     })}
@@ -230,14 +230,14 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                     {days.map(day => {
                       const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
                       return (
-                        <td key={day.key} className="px-3.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
-                          {cellVal ? (
-                            <div className="inline-block px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200/80 text-teal-950 font-bold text-xs sm:text-sm shadow-2xs">
-                              {cellVal}
-                            </div>
-                          ) : (
-                            <span className="text-slate-300">-</span>
-                          )}
+                        <td key={day.key} className="px-2 sm:px-2.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
+                          <div className={`w-full h-[38px] px-2 py-1.5 rounded-lg text-xs sm:text-sm font-bold border transition-colors flex items-center justify-center ${
+                            cellVal
+                              ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
+                              : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
+                          }`}>
+                            <span className="truncate">{cellVal || '-'}</span>
+                          </div>
                         </td>
                       );
                     })}
@@ -293,8 +293,8 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                               <span className="font-bold text-slate-800 text-[14px]">{norm.name}</span>
                               <span className="text-[14px] font-mono font-bold text-teal-700">{norm.timeRange}</span>
                             </div>
-                            <div className="font-bold text-teal-950 text-[14px] bg-[#ccfbf1] px-3 py-1.5 rounded-lg border border-[#5eead4] shadow-2xs">
-                              {cellVal}
+                            <div className="w-40 sm:w-48 h-[38px] bg-[#ccfbf1] px-2.5 py-1.5 rounded-lg border border-[#5eead4] text-teal-950 text-[14px] font-bold shadow-2xs flex items-center justify-center">
+                              <span className="truncate">{cellVal}</span>
                             </div>
                           </div>
                         );
@@ -336,8 +336,8 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                               <span className="font-bold text-slate-800 text-[14px]">{norm.name}</span>
                               <span className="text-[14px] font-mono font-bold text-teal-700">{norm.timeRange}</span>
                             </div>
-                            <div className="font-bold text-teal-950 text-[14px] bg-[#ccfbf1] px-3 py-1.5 rounded-lg border border-[#5eead4] shadow-2xs">
-                              {cellVal}
+                            <div className="w-40 sm:w-48 h-[38px] bg-[#ccfbf1] px-2.5 py-1.5 rounded-lg border border-[#5eead4] text-teal-950 text-[14px] font-bold shadow-2xs flex items-center justify-center">
+                              <span className="truncate">{cellVal}</span>
                             </div>
                           </div>
                         );

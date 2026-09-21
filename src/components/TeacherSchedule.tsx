@@ -525,21 +525,23 @@ export default function TeacherSchedule({
                       {(['t2', 't3', 't4', 't5', 't6', 't7'] as const).map(dayKey => {
                         const cellVal = period[dayKey] || '';
                         return (
-                          <td key={dayKey} className="px-2.5 sm:px-3.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
+                          <td key={dayKey} className="px-2 sm:px-2.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
                             {isEditing ? (
                               <input 
                                 type="text"
                                 value={cellVal}
                                 onChange={e => handleCellChange(originalIdx, dayKey, e.target.value)}
                                 placeholder="Nhập môn..."
-                                className="w-full bg-white border border-teal-200 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-center"
+                                className="w-full h-[38px] bg-white border border-teal-300 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-center shadow-2xs"
                               />
-                            ) : cellVal.trim() ? (
-                              <div className="inline-block px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200/80 text-teal-950 font-bold text-xs sm:text-sm shadow-2xs hover:bg-[#ccfbf1] transition-colors max-w-full truncate">
-                                {cellVal}
-                              </div>
                             ) : (
-                              <span className="text-slate-300">-</span>
+                              <div className={`w-full h-[38px] px-2 py-1.5 rounded-lg text-xs sm:text-sm font-bold border transition-colors flex items-center justify-center ${
+                                cellVal.trim()
+                                  ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
+                                  : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
+                              }`}>
+                                <span className="truncate">{cellVal.trim() || '-'}</span>
+                              </div>
                             )}
                           </td>
                         );
@@ -619,21 +621,23 @@ export default function TeacherSchedule({
                       {(['t2', 't3', 't4', 't5', 't6', 't7'] as const).map(dayKey => {
                         const cellVal = period[dayKey] || '';
                         return (
-                          <td key={dayKey} className="px-2.5 sm:px-3.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
+                          <td key={dayKey} className="px-2 sm:px-2.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
                             {isEditing ? (
                               <input 
                                 type="text"
                                 value={cellVal}
                                 onChange={e => handleCellChange(originalIdx, dayKey, e.target.value)}
                                 placeholder="Nhập môn..."
-                                className="w-full bg-white border border-teal-200 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-center"
+                                className="w-full h-[38px] bg-white border border-teal-300 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-center shadow-2xs"
                               />
-                            ) : cellVal.trim() ? (
-                              <div className="inline-block px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200/80 text-teal-950 font-bold text-xs sm:text-sm shadow-2xs hover:bg-[#ccfbf1] transition-colors max-w-full truncate">
-                                {cellVal}
-                              </div>
                             ) : (
-                              <span className="text-slate-300">-</span>
+                              <div className={`w-full h-[38px] px-2 py-1.5 rounded-lg text-xs sm:text-sm font-bold border transition-colors flex items-center justify-center ${
+                                cellVal.trim()
+                                  ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
+                                  : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
+                              }`}>
+                                <span className="truncate">{cellVal.trim() || '-'}</span>
+                              </div>
                             )}
                           </td>
                         );
@@ -691,19 +695,23 @@ export default function TeacherSchedule({
                                     <div className="font-bold text-slate-800 text-[14px]">{norm.name}</div>
                                     <div className="text-[14px] font-mono font-bold text-teal-700">{norm.timeRange}</div>
                                   </div>
-                                  <div className="flex-1 text-right">
+                                  <div className="flex-1 text-right flex justify-end">
                                     {isEditing ? (
                                       <input
                                         type="text"
                                         value={cellVal}
                                         onChange={e => handleCellChange(originalIdx, dayKey, e.target.value)}
                                         placeholder="Nhập môn..."
-                                        className="w-36 bg-white border border-teal-200 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-teal-950 text-right focus:ring-2 focus:ring-teal-500 outline-none"
+                                        className="w-40 sm:w-48 bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-teal-950 text-center h-[38px] focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs"
                                       />
                                     ) : (
-                                      <span className="font-bold text-teal-950 text-[14px] bg-[#ccfbf1] px-3 py-1.5 rounded-lg border border-[#5eead4] inline-block shadow-2xs">
-                                        {cellVal || '-'}
-                                      </span>
+                                      <div className={`w-40 sm:w-48 h-[38px] px-2.5 py-1.5 rounded-lg border text-[14px] font-bold flex items-center justify-center transition-colors ${
+                                        cellVal.trim()
+                                          ? 'bg-[#ccfbf1] border-[#5eead4] text-teal-950 shadow-2xs'
+                                          : 'bg-slate-50 border-slate-200 text-slate-400'
+                                      }`}>
+                                        <span className="truncate">{cellVal.trim() || '-'}</span>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
@@ -745,19 +753,23 @@ export default function TeacherSchedule({
                                     <div className="font-bold text-slate-800 text-[14px]">{norm.name}</div>
                                     <div className="text-[14px] font-mono font-bold text-teal-700">{norm.timeRange}</div>
                                   </div>
-                                  <div className="flex-1 text-right">
+                                  <div className="flex-1 text-right flex justify-end">
                                     {isEditing ? (
                                       <input
                                         type="text"
                                         value={cellVal}
                                         onChange={e => handleCellChange(originalIdx, dayKey, e.target.value)}
                                         placeholder="Nhập môn..."
-                                        className="w-36 bg-white border border-teal-200 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-teal-950 text-right focus:ring-2 focus:ring-teal-500 outline-none"
+                                        className="w-40 sm:w-48 bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-teal-950 text-center h-[38px] focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs"
                                       />
                                     ) : (
-                                      <span className="font-bold text-teal-950 text-[14px] bg-[#ccfbf1] px-3 py-1.5 rounded-lg border border-[#5eead4] inline-block shadow-2xs">
-                                        {cellVal || '-'}
-                                      </span>
+                                      <div className={`w-40 sm:w-48 h-[38px] px-2.5 py-1.5 rounded-lg border text-[14px] font-bold flex items-center justify-center transition-colors ${
+                                        cellVal.trim()
+                                          ? 'bg-[#ccfbf1] border-[#5eead4] text-teal-950 shadow-2xs'
+                                          : 'bg-slate-50 border-slate-200 text-slate-400'
+                                      }`}>
+                                        <span className="truncate">{cellVal.trim() || '-'}</span>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
