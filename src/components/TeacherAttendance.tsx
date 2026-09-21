@@ -7,12 +7,16 @@ import {
   XCircle, 
   Clock, 
   AlertCircle, 
-  Download, 
   Check, 
   Users, 
   Percent,
   FileSpreadsheet,
-  HelpCircle
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  Tag,
+  Edit2
 } from 'lucide-react';
 import { useAlert } from '../contexts/AlertContext';
 
@@ -24,6 +28,19 @@ interface TeacherAttendanceProps {
   onEditStudent: (student: Student) => void;
 }
 
+const getLocalDateISO = (date: Date = new Date()) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const QUICK_REASONS = {
+  absent: ['Có phép', 'Nghỉ ốm', 'Không phép', 'Việc gia đình'],
+  late: ['Kẹt xe', 'Xe hỏng', 'Ngủ quên', 'Lý do khác'],
+  leave_early: ['PH đón sớm', 'Bị mệt', 'Khám bệnh', 'Việc gấp']
+};
+
 export default function TeacherAttendance({
   role,
   students,
@@ -32,9 +49,7 @@ export default function TeacherAttendance({
   onEditStudent
 }: TeacherAttendanceProps) {
   const { showAlert } = useAlert();
-  const [attendanceDate, setAttendanceDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
-  });
+  const [attendanceDate, setAttendanceDate] = useState(() => getLocalDateISO());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'absent' | 'late' | 'leave_early' | 'unmarked'>('all');
   const [editingReasonStudentId, setEditingReasonStudentId] = useState<string | null>(null);
@@ -115,7 +130,6 @@ export default function TeacherAttendance({
     const currentRecords = student.attendanceRecords || {};
     const existingForDate = currentRecords[attendanceDate];
     
-    // Nếu chuyển sang có mặt thì xóa lý do hoặc giữ lại tùy ý
     const updatedStudent: Student = {
       ...student,
       attendanceRecords: {
@@ -151,6 +165,20 @@ export default function TeacherAttendance({
     setEditingReasonStudentId(null);
   };
 
+  // Thay đổi ngày (lùi / tiến)
+  const changeDateByDays = (delta: number) => {
+    const [y, m, d] = attendanceDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() + delta);
+    setAttendanceDate(getLocalDateISO(date));
+  };
+
+  const handleSetToday = () => {
+    setAttendanceDate(getLocalDateISO());
+  };
+
+  const isToday = attendanceDate === getLocalDateISO();
+
   // Điểm danh nhanh: Đánh dấu tất cả có mặt
   const handleMarkAllPresent = () => {
     if (sortedStudents.length === 0) {
@@ -175,7 +203,7 @@ export default function TeacherAttendance({
       onEditStudent(updatedStudent);
     });
 
-    showAlert(`Đã điểm danh Có mặt cho toàn bộ ${sortedStudents.length} học sinh ngày ${new Date(attendanceDate).toLocaleDateString('vi-VN')}`, 'success');
+    showAlert(`Đã điểm danh Có mặt cho toàn bộ ${sortedStudents.length} học sinh ngày ${formattedDisplayDate}`, 'success');
   };
 
   // Xuất báo cáo điểm danh ra Excel
@@ -186,7 +214,7 @@ export default function TeacherAttendance({
         return;
       }
       const XLSX = await import('xlsx');
-      const formattedDate = new Date(attendanceDate).toLocaleDateString('vi-VN');
+      const formattedDate = formattedDisplayDate;
       
       const data = sortedStudents.map((s, idx) => {
         const record = s.attendanceRecords?.[attendanceDate];
@@ -230,61 +258,151 @@ export default function TeacherAttendance({
   }, [attendanceDate]);
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] relative p-4 md:p-6 overflow-y-auto">
+    <div className="flex flex-col h-full bg-[#f8fafc] relative p-3 sm:p-4 md:p-6 pb-28 md:pb-6 overflow-y-auto">
       {/* Top Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold font-display text-slate-800 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-bold font-display text-slate-800 tracking-tight">
               Điểm danh {className ? `- Lớp ${className}` : ''}
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-200">
-              Ngày {formattedDisplayDate}
+              {isToday ? 'Hôm nay' : `Ngày ${formattedDisplayDate}`}
             </span>
           </div>
-          <p className="text-slate-500 text-sm mt-1">
-            Quản lý chuyên cần hàng ngày • Tự động đồng bộ lên hệ thống máy chủ và Firebase
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
+            Quản lý chuyên cần • Chạm nhanh để điểm danh trực tiếp
           </p>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          {/* Date Picker */}
-          <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs focus-within:ring-2 focus-within:ring-teal-500">
-            <Calendar className="w-4 h-4 text-teal-600 mr-2 shrink-0" />
-            <span className="text-xs font-medium text-slate-500 mr-1.5 hidden sm:inline">Ngày:</span>
-            <input 
-              type="date" 
-              value={attendanceDate}
-              onChange={(e) => setAttendanceDate(e.target.value)}
-              className="bg-transparent text-sm font-semibold text-slate-700 outline-none cursor-pointer"
-            />
+        {/* Date Selector & Action Controls */}
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+          {/* Quick Date Switcher */}
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
+            <button
+              onClick={() => changeDateByDays(-1)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+              title="Ngày hôm trước"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            
+            <div className="flex items-center px-2">
+              <Calendar className="w-3.5 h-3.5 text-teal-600 mr-1.5 shrink-0" />
+              <input 
+                type="date" 
+                value={attendanceDate}
+                onChange={(e) => setAttendanceDate(e.target.value)}
+                className="bg-transparent text-xs sm:text-sm font-semibold text-slate-700 outline-none cursor-pointer"
+              />
+            </div>
+
+            <button
+              onClick={() => changeDateByDays(1)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+              title="Ngày tiếp theo"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {!isToday && (
+              <button
+                onClick={handleSetToday}
+                className="ml-1 px-2 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-semibold rounded-lg transition-colors"
+                title="Về ngày hôm nay"
+              >
+                Hôm nay
+              </button>
+            )}
           </div>
 
-          {/* Mark All Present */}
+          {/* Mark All Present Button */}
           <button
             onClick={handleMarkAllPresent}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-xl transition-colors flex items-center gap-2 shadow-xs"
-            title="Đánh dấu tất cả học sinh trong lớp có mặt hôm nay"
+            className="flex-1 sm:flex-none px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs"
+            title="Đánh dấu tất cả học sinh có mặt hôm nay"
           >
-            <CheckCircle className="w-4 h-4" />
+            <CheckCircle className="w-4 h-4 shrink-0" />
             <span>Tất cả có mặt</span>
           </button>
 
           {/* Export Excel */}
           <button
             onClick={handleExportAttendance}
-            className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs"
+            className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs"
             title="Xuất bảng điểm danh ngày này ra Excel"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="hidden sm:inline">Xuất Excel</span>
           </button>
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      {/* MOBILE-ONLY: Compact Progress & Summary Strip (< md) */}
+      <div className="md:hidden bg-white rounded-2xl border border-slate-200 p-3 mb-3 shadow-2xs space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-500">Sĩ số: <strong className="text-slate-800">{stats.total}</strong></span>
+            <span className="text-slate-300">•</span>
+            <span className="text-xs font-semibold text-teal-700">Tỷ lệ: {stats.rate}%</span>
+          </div>
+          {stats.unmarked > 0 ? (
+            <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              Còn {stats.unmarked} chưa ĐD
+            </span>
+          ) : (
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+              <Check className="w-3 h-3" /> Đã xong
+            </span>
+          )}
+        </div>
+
+        {/* Mini segmented stat bar */}
+        <div className="grid grid-cols-4 gap-1.5 text-center">
+          <div 
+            onClick={() => setStatusFilter(statusFilter === 'present' ? 'all' : 'present')}
+            className={`py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
+              statusFilter === 'present' ? 'bg-emerald-600 text-white font-bold' : 'bg-emerald-50 text-emerald-800'
+            }`}
+          >
+            <div className="text-xs font-bold leading-tight">{stats.present}</div>
+            <div className="text-[10px] opacity-80 leading-tight">Có mặt</div>
+          </div>
+
+          <div 
+            onClick={() => setStatusFilter(statusFilter === 'absent' ? 'all' : 'absent')}
+            className={`py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
+              statusFilter === 'absent' ? 'bg-red-600 text-white font-bold' : 'bg-red-50 text-red-800'
+            }`}
+          >
+            <div className="text-xs font-bold leading-tight">{stats.absent}</div>
+            <div className="text-[10px] opacity-80 leading-tight">Vắng</div>
+          </div>
+
+          <div 
+            onClick={() => setStatusFilter(statusFilter === 'late' ? 'all' : 'late')}
+            className={`py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
+              statusFilter === 'late' ? 'bg-amber-500 text-white font-bold' : 'bg-amber-50 text-amber-800'
+            }`}
+          >
+            <div className="text-xs font-bold leading-tight">{stats.late}</div>
+            <div className="text-[10px] opacity-80 leading-tight">Trễ</div>
+          </div>
+
+          <div 
+            onClick={() => setStatusFilter(statusFilter === 'leave_early' ? 'all' : 'leave_early')}
+            className={`py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
+              statusFilter === 'leave_early' ? 'bg-indigo-600 text-white font-bold' : 'bg-indigo-50 text-indigo-800'
+            }`}
+          >
+            <div className="text-xs font-bold leading-tight">{stats.leaveEarly}</div>
+            <div className="text-[10px] opacity-80 leading-tight">Về sớm</div>
+          </div>
+        </div>
+      </div>
+
+      {/* DESKTOP KPI Cards (Hidden on mobile) */}
+      <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 mb-1">
             <span className="text-xs font-medium">Sĩ số lớp</span>
@@ -345,9 +463,9 @@ export default function TeacherAttendance({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 mb-3">
         {/* Status Filter Tabs */}
-        <div className="flex items-center overflow-x-auto gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center overflow-x-auto gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs hide-scrollbar">
           <button
             onClick={() => setStatusFilter('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
@@ -384,10 +502,10 @@ export default function TeacherAttendance({
             <button
               onClick={() => setStatusFilter('unmarked')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
-                statusFilter === 'unmarked' ? 'bg-slate-700 text-white shadow-2xs' : 'text-amber-700 bg-amber-50 hover:bg-amber-100'
+                statusFilter === 'unmarked' ? 'bg-slate-800 text-white shadow-2xs' : 'text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold'
               }`}
             >
-              Chưa điểm danh ({stats.unmarked})
+              Chưa ĐD ({stats.unmarked})
             </button>
           )}
         </div>
@@ -397,16 +515,226 @@ export default function TeacherAttendance({
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input 
             type="text" 
-            placeholder="Tìm theo tên hoặc mã HS..." 
+            placeholder="Tìm tên hoặc mã HS..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 border border-slate-200 bg-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
+            className="w-full pl-9 pr-4 py-1.5 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
           />
         </div>
       </div>
 
-      {/* Main Table - NO "Thao tác" column */}
-      <div className="flex-1 bg-white border border-teal-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+      {/* MOBILE VIEW (< md): Touch-Friendly Card List */}
+      <div className="md:hidden space-y-2.5">
+        {filteredStudents.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500">
+            <HelpCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="font-semibold text-slate-700 text-sm">Không tìm thấy học sinh nào</p>
+            <p className="text-xs text-slate-400 mt-1">Thử thay đổi bộ lọc hoặc tìm kiếm theo tên khác</p>
+          </div>
+        ) : (
+          filteredStudents.map((student, idx) => {
+            const record = student.attendanceRecords?.[attendanceDate];
+            const currentStatus = record?.status;
+            const currentReason = record?.reason || '';
+            const isEditingReason = editingReasonStudentId === student.id;
+
+            return (
+              <div 
+                key={student.id}
+                className={`bg-white rounded-2xl border p-3 transition-all shadow-2xs ${
+                  currentStatus === 'present'
+                    ? 'border-emerald-200 bg-emerald-50/10'
+                    : currentStatus === 'absent'
+                    ? 'border-red-200 bg-red-50/15'
+                    : currentStatus === 'late'
+                    ? 'border-amber-200 bg-amber-50/15'
+                    : currentStatus === 'leave_early'
+                    ? 'border-indigo-200 bg-indigo-50/15'
+                    : 'border-slate-200/90'
+                }`}
+              >
+                {/* Card Header: STT, Student Name, Gender, Code */}
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold flex items-center justify-center shrink-0">
+                      {student.stt || idx + 1}
+                    </span>
+                    <div>
+                      <div className="font-bold text-slate-800 text-sm leading-tight">
+                        {student.fullName}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-1.5">
+                        <span>{student.code}</span>
+                        <span>•</span>
+                        <span className={`px-1 py-0.2 rounded text-[10px] font-medium ${
+                          student.gender === 'Nữ' ? 'bg-pink-50 text-pink-700' : 'bg-blue-50 text-blue-700'
+                        }`}>
+                          {student.gender}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Indicator Badge */}
+                  <div>
+                    {currentStatus === 'present' && (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        ✓ Có mặt
+                      </span>
+                    )}
+                    {currentStatus === 'absent' && (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-800 border border-red-200">
+                        ✕ Vắng
+                      </span>
+                    )}
+                    {currentStatus === 'late' && (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        ⏱ Đi trễ
+                      </span>
+                    )}
+                    {currentStatus === 'leave_early' && (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                        Về sớm
+                      </span>
+                    )}
+                    {!currentStatus && (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                        Chưa ĐD
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4 Large Touch Buttons (Có mặt, Vắng, Trễ, Về sớm) */}
+                <div className="grid grid-cols-4 gap-1.5 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => handleStatusChange(student, 'present')}
+                    className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
+                      currentStatus === 'present'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200/60'
+                    }`}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Có mặt</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleStatusChange(student, 'absent')}
+                    className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
+                      currentStatus === 'absent'
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-700 border border-slate-200/60'
+                    }`}
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Vắng</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleStatusChange(student, 'late')}
+                    className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
+                      currentStatus === 'late'
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-700 border border-slate-200/60'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Trễ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleStatusChange(student, 'leave_early')}
+                    className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
+                      currentStatus === 'leave_early'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200/60'
+                    }`}
+                  >
+                    <span>Về sớm</span>
+                  </button>
+                </div>
+
+                {/* Reason Section (When absent, late, or leave_early, or existing note) */}
+                {currentStatus && currentStatus !== 'present' && (
+                  <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                    {/* Quick 1-tap reason tag chips */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] text-slate-400 font-medium">Chọn nhanh:</span>
+                      {(QUICK_REASONS[currentStatus] || []).map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => handleSaveReason(student, tag)}
+                          className={`px-2 py-0.5 rounded-lg text-[11px] font-medium border transition-colors ${
+                            currentReason === tag
+                              ? 'bg-teal-700 text-white border-teal-700 font-bold'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-teal-50'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Inline edit reason */}
+                    {isEditingReason ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={reasonInput}
+                          onChange={(e) => setReasonInput(e.target.value)}
+                          placeholder="Nhập lý do cụ thể..."
+                          className="px-2.5 py-1 text-xs border border-teal-400 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 w-full"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveReason(student, reasonInput);
+                            else if (e.key === 'Escape') setEditingReasonStudentId(null);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveReason(student, reasonInput)}
+                          className="px-2.5 py-1 bg-teal-600 text-white text-xs font-semibold rounded-lg hover:bg-teal-700 shrink-0"
+                        >
+                          Lưu
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingReasonStudentId(null)}
+                          className="px-2 py-1 text-slate-500 text-xs rounded-lg hover:bg-slate-100 shrink-0"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <div 
+                        onClick={() => {
+                          setEditingReasonStudentId(student.id);
+                          setReasonInput(currentReason);
+                        }}
+                        className="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 cursor-pointer"
+                      >
+                        <span className={`text-xs ${currentReason ? 'text-slate-800 font-medium' : 'text-slate-400 italic'}`}>
+                          {currentReason ? `Lý do: ${currentReason}` : 'Chạm để gõ lý do khác...'}
+                        </span>
+                        <Edit2 className="w-3 h-3 text-slate-400 shrink-0" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* DESKTOP VIEW (≥ md): Full Data Table */}
+      <div className="hidden md:flex flex-1 bg-white border border-teal-100 rounded-2xl shadow-sm overflow-hidden flex-col">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-[#0f766e] text-white font-semibold">
