@@ -38,7 +38,7 @@ export default function TeacherDashboard({ classId, className, students }: Teach
     { week: 'Tuần 2', present: 93, absent: 4, late: 3 },
     { week: 'Tuần 3', present: 97, absent: 1, late: 2 },
     { week: 'Tuần 4', present: 90, absent: 5, late: 5 },
-    { week: 'Tuần 5 (HT)', present: todayStats.total ? (todayStats.present / todayStats.total) * 100 : 0, absent: todayStats.total ? (todayStats.absent / todayStats.total) * 100 : 0, late: todayStats.total ? (todayStats.late / todayStats.total) * 100 : 0 }
+    { week: 'Tuần 5', present: todayStats.total ? (todayStats.present / todayStats.total) * 100 : 0, absent: todayStats.total ? (todayStats.absent / todayStats.total) * 100 : 0, late: todayStats.total ? (todayStats.late / todayStats.total) * 100 : 0 }
   ].map(d => ({
     week: d.week,
     'Có mặt (%)': Number(d.present.toFixed(1)),

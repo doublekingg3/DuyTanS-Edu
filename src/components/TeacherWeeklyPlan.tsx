@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { exportWeeklyPlanToDocx } from '../lib/docxExport';
 import { exportCumulativePlanToDocx } from '../lib/docxCumulativeExport';
+import { generateSchoolWeeks, getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
 
 export default function TeacherWeeklyPlan({ classId, role, className, schoolYearName, teacherName }: { classId: string, role?: string, className?: string, schoolYearName?: string, teacherName?: string }) {
   const { showAlert, showConfirm } = useAlert();
@@ -17,9 +18,14 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
     endDate: string;
     dutyTeam: string;
     tasks: string[];
+    dateRangeFormatted?: string;
   }[]>([]);
   
   const [loading, setLoading] = useState(true);
+
+  // Tính tuần thực tế theo lịch trường (17/08 - 21/08...)
+  const realtimeCurrentWeek = getCurrentSchoolWeek(schoolYearName);
+  const [selectedWeek, setSelectedWeek] = useState(() => realtimeCurrentWeek);
 
   useEffect(() => {
     if (!classId) {
@@ -30,13 +36,10 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
     const docRef = doc(db, 'class_weekly_plans', classId);
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       const data = snapshot.data();
+      const standardWeeks = generateSchoolWeeks(schoolYearName, 42);
       
-      const startYearStr = schoolYearName ? schoolYearName.match(/\d{4}/)?.[0] : null;
-      const startYear = startYearStr ? parseInt(startYearStr) : new Date().getFullYear();
-      const baseDate = new Date(startYear, 8, 5); // 5th Sept
-      
-      const newWeeks = Array.from({ length: 42 }, (_, i) => {
-        const weekId = i + 1;
+      const newWeeks = standardWeeks.map((stdWeek) => {
+        const weekId = stdWeek.id;
         const weekData = data?.weeks?.[weekId];
         
         if (weekData) {
@@ -44,27 +47,24 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
             id: weekId,
             name: `Tuần ${weekId}`,
             status: weekData.status || 'empty',
-            startDate: weekData.startDate || '',
-            endDate: weekData.endDate || '',
+            startDate: weekData.startDate || stdWeek.startDate,
+            endDate: weekData.endDate || stdWeek.endDate,
             dutyTeam: weekData.dutyTeam || 'Tổ 1',
-            tasks: weekData.tasks || []
+            tasks: weekData.tasks || [],
+            dateRangeFormatted: `${stdWeek.startFormatted} - ${stdWeek.endFormatted}`
           };
         }
         
-        // Default if no data
-        const sDate = new Date(baseDate);
-        sDate.setDate(sDate.getDate() + (i * 7));
-        const eDate = new Date(sDate);
-        eDate.setDate(eDate.getDate() + 5);
-        
+        // Mặc định chuẩn thời gian thực từ Thứ 2 đến Thứ 6
         return {
           id: weekId,
           name: `Tuần ${weekId}`,
-          status: 'empty',
-          startDate: sDate.toISOString().split('T')[0],
-          endDate: eDate.toISOString().split('T')[0],
+          status: 'empty' as const,
+          startDate: stdWeek.startDate,
+          endDate: stdWeek.endDate,
           dutyTeam: 'Tổ 1',
-          tasks: []
+          tasks: [],
+          dateRangeFormatted: `${stdWeek.startFormatted} - ${stdWeek.endFormatted}`
         };
       });
       
@@ -112,7 +112,6 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
     if (scrollRef.current) scrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
   };
   
-  const [selectedWeek, setSelectedWeek] = useState(5);
   const [newTask, setNewTask] = useState('');
   const currentWeekData = weeks.find(w => w.id === selectedWeek);
   
@@ -173,18 +172,32 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
         <div className="flex items-center gap-2">
           <button onClick={scrollLeft} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
           <div ref={scrollRef} className="flex flex-1 gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden" style={{ scrollBehavior: 'smooth' }}>
-            {weeks.map(week => (
-              <button 
-                key={week.id}
-                onClick={() => setSelectedWeek(week.id)}
-                className={`flex-shrink-0 flex flex-col items-center justify-center w-24 py-2 rounded-xl border transition-all ${selectedWeek === week.id ? 'bg-teal-600 border-teal-600 text-white shadow-md' : 'bg-white border-slate-200 hover:border-teal-400'}`}
-              >
-                <span className="font-bold text-sm">{week.name}</span>
-                {week.status === 'approved' && <span className={`text-xs mt-1 ${selectedWeek === week.id ? 'text-teal-100' : 'text-emerald-600'}`}>✓ Đã duyệt</span>}
-                {week.status === 'draft' && <span className={`text-xs mt-1 ${selectedWeek === week.id ? 'text-teal-100' : 'text-amber-500'}`}>Bản nháp</span>}
-                {week.status === 'empty' && <span className={`text-xs mt-1 ${selectedWeek === week.id ? 'text-teal-100' : 'text-slate-400'}`}>Chưa lập</span>}
-              </button>
-            ))}
+            {weeks.map(week => {
+              const isRealCurrent = week.id === realtimeCurrentWeek;
+              return (
+                <button 
+                  key={week.id}
+                  onClick={() => setSelectedWeek(week.id)}
+                  className={`flex-shrink-0 flex flex-col items-center justify-center min-w-[105px] px-3 py-2 rounded-xl border transition-all relative ${
+                    selectedWeek === week.id 
+                      ? 'bg-teal-600 border-teal-600 text-white shadow-md' 
+                      : 'bg-white border-slate-200 hover:border-teal-400 text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold text-sm">{week.name}</span>
+                  </div>
+                  {week.dateRangeFormatted && (
+                    <span className={`text-[11px] font-medium mt-0.5 ${selectedWeek === week.id ? 'text-teal-100' : 'text-slate-500'}`}>
+                      {week.dateRangeFormatted}
+                    </span>
+                  )}
+                  {week.status === 'approved' && <span className={`text-[11px] font-semibold mt-0.5 ${selectedWeek === week.id ? 'text-teal-100' : 'text-emerald-600'}`}>✓ Đã duyệt</span>}
+                  {week.status === 'draft' && <span className={`text-[11px] font-semibold mt-0.5 ${selectedWeek === week.id ? 'text-amber-200' : 'text-amber-600'}`}>Bản nháp</span>}
+                  {week.status === 'empty' && <span className={`text-[11px] mt-0.5 ${selectedWeek === week.id ? 'text-teal-200' : 'text-slate-400'}`}>Chưa lập</span>}
+                </button>
+              );
+            })}
           </div>
           <button onClick={scrollRight} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronRight className="w-5 h-5" /></button>
         </div>

@@ -272,16 +272,16 @@ export default function AdminDashboard({
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-[#0f766e] text-white uppercase text-[11px] font-bold tracking-wider shadow-xs">
+              <thead className="bg-[#0f766e] text-white uppercase text-[10px] sm:text-[11px] font-bold tracking-wider shadow-xs">
                 <tr>
-                  <th className="px-4 py-3.5 text-white">LỚP & PHÒNG</th>
-                  <th className="px-4 py-3.5 text-white">GVCN</th>
-                  <th className="px-3 py-3.5 text-center text-white">SĨ SỐ</th>
-                  <th className="px-3 py-3.5 text-center text-white">CÓ MẶT</th>
-                  <th className="px-3 py-3.5 text-center text-white">VẮNG</th>
-                  <th className="px-3 py-3.5 text-center text-white">ĐI TRỄ</th>
-                  <th className="px-3 py-3.5 text-center text-white">CHUYÊN CẦN</th>
-                  <th className="px-4 py-3.5 text-center text-white">THAO TÁC</th>
+                  <th className="px-3 sm:px-4 py-3 sm:py-3.5 text-white whitespace-nowrap">LỚP</th>
+                  <th className="hidden md:table-cell px-4 py-3.5 text-white whitespace-nowrap">GVCN</th>
+                  <th className="px-2 sm:px-3 py-3 sm:py-3.5 text-center text-white whitespace-nowrap">SĨ SỐ</th>
+                  <th className="px-2 sm:px-3 py-3 sm:py-3.5 text-center text-white whitespace-nowrap">CÓ MẶT</th>
+                  <th className="hidden sm:table-cell px-3 py-3.5 text-center text-white whitespace-nowrap">VẮNG</th>
+                  <th className="hidden lg:table-cell px-3 py-3.5 text-center text-white whitespace-nowrap">ĐI TRỄ</th>
+                  <th className="hidden sm:table-cell px-3 py-3.5 text-center text-white whitespace-nowrap">CHUYÊN CẦN</th>
+                  <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 text-center text-white whitespace-nowrap">THAO TÁC</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -295,29 +295,29 @@ export default function AdminDashboard({
                           isSelected ? 'bg-teal-50/30' : ''
                         }`}
                       >
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2">
+                        <td className="px-3 sm:px-4 py-2.5 sm:py-3.5">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
                             <div>
-                              <div className="font-bold text-slate-800 text-sm">{c.name}</div>
-                              <div className="text-[11px] text-slate-400 font-normal">{c.room}</div>
+                              <div className="font-bold text-slate-800 text-xs sm:text-sm">{c.name}</div>
+                              <div className="text-[10px] sm:text-[11px] text-slate-400 font-normal">{c.room}</div>
                             </div>
                             {isSelected && (
-                              <span className="bg-teal-gradient text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                              <span className="bg-teal-gradient text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full shadow-xs shrink-0">
                                 Đang chọn
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 text-xs text-slate-600 font-medium">
+                        <td className="hidden md:table-cell px-4 py-3.5 text-xs text-slate-600 font-medium">
                           {c.homeroomTeacher}
                         </td>
-                        <td className="px-3 py-3.5 text-center text-slate-800 font-semibold">
+                        <td className="px-2 sm:px-3 py-2.5 sm:py-3.5 text-center text-slate-800 font-semibold text-xs sm:text-sm">
                           {c.total}
                         </td>
-                        <td className="px-3 py-3.5 text-center text-teal-700 font-bold">
+                        <td className="px-2 sm:px-3 py-2.5 sm:py-3.5 text-center text-teal-700 font-bold text-xs sm:text-sm">
                           {c.present}
                         </td>
-                        <td className="px-3 py-3.5 text-center">
+                        <td className="hidden sm:table-cell px-3 py-3.5 text-center">
                           {c.absent > 0 ? (
                             <span className="inline-block px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100">
                               {c.absent}
@@ -329,23 +329,23 @@ export default function AdminDashboard({
                             </span>
                           )}
                         </td>
-                        <td className="px-3 py-3.5 text-center text-slate-400">
+                        <td className="hidden lg:table-cell px-3 py-3.5 text-center text-slate-400">
                           {c.late > 0 ? (
                             <span className="text-amber-600 font-bold">{c.late}</span>
                           ) : (
                             '0'
                           )}
                         </td>
-                        <td className="px-3 py-3.5 text-center font-bold text-slate-800">
+                        <td className="hidden sm:table-cell px-3 py-3.5 text-center font-bold text-slate-800">
                           {c.rate}%
                         </td>
-                        <td className="px-4 py-3.5 text-center">
+                        <td className="px-2.5 sm:px-4 py-2.5 sm:py-3.5 text-center whitespace-nowrap">
                           <button
                             onClick={() => {
                               onSelectClass?.(c.id);
                               onNavigateToAttendance?.(c.id);
                             }}
-                            className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-teal-300 text-teal-700 bg-white hover:bg-teal-50 hover:border-teal-400 font-semibold text-xs transition-colors shadow-2xs"
+                            className="inline-flex items-center justify-center px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-teal-300 text-teal-700 bg-white hover:bg-teal-50 hover:border-teal-400 font-semibold text-xs transition-colors shadow-2xs"
                           >
                             Điểm danh
                           </button>

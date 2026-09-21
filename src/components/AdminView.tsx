@@ -797,11 +797,10 @@ export default function AdminView({ classes, students, users, schoolYears, setti
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
-
                 <tr>
-                  <th className="px-6 py-4 border-b border-slate-100 bg-slate-50 w-12 text-center">
+                  <th className="hidden sm:table-cell px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50 w-12 text-center">
                     <input
                       type="checkbox"
                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
@@ -812,12 +811,11 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                       }}
                     />
                   </th>
-                  <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Tên Lớp</th>
-
-                  <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Giáo viên Chủ nhiệm</th>
-                  <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-center">Phân ban</th>
-                  <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-center">Sĩ số Học sinh</th>
-                  <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-right">Thao tác</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 whitespace-nowrap">Tên Lớp</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">GVCN</th>
+                  <th className="hidden md:table-cell px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-center whitespace-nowrap">Phân ban</th>
+                  <th className="px-2 sm:px-6 py-3 sm:py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-center whitespace-nowrap">Sĩ số</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-right whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -831,9 +829,8 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   filteredClasses.map(c => {
                     const studentCount = students.filter(s => s.classId === c.id).length;
                     return (
-
                       <tr key={c.id} className="hover:bg-slate-50/80 transition-colors group">
-                        <td className="px-6 py-4 border-b border-slate-50 text-center">
+                        <td className="hidden sm:table-cell px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-50 text-center">
                           <input
                             type="checkbox"
                             className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
@@ -844,44 +841,41 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                             }}
                           />
                         </td>
-                        <td className="px-6 py-4 border-b border-slate-50">
-
-                          <span className="font-bold text-slate-800">{c.name}</span>
+                        <td className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-slate-50 whitespace-nowrap">
+                          <span className="font-bold text-slate-800 text-xs sm:text-sm">{c.name}</span>
                         </td>
-                        <td className="px-6 py-4 border-b border-slate-50">
+                        <td className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-slate-50">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-medium text-sm">
-                              {c.homeroomTeacher.charAt(0)}
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-medium text-xs sm:text-sm shrink-0">
+                              {c.homeroomTeacher ? c.homeroomTeacher.charAt(0) : '?'}
                             </div>
-                            <span className="font-medium text-slate-700">{c.homeroomTeacher}</span>
+                            <span className="font-medium text-slate-700 text-xs sm:text-sm leading-snug">{c.homeroomTeacher || 'Chưa có'}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 border-b border-slate-50 text-center">
+                        <td className="hidden md:table-cell px-4 sm:px-6 py-2.5 sm:py-4 border-b border-slate-50 text-center whitespace-nowrap">
                           {c.specialization ? (
                             <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${c.specialization === 'Tự Nhiên' ? 'bg-blue-100 text-blue-700' : c.specialization === 'Xã Hội' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-700'}`}>
                               {c.specialization}
                             </span>
                           ) : (
-                            <span className="text-slate-400 text-sm">Cơ Bản</span>
+                            <span className="text-slate-400 text-xs sm:text-sm">Cơ Bản</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 border-b border-slate-50 text-center">
-                          <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-sm">
+                        <td className="px-2 sm:px-6 py-2.5 sm:py-4 border-b border-slate-50 text-center whitespace-nowrap">
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-xs sm:text-sm">
                             {studentCount} hs
                           </span>
                         </td>
-                        <td className="px-6 py-4 border-b border-slate-50 text-right">
-
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <td className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-slate-50 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1 sm:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => handleDeleteClass(c.id)}
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Chuyển vào thùng rác"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                             <button
- 
                               onClick={() => {
                                 const classStudents = students.filter(s => s.classId === c.id);
                                 if (classStudents.length === 0) {
@@ -895,23 +889,22 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                                 });
                                 setIsPromoteModalOpen(true);
                               }}
-                              className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              className="p-1.5 sm:p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                               title="Lên lớp / Chuyển lớp"
                             >
-                              <ArrowRight className="w-4 h-4" />
+                              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                             <button 
                               onClick={() => openEditModal(c)}
-                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              className="p-1.5 sm:p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                               title="Sửa lớp"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
-
                           </div>
                         </td>
                       </tr>
-                    )
+                    );
                   })
                 )}
               </tbody>

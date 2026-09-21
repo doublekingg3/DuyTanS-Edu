@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Utensils, ChevronLeft, ChevronRight, Download, Calendar, CheckCircle2, Clock } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { generateSchoolWeeks, getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
 
 interface DayMenu {
   day: string;
@@ -14,6 +15,7 @@ interface WeekInfo {
   status: string;
   startDate?: string;
   endDate?: string;
+  dateRangeFormatted?: string;
   menus?: DayMenu[];
 }
 
@@ -27,48 +29,55 @@ const defaultDishesByDay: Record<string, string[]> = {
 };
 
 export default function ParentLunchMenu() {
-  const [weeks, setWeeks] = useState<WeekInfo[]>(() => 
-    Array.from({ length: 42 }, (_, i) => ({
-      id: i + 1,
-      name: `Tuần ${i + 1}`,
-      status: i < 2 ? 'approved' : i === 4 ? 'draft' : 'empty'
-    }))
-  );
+  const realtimeCurrentWeek = getCurrentSchoolWeek();
+  const [weeks, setWeeks] = useState<WeekInfo[]>(() => {
+    const stdWeeks = generateSchoolWeeks(undefined, 42);
+    return stdWeeks.map((w) => ({
+      id: w.id,
+      name: w.name,
+      status: 'empty',
+      startDate: w.startDate,
+      endDate: w.endDate,
+      dateRangeFormatted: `${w.startFormatted} - ${w.endFormatted}`
+    }));
+  });
   
-  const [selectedWeek, setSelectedWeek] = useState(5);
+  const [selectedWeek, setSelectedWeek] = useState(() => realtimeCurrentWeek);
   const [firestoreMenus, setFirestoreMenus] = useState<DayMenu[]>([]);
   const [currentWeekData, setCurrentWeekData] = useState<WeekInfo | null>(null);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'lunch_menus', 'general'), (docSnap) => {
+      const stdWeeks = generateSchoolWeeks(undefined, 42);
       if (docSnap.exists()) {
         const data = docSnap.data();
         const firebaseWeeks = data.weeks || {};
 
-        setWeeks(prevWeeks => 
-          prevWeeks.map(w => {
-            const fw = firebaseWeeks[w.id];
-            if (fw) {
-              return {
-                ...w,
-                status: fw.status || w.status,
-                startDate: fw.startDate || w.startDate,
-                endDate: fw.endDate || w.endDate,
-                menus: fw.menus || w.menus
-              };
-            }
-            return w;
+        setWeeks(
+          stdWeeks.map(stdWeek => {
+            const fw = firebaseWeeks[stdWeek.id];
+            return {
+              id: stdWeek.id,
+              name: stdWeek.name,
+              status: fw?.status || 'empty',
+              startDate: fw?.startDate || stdWeek.startDate,
+              endDate: fw?.endDate || stdWeek.endDate,
+              dateRangeFormatted: `${stdWeek.startFormatted} - ${stdWeek.endFormatted}`,
+              menus: fw?.menus
+            };
           })
         );
 
         const current = firebaseWeeks[selectedWeek];
         if (current) {
+          const matchedStd = stdWeeks.find(s => s.id === selectedWeek);
           setCurrentWeekData({
             id: selectedWeek,
             name: `Tuần ${selectedWeek}`,
             status: current.status || 'draft',
-            startDate: current.startDate || '',
-            endDate: current.endDate || '',
+            startDate: current.startDate || matchedStd?.startDate || '',
+            endDate: current.endDate || matchedStd?.endDate || '',
+            dateRangeFormatted: matchedStd ? `${matchedStd.startFormatted} - ${matchedStd.endFormatted}` : '',
             menus: current.menus || []
           });
           if (current.menus && current.menus.length > 0) {
@@ -129,20 +138,34 @@ export default function ParentLunchMenu() {
         <div className="flex items-center gap-2">
           <button onClick={scrollLeft} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
           <div ref={scrollRef} className="flex flex-1 gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden" style={{ scrollBehavior: 'smooth' }}>
-            {weeks.map(week => (
-              <button 
-                key={week.id}
-                onClick={() => setSelectedWeek(week.id)}
-                className={`flex-shrink-0 flex flex-col items-center justify-center w-24 py-2.5 rounded-xl border transition-all ${selectedWeek === week.id ? 'bg-teal-700 border-teal-700 text-white shadow-sm' : 'bg-white border-slate-200 hover:border-teal-400 text-slate-700'}`}
-              >
-                <span className="font-bold text-sm">{week.name}</span>
-                {week.status === 'approved' ? (
-                  <span className={`text-[11px] mt-0.5 ${selectedWeek === week.id ? 'text-teal-100' : 'text-teal-600 font-medium'}`}>Đã duyệt</span>
-                ) : (
-                  <span className={`text-[11px] mt-0.5 ${selectedWeek === week.id ? 'text-teal-200' : 'text-slate-400'}`}>Chưa duyệt</span>
-                )}
-              </button>
-            ))}
+            {weeks.map(week => {
+              const isRealCurrent = week.id === realtimeCurrentWeek;
+              return (
+                <button 
+                  key={week.id}
+                  onClick={() => setSelectedWeek(week.id)}
+                  className={`flex-shrink-0 flex flex-col items-center justify-center min-w-[105px] px-3 py-2 rounded-xl border transition-all ${
+                    selectedWeek === week.id 
+                      ? 'bg-teal-700 border-teal-700 text-white shadow-sm' 
+                      : 'bg-white border-slate-200 hover:border-teal-400 text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold text-sm">{week.name}</span>
+                  </div>
+                  {week.dateRangeFormatted && (
+                    <span className={`text-[10px] ${selectedWeek === week.id ? 'text-teal-100' : 'text-slate-400'}`}>
+                      {week.dateRangeFormatted}
+                    </span>
+                  )}
+                  {week.status === 'approved' ? (
+                    <span className={`text-[11px] mt-0.5 ${selectedWeek === week.id ? 'text-teal-100' : 'text-teal-600 font-medium'}`}>Đã duyệt</span>
+                  ) : (
+                    <span className={`text-[11px] mt-0.5 ${selectedWeek === week.id ? 'text-teal-200' : 'text-slate-400'}`}>Chưa duyệt</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
           <button onClick={scrollRight} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronRight className="w-5 h-5" /></button>
         </div>

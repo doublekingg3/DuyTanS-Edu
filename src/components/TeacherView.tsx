@@ -26,6 +26,7 @@ import AdminDashboard from './AdminDashboard';
 import TeacherDashboard from './TeacherDashboard';
 import TeacherWeeklyPlan from './TeacherWeeklyPlan';
 import TeacherLunchMenu from './TeacherLunchMenu';
+import { getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
 
 interface TeacherViewProps {
   role?: string;
@@ -124,8 +125,9 @@ export default function TeacherView({
 
   const filteredStudents = students.filter(s => s.classId === selectedClassId);
 
-  // Compute current week for badge
-  const currentWeekNumber = 11;
+  const activeSchoolYear = schoolYears?.find(y => y.id === selectedYearId);
+  // Compute current week for badge based on real school schedule (17/08 start)
+  const currentWeekNumber = getCurrentSchoolWeek(activeSchoolYear?.name);
 
   // Sidebar Menu Items styled identically to Hình 1.jpg
   const menuItems = [
@@ -249,11 +251,18 @@ export default function TeacherView({
                 setActiveMenu(item.id);
               }}
               style={{ minWidth: '4.5rem' }} 
-              className={`snap-center shrink-0 flex flex-col items-center justify-center p-2 rounded-xl transition-colors ${
+              className={`snap-center shrink-0 flex flex-col items-center justify-center p-2 rounded-xl transition-colors relative ${
                 isActive ? 'text-teal-700 font-bold bg-teal-50' : 'text-slate-500'
               }`}
             >
-              <Icon className={`w-5 h-5 mb-1 ${isActive ? 'text-teal-600' : 'text-slate-400'}`} />
+              <div className="relative">
+                <Icon className={`w-5 h-5 mb-1 ${isActive ? 'text-teal-600' : 'text-slate-400'}`} />
+                {item.badge && (
+                  <span className="absolute -top-1 -right-2 text-[8px] font-bold px-1 bg-amber-400 text-teal-950 rounded-full">
+                    {item.badge.replace('Tuần ', 'T')}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] whitespace-nowrap">{item.label}</span>
             </button>
           );

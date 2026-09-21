@@ -43,6 +43,7 @@ import ParentWeeklyPlan from './ParentWeeklyPlan';
 import { useAlert } from '../contexts/AlertContext';
 import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
 
 interface ParentViewProps {
   student: Student;
@@ -107,6 +108,11 @@ export default function ParentView({
   const schoolYearName = useMemo(() => {
     return schoolYears?.find(y => y.id === currentClass?.schoolYearId)?.name || '';
   }, [schoolYears, currentClass]);
+
+  // Tuần hiện tại theo thời gian thực tế
+  const currentWeekNumber = useMemo(() => {
+    return getCurrentSchoolWeek(schoolYearName);
+  }, [schoolYearName]);
 
   // Sync form state when selected student changes
   useEffect(() => {
@@ -311,7 +317,13 @@ export default function ParentView({
             className={`whitespace-nowrap flex-shrink-0 py-2.5 sm:py-3 px-3 sm:px-4 font-medium text-xs sm:text-sm transition-all relative flex items-center gap-1.5 sm:gap-2 rounded-t-xl ${activeTab === 'weekly_plan' ? 'text-[#0f766e] font-bold bg-teal-50/70 border-b-2 border-[#0f766e]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'}`}
             onClick={() => setActiveTab('weekly_plan')}
           >
-            <ClipboardList className="w-4 h-4 text-[#0f766e]" /> Kế hoạch tuần
+            <ClipboardList className="w-4 h-4 text-[#0f766e]" /> 
+            <span>Kế hoạch tuần</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              activeTab === 'weekly_plan' ? 'bg-[#0f766e] text-white' : 'bg-amber-100 text-amber-800'
+            }`}>
+              Tuần {currentWeekNumber}
+            </span>
           </button>
           
           <button 
@@ -847,12 +859,15 @@ export default function ParentView({
           {/* Tab 2: Kế hoạch */}
           <button
             onClick={() => { setActiveTab('weekly_plan'); setShowMoreMenu(false); }}
-            className={`flex flex-col items-center justify-center gap-1 transition-all py-1 ${
+            className={`flex flex-col items-center justify-center gap-1 transition-all py-1 relative ${
               activeTab === 'weekly_plan' ? 'text-[#0f766e]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'weekly_plan' ? 'bg-[#ccfbf1] text-[#0f766e]' : ''}`}>
+            <div className={`p-1.5 rounded-xl transition-all relative ${activeTab === 'weekly_plan' ? 'bg-[#ccfbf1] text-[#0f766e]' : ''}`}>
               <ClipboardList className="w-5 h-5" />
+              <span className="absolute -top-1 -right-2 text-[9px] font-bold px-1 bg-amber-400 text-teal-950 rounded-full shadow-xs">
+                T{currentWeekNumber}
+              </span>
             </div>
             <span className={`text-[10px] leading-tight ${activeTab === 'weekly_plan' ? 'font-bold text-[#0f766e]' : 'font-medium'}`}>
               Kế hoạch

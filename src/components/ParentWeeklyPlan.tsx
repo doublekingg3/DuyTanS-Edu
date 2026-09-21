@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Calendar, CheckCircle, Clock } from 'lucide-react';
+import { generateSchoolWeeks, getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
 
 export default function ParentWeeklyPlan({ classId, schoolYearName }: { classId: string, schoolYearName?: string }) {
   const [weeks, setWeeks] = useState<{
@@ -12,25 +13,23 @@ export default function ParentWeeklyPlan({ classId, schoolYearName }: { classId:
     endDate: string;
     dutyTeam: string;
     tasks: string[];
+    dateRangeFormatted?: string;
   }[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Tính tuần học thực tế của trường
+  const realtimeCurrentWeek = getCurrentSchoolWeek(schoolYearName);
+  const [selectedWeek, setSelectedWeek] = useState(() => realtimeCurrentWeek);
 
   useEffect(() => {
     if (!classId) return;
     const docRef = doc(db, 'class_weekly_plans', classId);
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       const data = snapshot.data();
-      
-      const startYearStr = schoolYearName ? schoolYearName.match(/\d{4}/)?.[0] : null;
-      const startYear = startYearStr ? parseInt(startYearStr) : new Date().getFullYear();
-      const baseDate = new Date(`${startYear}-09-05`);
-      
-      const day = baseDate.getDay();
-      const diff = baseDate.getDate() - day + (day === 0 ? -6 : 1);
-      baseDate.setDate(diff);
+      const standardWeeks = generateSchoolWeeks(schoolYearName, 42);
 
-      const newWeeks = Array.from({ length: 35 }, (_, i) => {
-        const weekId = i + 1;
+      const newWeeks = standardWeeks.map((stdWeek) => {
+        const weekId = stdWeek.id;
         const weekData = data?.weeks?.[weekId];
         
         if (weekData) {
@@ -38,37 +37,32 @@ export default function ParentWeeklyPlan({ classId, schoolYearName }: { classId:
             id: weekId,
             name: `Tuần ${weekId}`,
             status: weekData.status || 'empty',
-            startDate: weekData.startDate || '',
-            endDate: weekData.endDate || '',
+            startDate: weekData.startDate || stdWeek.startDate,
+            endDate: weekData.endDate || stdWeek.endDate,
             dutyTeam: weekData.dutyTeam || '',
-            tasks: weekData.tasks || []
+            tasks: weekData.tasks || [],
+            dateRangeFormatted: `${stdWeek.startFormatted} - ${stdWeek.endFormatted}`
           };
         }
-        
-        const sDate = new Date(baseDate);
-        sDate.setDate(sDate.getDate() + (i * 7));
-        const eDate = new Date(sDate);
-        eDate.setDate(eDate.getDate() + 5);
         
         return {
           id: weekId,
           name: `Tuần ${weekId}`,
-          status: 'empty',
-          startDate: sDate.toISOString().split('T')[0],
-          endDate: eDate.toISOString().split('T')[0],
+          status: 'empty' as const,
+          startDate: stdWeek.startDate,
+          endDate: stdWeek.endDate,
           dutyTeam: '',
-          tasks: []
+          tasks: [],
+          dateRangeFormatted: `${stdWeek.startFormatted} - ${stdWeek.endFormatted}`
         };
       });
       
-      setWeeks(newWeeks as any);
+      setWeeks(newWeeks);
       setLoading(false);
     });
     
     return () => unsubscribe();
   }, [classId, schoolYearName]);
-
-  const [selectedWeek, setSelectedWeek] = useState(1);
   const activeWeek = weeks.find(w => w.id === selectedWeek) || weeks[0];
 
   const formatDate = (dateString: string) => {
@@ -99,22 +93,29 @@ export default function ParentWeeklyPlan({ classId, schoolYearName }: { classId:
               <span className="text-xs text-[#0f766e] font-semibold">Đang xem {activeWeek?.name}</span>
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1.5 hide-scrollbar">
-              {weeks.map(week => (
-                <button
-                  key={week.id}
-                  onClick={() => setSelectedWeek(week.id)}
-                  className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex items-center gap-1.5 ${
-                    selectedWeek === week.id 
-                      ? 'bg-[#0f766e] border-[#0f766e] text-white shadow-sm font-bold' 
-                      : 'bg-white border-slate-200 text-slate-700 hover:border-teal-300'
-                  }`}
-                >
-                  <span>{week.name}</span>
-                  {week.status === 'approved' && (
-                    <span className={`w-1.5 h-1.5 rounded-full ${selectedWeek === week.id ? 'bg-teal-200' : 'bg-emerald-500'}`} />
-                  )}
-                </button>
-              ))}
+              {weeks.map(week => {
+                const isRealCurrent = week.id === realtimeCurrentWeek;
+                return (
+                  <button
+                    key={week.id}
+                    onClick={() => setSelectedWeek(week.id)}
+                    className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex flex-col items-center gap-0.5 ${
+                      selectedWeek === week.id 
+                        ? 'bg-[#0f766e] border-[#0f766e] text-white shadow-sm font-bold' 
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-teal-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>{week.name}</span>
+                    </div>
+                    {week.dateRangeFormatted && (
+                      <span className={`text-[10px] ${selectedWeek === week.id ? 'text-teal-100' : 'text-slate-400'}`}>
+                        {week.dateRangeFormatted}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -127,25 +128,37 @@ export default function ParentWeeklyPlan({ classId, schoolYearName }: { classId:
               </h3>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {weeks.map(week => (
-                <button
-                  key={week.id}
-                  onClick={() => setSelectedWeek(week.id)}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center justify-between text-xs sm:text-sm transition-colors ${
-                    selectedWeek === week.id 
-                      ? 'bg-[#0f766e] text-white shadow-sm font-semibold' 
-                      : 'hover:bg-teal-50/50 text-slate-700'
-                  }`}
-                >
-                  <span>{week.name}</span>
-                  {week.status === 'approved' && (
-                    <CheckCircle className={`w-4 h-4 ${selectedWeek === week.id ? 'text-teal-200' : 'text-teal-600'}`} />
-                  )}
-                  {week.status === 'draft' && (
-                    <Clock className={`w-4 h-4 ${selectedWeek === week.id ? 'text-teal-200' : 'text-amber-500'}`} />
-                  )}
-                </button>
-              ))}
+              {weeks.map(week => {
+                const isRealCurrent = week.id === realtimeCurrentWeek;
+                return (
+                  <button
+                    key={week.id}
+                    onClick={() => setSelectedWeek(week.id)}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center justify-between text-xs sm:text-sm transition-colors ${
+                      selectedWeek === week.id 
+                        ? 'bg-[#0f766e] text-white shadow-sm font-semibold' 
+                        : 'hover:bg-teal-50/50 text-slate-700'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span>{week.name}</span>
+                      </div>
+                      {week.dateRangeFormatted && (
+                        <div className={`text-[11px] mt-0.5 ${selectedWeek === week.id ? 'text-teal-100' : 'text-slate-400'}`}>
+                          {week.dateRangeFormatted}
+                        </div>
+                      )}
+                    </div>
+                    {week.status === 'approved' && (
+                      <CheckCircle className={`w-4 h-4 shrink-0 ${selectedWeek === week.id ? 'text-teal-200' : 'text-teal-600'}`} />
+                    )}
+                    {week.status === 'draft' && (
+                      <Clock className={`w-4 h-4 shrink-0 ${selectedWeek === week.id ? 'text-teal-200' : 'text-amber-500'}`} />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

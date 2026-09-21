@@ -4,6 +4,7 @@ import { useAlert } from '../contexts/AlertContext';
 import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Download, Save, Plus, Trash2, Upload, X, RotateCcw } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { generateSchoolWeeks, getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
 
 // Helper function to format various Excel date formats (Date, serial number, DD/MM/YYYY, YYYY-MM-DD)
 const formatExcelDate = (val: any): string => {
@@ -45,8 +46,9 @@ const formatExcelDate = (val: any): string => {
 };
 
 export default function TeacherLunchMenu({ classId, role, schoolYearName }: { classId: string, role?: string, schoolYearName?: string }) {
-  const [weeks, setWeeks] = useState<{id: number, name: string, status: string, startDate?: string, endDate?: string}[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState(5);
+  const [weeks, setWeeks] = useState<{id: number, name: string, status: string, startDate?: string, endDate?: string, dateRangeFormatted?: string}[]>([]);
+  const realtimeCurrentWeek = getCurrentSchoolWeek(schoolYearName);
+  const [selectedWeek, setSelectedWeek] = useState(() => realtimeCurrentWeek);
   const { showAlert, showConfirm } = useAlert();
   const [loading, setLoading] = useState(true);
   const [menus, setMenus] = useState<{day: string, dishes: string[]}[]>([]);
@@ -56,26 +58,19 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
     const docRef = doc(db, 'lunch_menus', 'general');
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       const data = snapshot.data();
-      
-      const startYearStr = schoolYearName ? schoolYearName.match(/\d{4}/)?.[0] : null;
-      const startYear = startYearStr ? parseInt(startYearStr) : new Date().getFullYear();
-      const baseDate = new Date(startYear, 8, 5); // 5th Sept
+      const standardWeeks = generateSchoolWeeks(schoolYearName, 42);
 
-      const newWeeks = Array.from({ length: 42 }, (_, i) => {
-        const weekId = i + 1;
+      const newWeeks = standardWeeks.map((stdWeek) => {
+        const weekId = stdWeek.id;
         const weekData = data?.weeks?.[weekId];
-        
-        const sDate = new Date(baseDate);
-        sDate.setDate(sDate.getDate() + (i * 7));
-        const eDate = new Date(sDate);
-        eDate.setDate(eDate.getDate() + 5);
         
         return {
           id: weekId,
           name: `Tuần ${weekId}`,
           status: weekData?.status || 'empty',
-          startDate: weekData?.startDate || sDate.toISOString().split('T')[0],
-          endDate: weekData?.endDate || eDate.toISOString().split('T')[0]
+          startDate: weekData?.startDate || stdWeek.startDate,
+          endDate: weekData?.endDate || stdWeek.endDate,
+          dateRangeFormatted: `${stdWeek.startFormatted} - ${stdWeek.endFormatted}`
         };
       });
       setWeeks(newWeeks);
@@ -364,18 +359,32 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
         <div className="flex items-center gap-2">
           <button onClick={scrollLeft} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
           <div ref={scrollRef} className="flex flex-1 gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden" style={{ scrollBehavior: 'smooth' }}>
-            {weeks.map(week => (
-              <button 
-                key={week.id}
-                onClick={() => setSelectedWeek(week.id)}
-                className={`flex-shrink-0 flex flex-col items-center justify-center w-24 py-2 rounded-xl border transition-all ${selectedWeek === week.id ? 'bg-amber-500 border-amber-500 text-white shadow-md' : 'bg-white border-slate-200 hover:border-amber-400'}`}
-              >
-                <span className="font-bold text-sm">{week.name}</span>
-                {week.status === 'approved' && <span className={`text-xs mt-1 ${selectedWeek === week.id ? 'text-amber-100' : 'text-emerald-600'}`}>✓ Đã duyệt</span>}
-                {week.status === 'draft' && <span className={`text-xs mt-1 ${selectedWeek === week.id ? 'text-amber-100' : 'text-amber-500'}`}>Bản nháp</span>}
-                {week.status === 'empty' && <span className={`text-xs mt-1 ${selectedWeek === week.id ? 'text-amber-100' : 'text-slate-400'}`}>Chưa lên món</span>}
-              </button>
-            ))}
+            {weeks.map(week => {
+              const isRealCurrent = week.id === realtimeCurrentWeek;
+              return (
+                <button 
+                  key={week.id}
+                  onClick={() => setSelectedWeek(week.id)}
+                  className={`flex-shrink-0 flex flex-col items-center justify-center min-w-[105px] px-3 py-2 rounded-xl border transition-all relative ${
+                    selectedWeek === week.id 
+                      ? 'bg-amber-500 border-amber-500 text-white shadow-md' 
+                      : 'bg-white border-slate-200 hover:border-amber-400 text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold text-sm">{week.name}</span>
+                  </div>
+                  {week.dateRangeFormatted && (
+                    <span className={`text-[11px] font-medium mt-0.5 ${selectedWeek === week.id ? 'text-amber-100' : 'text-slate-500'}`}>
+                      {week.dateRangeFormatted}
+                    </span>
+                  )}
+                  {week.status === 'approved' && <span className={`text-[11px] font-semibold mt-0.5 ${selectedWeek === week.id ? 'text-amber-100' : 'text-emerald-600'}`}>✓ Đã duyệt</span>}
+                  {week.status === 'draft' && <span className={`text-[11px] font-semibold mt-0.5 ${selectedWeek === week.id ? 'text-amber-100' : 'text-amber-600'}`}>Bản nháp</span>}
+                  {week.status === 'empty' && <span className={`text-[11px] mt-0.5 ${selectedWeek === week.id ? 'text-amber-100' : 'text-slate-400'}`}>Chưa lên món</span>}
+                </button>
+              );
+            })}
           </div>
           <button onClick={scrollRight} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronRight className="w-5 h-5" /></button>
         </div>

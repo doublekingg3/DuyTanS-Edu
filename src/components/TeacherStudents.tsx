@@ -524,107 +524,111 @@ export default function TeacherStudents({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative p-4 md:p-6 overflow-y-auto">
+    <div className="flex flex-col h-full bg-slate-50 relative p-3 sm:p-4 md:p-6 overflow-y-auto">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold font-display text-slate-800 flex items-center gap-2">
-              Danh sách Học sinh {currentClass ? `- Lớp ${currentClass.name}` : ''}
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
-              {filteredStudents.length} học sinh
-            </span>
+      <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold font-display text-slate-800 flex items-center gap-2">
+                Danh sách Học sinh {currentClass ? `- Lớp ${currentClass.name}` : ''}
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+                {filteredStudents.length} HS
+              </span>
+            </div>
+            <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1">
+              {currentClass?.homeroomTeacher ? `GVCN: ${currentClass.homeroomTeacher} • ` : ''}
+              Chạm vào học sinh để xem đầy đủ hồ sơ chi tiết
+            </p>
           </div>
-          <p className="text-slate-500 text-sm mt-1">
-            {currentClass?.homeroomTeacher ? `GVCN: ${currentClass.homeroomTeacher} • ` : ''}
-            Bấm vào học sinh để xem đầy đủ hồ sơ chi tiết
-          </p>
         </div>
 
         {/* Action Toolbar */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Bulk Delete */}
-          {selectedStudentIds.length > 0 && role !== 'subject_teacher' && (
-            <button
-              onClick={handleDeleteSelected}
-              className="px-3.5 py-2 bg-red-50 text-red-600 font-medium text-sm rounded-xl hover:bg-red-100 transition-colors flex items-center gap-2 shadow-2xs border border-red-200"
-            >
-              <Trash2 className="w-4 h-4" /> Xóa {selectedStudentIds.length} HS
-            </button>
-          )}
-
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
           {/* Search Box */}
-          <div className="relative">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <input 
               type="text" 
               placeholder="Tìm kiếm học sinh, SĐT, CCCD..." 
-              className="w-full sm:w-64 pl-9 pr-4 py-2 border border-slate-200 bg-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {role !== 'subject_teacher' && (
-            <>
-              {/* Add Student */}
-              <button 
-                onClick={() => setShowAddStudentModal(true)}
-                className="px-3 py-2 bg-teal-700 text-white rounded-xl hover:bg-teal-800 shadow-2xs transition-colors flex items-center gap-1.5 text-sm font-medium"
-                title="Thêm học sinh mới"
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+            {/* Bulk Delete */}
+            {selectedStudentIds.length > 0 && role !== 'subject_teacher' && (
+              <button
+                onClick={handleDeleteSelected}
+                className="px-3 py-2 bg-red-50 text-red-600 font-medium text-xs sm:text-sm rounded-xl hover:bg-red-100 transition-colors flex items-center gap-1.5 shadow-2xs border border-red-200 shrink-0"
               >
-                <Plus className="w-4 h-4" />
-                <span>Thêm HS</span>
+                <Trash2 className="w-3.5 h-3.5" /> Xóa ({selectedStudentIds.length})
               </button>
+            )}
 
-              {/* Upload Excel */}
-              <input 
-                type="file"
-                accept=".xlsx, .xls, .csv"
-                className="hidden"
-                ref={fileInputRef}
-                onChange={handleImportExcel}
-              />
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2 bg-white border border-slate-200 text-emerald-600 rounded-xl hover:bg-emerald-50 shadow-2xs transition-colors flex items-center justify-center"
-                title="Tải lên danh sách học sinh (File Excel)"
-              >
-                <Upload className="w-5 h-5" />
-              </button>
+            {role !== 'subject_teacher' && (
+              <>
+                {/* Add Student */}
+                <button 
+                  onClick={() => setShowAddStudentModal(true)}
+                  className="px-3 py-2 bg-teal-700 text-white rounded-xl hover:bg-teal-800 shadow-2xs transition-colors flex items-center gap-1.5 text-xs sm:text-sm font-medium shrink-0"
+                  title="Thêm học sinh mới"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Thêm HS</span>
+                </button>
 
-              {/* Export Student List */}
-              <button 
-                onClick={handleExportStudentList}
-                className="p-2 bg-white border border-emerald-200 text-emerald-600 rounded-xl hover:bg-emerald-50 shadow-2xs transition-colors flex items-center justify-center"
-                title="Xuất danh sách học sinh ra file Excel"
-              >
-                <FileSpreadsheet className="w-5 h-5" />
-              </button>
+                {/* Upload Excel */}
+                <input 
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleImportExcel}
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 bg-white border border-slate-200 text-emerald-600 rounded-xl hover:bg-emerald-50 shadow-2xs transition-colors flex items-center justify-center shrink-0"
+                  title="Tải lên danh sách học sinh (File Excel)"
+                >
+                  <Upload className="w-4 h-4" />
+                </button>
 
-              {/* Download Excel Template */}
-              <button 
-                onClick={handleExportTemplate}
-                className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 shadow-2xs transition-colors"
-                title="Tải mẫu Excel chuẩn (12 cột theo mẫu mới)"
-              >
-                <Download className="w-5 h-5" />
-              </button>
-            </>
-          )}
+                {/* Export Student List */}
+                <button 
+                  onClick={handleExportStudentList}
+                  className="p-2 bg-white border border-emerald-200 text-emerald-600 rounded-xl hover:bg-emerald-50 shadow-2xs transition-colors flex items-center justify-center shrink-0"
+                  title="Xuất danh sách học sinh ra file Excel"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                </button>
+
+                {/* Download Excel Template */}
+                <button 
+                  onClick={handleExportTemplate}
+                  className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 shadow-2xs transition-colors shrink-0"
+                  title="Tải mẫu Excel chuẩn"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Main Student Table Area */}
-      {/* Displaying EXACT columns requested by user: STT, Mã Hs, Họ và tên, Ngày sinh, giới tính, dân tộc, sđt */}
-      <div className="flex-1 bg-white border border-teal-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+      {/* Responsive layout: 4 columns on mobile (STT, Họ tên, Ngày sinh, Chi tiết); Full columns on tablet/desktop */}
+      <div className="flex-1 bg-white border border-teal-100 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
+          <table className="w-full text-left text-xs sm:text-sm">
             <thead className="bg-[#0f766e] text-white font-semibold">
               <tr>
                 {role !== 'subject_teacher' && (
-                  <th className="px-4 py-3.5 text-center w-12 text-white">
+                  <th className="hidden sm:table-cell px-3 sm:px-4 py-3 sm:py-3.5 text-center w-10 sm:w-12 text-white">
                     <input
                       type="checkbox"
                       className="rounded border-teal-300 text-teal-600 focus:ring-teal-400 cursor-pointer accent-teal-600"
@@ -636,20 +640,35 @@ export default function TeacherStudents({
                     />
                   </th>
                 )}
-                <th className="px-4 py-3.5 text-center w-14 text-white font-semibold">STT</th>
-                <th className="px-4 py-3.5 text-white font-semibold w-28">Mã HS</th>
-                <th className="px-4 py-3.5 text-white font-semibold min-w-[200px]">Họ và tên</th>
-                <th className="px-4 py-3.5 text-white font-semibold w-32">Ngày sinh</th>
-                <th className="px-4 py-3.5 text-white font-semibold w-24">Giới tính</th>
-                <th className="px-4 py-3.5 text-white font-semibold w-28">Dân tộc</th>
-                <th className="px-4 py-3.5 text-white font-semibold w-36">SĐT</th>
-                <th className="px-4 py-3.5 text-center text-white font-semibold w-24">Chi tiết</th>
+                {/* 1. STT (Always visible) */}
+                <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 text-center w-11 sm:w-14 text-white font-semibold whitespace-nowrap">STT</th>
+                
+                {/* 2. Mã HS (Desktop/Tablet: sm:) */}
+                <th className="hidden sm:table-cell px-3 sm:px-4 py-3 sm:py-3.5 text-white font-semibold w-24 sm:w-28 whitespace-nowrap">Mã HS</th>
+                
+                {/* 3. Họ và tên (Always visible) */}
+                <th className="px-3 sm:px-4 py-3 sm:py-3.5 text-white font-semibold min-w-[130px] sm:min-w-[180px]">Họ và tên</th>
+                
+                {/* 4. Ngày sinh (Always visible) */}
+                <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 text-white font-semibold w-24 sm:w-32 whitespace-nowrap">Ngày sinh</th>
+                
+                {/* 5. Giới tính (Tablet/Desktop: md:) */}
+                <th className="hidden md:table-cell px-3 sm:px-4 py-3 sm:py-3.5 text-white font-semibold w-20 sm:w-24 whitespace-nowrap">Giới tính</th>
+                
+                {/* 6. Dân tộc (Desktop: lg:) */}
+                <th className="hidden lg:table-cell px-3 sm:px-4 py-3 sm:py-3.5 text-white font-semibold w-24 sm:w-28 whitespace-nowrap">Dân tộc</th>
+                
+                {/* 7. SĐT (Tablet/Desktop: md:) */}
+                <th className="hidden md:table-cell px-3 sm:px-4 py-3 sm:py-3.5 text-white font-semibold w-32 sm:w-36 whitespace-nowrap">SĐT</th>
+                
+                {/* 8. Chi tiết (Always visible) */}
+                <th className="px-2 sm:px-4 py-3 sm:py-3.5 text-center text-white font-semibold w-16 sm:w-24 whitespace-nowrap">Chi tiết</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={role !== 'subject_teacher' ? 9 : 8} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <UserIcon className="w-8 h-8 text-slate-300" />
                       <p className="font-semibold text-slate-700">Lớp này hiện chưa có học sinh nào</p>
@@ -667,13 +686,13 @@ export default function TeacherStudents({
                     <tr 
                       key={student.id} 
                       onClick={() => handleOpenDetails(student)}
-                      className="hover:bg-teal-50/40 transition-colors group cursor-pointer"
+                      className="hover:bg-teal-50/50 active:bg-teal-100/40 transition-colors group cursor-pointer"
                       title="Bấm vào để xem hồ sơ chi tiết học sinh"
                     >
-                      {/* Checkbox */}
+                      {/* Checkbox (Desktop/Tablet: sm:) */}
                       {role !== 'subject_teacher' && (
                         <td 
-                          className="px-4 py-3.5 text-center"
+                          className="hidden sm:table-cell px-3 sm:px-4 py-2.5 sm:py-3.5 text-center"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <input
@@ -689,34 +708,51 @@ export default function TeacherStudents({
                       )}
 
                       {/* 1. STT */}
-                      <td className="px-4 py-3.5 text-center text-slate-500 font-medium">
+                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3.5 text-center text-slate-500 font-medium whitespace-nowrap">
                         {student.stt || idx + 1}
                       </td>
 
-                      {/* 2. Mã HS */}
-                      <td className="px-4 py-3.5 font-mono text-xs text-teal-800 font-semibold">
+                      {/* 2. Mã HS (Desktop/Tablet: sm:) */}
+                      <td className="hidden sm:table-cell px-3 sm:px-4 py-2.5 sm:py-3.5 font-mono text-xs text-teal-800 font-semibold whitespace-nowrap">
                         {student.code}
                       </td>
 
                       {/* 3. Họ và tên */}
-                      <td className="px-4 py-3.5 font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{student.fullName}</span>
-                          {student.award && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                              {student.award}
+                      <td className="px-3 sm:px-4 py-2.5 sm:py-3.5 font-medium text-slate-900 group-hover:text-teal-700 transition-colors">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-slate-900 text-xs sm:text-sm leading-snug">
+                              {student.fullName}
                             </span>
-                          )}
+                            {student.award && (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
+                                {student.award}
+                              </span>
+                            )}
+                          </div>
+                          {/* Dòng phụ hiển thị riêng trên Mobile: Mã HS & Giới tính */}
+                          <div className="flex items-center gap-1.5 sm:hidden mt-0.5">
+                            <span className="font-mono text-[10px] text-teal-800 bg-teal-50/80 px-1.5 py-0.2 rounded border border-teal-200/60 font-semibold">
+                              {student.code}
+                            </span>
+                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${
+                              student.gender === 'Nữ' 
+                                ? 'bg-pink-50 text-pink-700 border border-pink-100' 
+                                : 'bg-blue-50 text-blue-700 border border-blue-100'
+                            }`}>
+                              {student.gender}
+                            </span>
+                          </div>
                         </div>
                       </td>
 
                       {/* 4. Ngày sinh */}
-                      <td className="px-4 py-3.5 text-slate-600">
-                        {student.dob || 'Chưa có'}
+                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3.5 text-slate-600 text-xs sm:text-sm whitespace-nowrap">
+                        {student.dob || <span className="text-slate-400 italic text-[11px]">Chưa có</span>}
                       </td>
 
-                      {/* 5. Giới tính */}
-                      <td className="px-4 py-3.5">
+                      {/* 5. Giới tính (Tablet/Desktop: md:) */}
+                      <td className="hidden md:table-cell px-3 sm:px-4 py-2.5 sm:py-3.5 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           student.gender === 'Nữ' 
                             ? 'bg-pink-50 text-pink-700 border border-pink-100' 
@@ -726,13 +762,13 @@ export default function TeacherStudents({
                         </span>
                       </td>
 
-                      {/* 6. Dân tộc */}
-                      <td className="px-4 py-3.5 text-slate-600">
+                      {/* 6. Dân tộc (Desktop: lg:) */}
+                      <td className="hidden lg:table-cell px-3 sm:px-4 py-2.5 sm:py-3.5 text-slate-600 text-xs sm:text-sm whitespace-nowrap">
                         {student.ethnicity || 'Kinh'}
                       </td>
 
-                      {/* 7. SĐT */}
-                      <td className="px-4 py-3.5">
+                      {/* 7. SĐT (Tablet/Desktop: md:) */}
+                      <td className="hidden md:table-cell px-3 sm:px-4 py-2.5 sm:py-3.5 whitespace-nowrap">
                         {displayPhone ? (
                           <div className="flex items-center gap-1.5 text-slate-700 font-mono text-xs">
                             <Phone className="w-3.5 h-3.5 text-teal-600 shrink-0" />
@@ -743,26 +779,26 @@ export default function TeacherStudents({
                         )}
                       </td>
 
-                      {/* Thao tác xem nhanh */}
+                      {/* 8. Thao tác xem nhanh / Chi tiết */}
                       <td 
-                        className="px-4 py-3.5 text-center"
+                        className="px-2 sm:px-4 py-2.5 sm:py-3.5 text-center"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenDetails(student)}
-                            className="p-1.5 text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
-                            title="Xem chi tiết"
+                            className="p-1.5 text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors shadow-2xs border border-teal-200/60 flex items-center justify-center"
+                            title="Bấm để xem đầy đủ hồ sơ học sinh"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-4 h-4 text-teal-600" />
                           </button>
                           {role !== 'subject_teacher' && (
                             <button
                               onClick={() => handleDeleteSingle(student.id, student.fullName)}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors hidden sm:block opacity-0 group-hover:opacity-100"
                               title="Xóa học sinh"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
@@ -958,14 +994,26 @@ export default function TeacherStudents({
                     </div>
 
                     {/* 11. Số điện thoại */}
-                    <div className="p-3 bg-teal-50/40 rounded-2xl border border-teal-100">
-                      <span className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1 flex items-center gap-1">
-                        <Phone className="w-3.5 h-3.5 text-teal-600" />
-                        11. Số điện thoại
-                      </span>
-                      <span className="font-mono font-semibold text-slate-900 text-sm">
-                        {selectedStudentForDetails.phone || selectedStudentForDetails.parentPhone || 'Chưa cập nhật'}
-                      </span>
+                    <div className="p-3 bg-teal-50/40 rounded-2xl border border-teal-100 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[11px] font-bold text-teal-700 uppercase tracking-wider block mb-1 flex items-center gap-1">
+                          <Phone className="w-3.5 h-3.5 text-teal-600" />
+                          11. Số điện thoại
+                        </span>
+                        <span className="font-mono font-semibold text-slate-900 text-sm">
+                          {selectedStudentForDetails.phone || selectedStudentForDetails.parentPhone || 'Chưa cập nhật'}
+                        </span>
+                      </div>
+                      {(selectedStudentForDetails.phone || selectedStudentForDetails.parentPhone) && (
+                        <a
+                          href={`tel:${(selectedStudentForDetails.phone || selectedStudentForDetails.parentPhone || '').replace(/\s+/g, '')}`}
+                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs shrink-0"
+                          title="Gọi điện trực tiếp"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Gọi ngay</span>
+                        </a>
+                      )}
                     </div>
 
                     {/* 12. Số định danh cá nhân */}
