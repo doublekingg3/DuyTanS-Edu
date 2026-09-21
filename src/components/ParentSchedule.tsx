@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ClassSchedule, SchedulePeriod } from '../data';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Calendar, Sun, Moon } from 'lucide-react';
+import { Calendar, Sun, Sunset, Coffee } from 'lucide-react';
+import { normalizePeriodTime } from '../lib/scheduleConstants';
 
 export default function ParentSchedule({ classId }: { classId: string }) {
   const [schedule, setSchedule] = useState<ClassSchedule | null>(null);
@@ -32,19 +33,19 @@ export default function ParentSchedule({ classId }: { classId: string }) {
   if (isLoading) {
     return (
       <div className="p-8 h-[300px] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-[#0f766e] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  if (!schedule || schedule.periods.length === 0) {
+  if (!schedule || !schedule.periods || schedule.periods.length === 0) {
     return (
-      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mb-4">
-          <Calendar className="w-8 h-8 text-teal-600" />
+      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-teal-100 flex flex-col items-center justify-center text-center">
+        <div className="w-16 h-16 bg-[#ccfbf1] rounded-full flex items-center justify-center mb-4 border border-[#5eead4]">
+          <Calendar className="w-8 h-8 text-[#0f766e]" />
         </div>
         <h3 className="text-xl font-bold font-display text-slate-800 mb-2">Chưa có thời khoá biểu</h3>
-        <p className="text-slate-500">Giáo viên chủ nhiệm chưa cập nhật thời khoá biểu cho lớp.</p>
+        <p className="text-slate-500 text-sm">Nhà trường hoặc giáo viên chưa cập nhật thời khoá biểu cho lớp.</p>
       </div>
     );
   }
@@ -58,50 +59,182 @@ export default function ParentSchedule({ classId }: { classId: string }) {
     { key: 't7', label: 'Thứ 7' },
   ];
 
-  // Lọc ra các ngày có tiết học (để ẩn Thứ 7 nếu không có học)
-  const activeDays = days.filter(day => 
-    schedule.periods.some(p => p[day.key as keyof SchedulePeriod] && String(p[day.key as keyof SchedulePeriod]).trim() !== '')
-  );
+  // Group into morning & afternoon
+  const morningList: { period: SchedulePeriod; originalIdx: number; norm: ReturnType<typeof normalizePeriodTime> }[] = [];
+  const afternoonList: { period: SchedulePeriod; originalIdx: number; norm: ReturnType<typeof normalizePeriodTime> }[] = [];
+
+  schedule.periods.forEach((p, idx) => {
+    const norm = normalizePeriodTime(p.time, idx, schedule.periods.length);
+    if (norm.session === 'morning') {
+      morningList.push({ period: p, originalIdx: idx, norm });
+    } else {
+      afternoonList.push({ period: p, originalIdx: idx, norm });
+    }
+  });
 
   return (
-    <div className="pb-20 md:pb-0">
-      {/* Desktop/Tablet View (Horizontal Table) */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="pb-20 md:pb-0 space-y-4">
+      {/* Desktop/Tablet View (Table styled with the Class List Teal theme) */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-teal-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-4 py-4 font-bold text-slate-700 w-32 border-r border-slate-200 text-center">Tiết / Thời gian</th>
-                {activeDays.map(day => (
-                  <th key={day.key} className="px-4 py-4 font-bold text-slate-700 text-center border-r border-slate-200 last:border-0">{day.label}</th>
+          <table className="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead className="bg-[#0f766e] text-white font-semibold">
+              <tr>
+                <th className="px-4 py-3.5 text-white font-semibold w-52 whitespace-nowrap border-r border-teal-600/40 text-center">
+                  TIẾT / THỜI GIAN
+                </th>
+                {days.map(day => (
+                  <th key={day.key} className="px-4 py-3.5 text-white font-semibold text-center border-r border-teal-600/40 last:border-0 min-w-[120px]">
+                    {day.label.toUpperCase()}
+                  </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {schedule.periods.map((period, idx) => {
-                const isMorning = period.time.toLowerCase().includes('sáng');
-                const isAfternoon = period.time.toLowerCase().includes('chiều');
-                
+            <tbody>
+              {/* 1. SÁNG HEADER */}
+              <tr className="bg-gradient-to-r from-teal-50 via-emerald-50/60 to-teal-50/30 border-y border-teal-200">
+                <td colSpan={7} className="px-4 py-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+                        <Sun className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-bold text-teal-900 text-xs sm:text-sm tracking-wide uppercase">
+                        BUỔI SÁNG
+                      </span>
+                      <span className="text-teal-700 text-xs font-semibold">
+                        (7:30 - 11:00)
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-teal-700 bg-white px-2.5 py-0.5 rounded-full border border-teal-200">
+                      4 Tiết học • Ra chơi 9:05 - 9:25
+                    </span>
+                  </div>
+                </td>
+              </tr>
+
+              {/* SÁNG PERIODS */}
+              {morningList.map(({ period, originalIdx, norm }) => {
+                if (norm.isBreak) {
+                  return (
+                    <tr key={`morning-break-${originalIdx}`} className="bg-amber-50/80 border-y border-amber-200/90 text-amber-900">
+                      <td className="px-4 py-2.5 font-bold text-xs text-amber-800 border-r border-amber-200/70 bg-amber-100/50">
+                        <div className="flex items-center gap-2">
+                          <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
+                          <div>
+                            <div className="font-bold text-amber-900">{norm.name}</div>
+                            <div className="font-mono text-[11px] text-amber-700 font-semibold">{norm.timeRange}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td colSpan={6} className="px-4 py-2 text-center text-xs font-semibold text-amber-800 italic">
+                        ☕ Ra chơi & Thư giãn giữa các tiết học sáng (20 phút)
+                      </td>
+                    </tr>
+                  );
+                }
+
                 return (
-                  <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-4 border-r border-slate-200 bg-slate-50/30">
-                      <div className="flex flex-col items-center text-center">
-                        <span className="font-semibold text-slate-800 text-sm">
-                          {period.time.split('(')[0]?.trim() || period.time}
+                  <tr key={`morning-${originalIdx}`} className="hover:bg-teal-50/40 transition-colors border-b border-teal-100/60">
+                    <td className="px-4 py-3 border-r border-teal-100 bg-teal-50/20">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-800 text-xs sm:text-sm">{norm.name}</span>
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-white border border-teal-200 text-teal-900 text-[11px] font-mono font-bold rounded-md shadow-2xs w-fit">
+                          {norm.timeRange}
                         </span>
-                        {period.time.includes('(') && (
-                          <span className="text-xs text-slate-500 mt-1 px-2 py-0.5 bg-white rounded-md border border-slate-200">
-                            {period.time.substring(period.time.indexOf('(')).replace(/[()]/g, '')}
-                          </span>
-                        )}
                       </div>
                     </td>
-                    {activeDays.map(day => {
-                      const cellValue = String(period[day.key as keyof SchedulePeriod] || '').trim();
+                    {days.map(day => {
+                      const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
                       return (
-                        <td key={day.key} className="px-4 py-4 border-r border-slate-200 last:border-0 text-center align-middle">
-                          {cellValue ? (
-                            <div className="font-bold text-teal-800 text-base">{cellValue}</div>
+                        <td key={day.key} className="px-3.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
+                          {cellVal ? (
+                            <div className="inline-block px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200/80 text-teal-950 font-bold text-xs sm:text-sm shadow-2xs">
+                              {cellVal}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300">-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+
+              {/* 2. NGHỈ TRƯA */}
+              <tr className="bg-[#0f766e] text-white shadow-xs border-y-2 border-teal-800 select-none">
+                <td colSpan={7} className="px-4 py-2.5 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-300 animate-pulse shrink-0"></span>
+                    <span className="font-extrabold text-sm sm:text-base tracking-wider uppercase text-white">
+                      NGHỈ TRƯA 11:00 - 13:15
+                    </span>
+                  </div>
+                </td>
+              </tr>
+
+              {/* 3. CHIỀU HEADER */}
+              <tr className="bg-gradient-to-r from-teal-50 via-cyan-50/60 to-teal-50/30 border-y border-teal-200">
+                <td colSpan={7} className="px-4 py-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                        <Sunset className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-bold text-teal-900 text-xs sm:text-sm tracking-wide uppercase">
+                        BUỔI CHIỀU
+                      </span>
+                      <span className="text-teal-700 text-xs font-semibold">
+                        (13:15 - 16:40)
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-teal-700 bg-white px-2.5 py-0.5 rounded-full border border-teal-200">
+                      4 Tiết học • Ra chơi 14:48 - 15:08
+                    </span>
+                  </div>
+                </td>
+              </tr>
+
+              {/* CHIỀU PERIODS */}
+              {afternoonList.map(({ period, originalIdx, norm }) => {
+                if (norm.isBreak) {
+                  return (
+                    <tr key={`afternoon-break-${originalIdx}`} className="bg-amber-50/80 border-y border-amber-200/90 text-amber-900">
+                      <td className="px-4 py-2.5 font-bold text-xs text-amber-800 border-r border-amber-200/70 bg-amber-100/50">
+                        <div className="flex items-center gap-2">
+                          <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
+                          <div>
+                            <div className="font-bold text-amber-900">{norm.name}</div>
+                            <div className="font-mono text-[11px] text-amber-700 font-semibold">{norm.timeRange}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td colSpan={6} className="px-4 py-2 text-center text-xs font-semibold text-amber-800 italic">
+                        ☕ Ra chơi & Thư giãn giữa các tiết học chiều (20 phút)
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return (
+                  <tr key={`afternoon-${originalIdx}`} className="hover:bg-teal-50/40 transition-colors border-b border-teal-100/60">
+                    <td className="px-4 py-3 border-r border-teal-100 bg-teal-50/20">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-800 text-xs sm:text-sm">{norm.name}</span>
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-white border border-teal-200 text-teal-900 text-[11px] font-mono font-bold rounded-md shadow-2xs w-fit">
+                          {norm.timeRange}
+                        </span>
+                      </div>
+                    </td>
+                    {days.map(day => {
+                      const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
+                      return (
+                        <td key={day.key} className="px-3.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
+                          {cellVal ? (
+                            <div className="inline-block px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200/80 text-teal-950 font-bold text-xs sm:text-sm shadow-2xs">
+                              {cellVal}
+                            </div>
                           ) : (
                             <span className="text-slate-300">-</span>
                           )}
@@ -116,78 +249,99 @@ export default function ParentSchedule({ classId }: { classId: string }) {
         </div>
       </div>
 
-      {/* Mobile View (Vertical Cards) */}
-      <div className="md:hidden space-y-6">
-        {activeDays.map(day => {
+      {/* Mobile View (Cards grouped with Morning & Afternoon & Break Time) */}
+      <div className="md:hidden space-y-4">
+        {days.map(day => {
           const dayPeriods = schedule.periods.filter(p => p[day.key as keyof SchedulePeriod] && String(p[day.key as keyof SchedulePeriod]).trim() !== '');
           if (dayPeriods.length === 0) return null;
 
-          const morningPeriods = dayPeriods.filter(p => p.time.toLowerCase().includes('sáng') || p.time.toLowerCase().includes('s-t') || !p.time.toLowerCase().includes('chiều'));
-          const afternoonPeriods = dayPeriods.filter(p => p.time.toLowerCase().includes('chiều') || p.time.toLowerCase().includes('c-t'));
+          const morningDay = morningList.filter(m => (m.period[day.key as keyof SchedulePeriod] && String(m.period[day.key as keyof SchedulePeriod]).trim() !== '') || m.norm.isBreak);
+          const afternoonDay = afternoonList.filter(a => (a.period[day.key as keyof SchedulePeriod] && String(a.period[day.key as keyof SchedulePeriod]).trim() !== '') || a.norm.isBreak);
 
           return (
-            <div key={day.key} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#0f766e] to-[#0d9488] px-5 py-3.5">
-                <h3 className="text-lg font-bold font-display text-white text-center">{day.label}</h3>
+            <div key={day.key} className="bg-white rounded-2xl shadow-sm border border-teal-100 overflow-hidden">
+              <div className="bg-[#0f766e] px-4 py-3 flex items-center justify-between text-white">
+                <h3 className="font-bold font-display text-base text-white">{day.label}</h3>
+                <span className="text-xs text-teal-100">Thời khóa biểu</span>
               </div>
               
-              <div className="p-4 space-y-5">
-                {morningPeriods.length > 0 && (
+              <div className="p-3 space-y-3">
+                {morningDay.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="flex items-center gap-1.5 mb-2 px-1">
                       <Sun className="w-4 h-4 text-amber-500" />
-                      <h4 className="font-bold font-display text-slate-800 text-base">Buổi Sáng</h4>
+                      <h4 className="font-bold text-teal-900 text-xs uppercase tracking-wider">
+                        Buổi Sáng (7:30 - 11:00)
+                      </h4>
                     </div>
-                    <div className="space-y-2.5">
-                      {morningPeriods.map((period, idx) => (
-                        <div key={idx} className="bg-slate-50 rounded-xl p-3 flex items-center gap-3.5 border border-slate-100">
-                          <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 bg-white rounded-xl shadow-2xs border border-slate-200">
-                            <span className="font-bold text-slate-800 text-xs">
-                              {period.time.split('(')[0]?.replace(/Sáng|Chiều|-/gi, '')?.trim() || `T${idx+1}`}
-                            </span>
-                            {period.time.includes('(') && (
-                              <span className="text-[10px] text-slate-500 font-medium mt-0.5">
-                                {period.time.substring(period.time.indexOf('(')).replace(/[()]/g, '')}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-base font-bold font-display text-teal-800 uppercase tracking-tight">
-                              {String(period[day.key as keyof SchedulePeriod])}
+                    <div className="space-y-2 bg-slate-50/60 rounded-xl p-2 border border-teal-100/60">
+                      {morningDay.map(({ period, originalIdx, norm }) => {
+                        if (norm.isBreak) {
+                          return (
+                            <div key={norm.id} className="p-2.5 bg-amber-50 rounded-lg text-amber-800 flex items-center gap-2 text-sm font-bold border border-amber-200">
+                              <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span>Ra chơi: 9:05 - 9:25 (20 phút)</span>
+                            </div>
+                          );
+                        }
+                        const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
+                        if (!cellVal) return null;
+
+                        return (
+                          <div key={originalIdx} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3 border border-teal-100 shadow-2xs">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-800 text-[14px]">{norm.name}</span>
+                              <span className="text-[14px] font-mono font-bold text-teal-700">{norm.timeRange}</span>
+                            </div>
+                            <div className="font-bold text-teal-950 text-[14px] bg-[#ccfbf1] px-3 py-1.5 rounded-lg border border-[#5eead4] shadow-2xs">
+                              {cellVal}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
-                {afternoonPeriods.length > 0 && (
+                {/* Sáng - Chiều Divider on Mobile */}
+                <div className="bg-[#0f766e] text-white p-2.5 rounded-xl text-center text-[14px] font-extrabold tracking-wide flex items-center justify-center gap-2 shadow-2xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-300 animate-pulse shrink-0"></span>
+                  <span>NGHỈ TRƯA 11:00 - 13:15</span>
+                </div>
+
+                {afternoonDay.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-2 mb-3 px-1 mt-3">
-                      <Moon className="w-4 h-4 text-teal-600" />
-                      <h4 className="font-bold font-display text-slate-800 text-base">Buổi Chiều</h4>
+                    <div className="flex items-center gap-1.5 mb-2 px-1">
+                      <Sunset className="w-4 h-4 text-blue-500" />
+                      <h4 className="font-bold text-teal-900 text-xs uppercase tracking-wider">
+                        Buổi Chiều (13:15 - 16:40)
+                      </h4>
                     </div>
-                    <div className="space-y-2.5">
-                      {afternoonPeriods.map((period, idx) => (
-                        <div key={idx} className="bg-slate-50 rounded-xl p-3 flex items-center gap-3.5 border border-slate-100">
-                          <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 bg-white rounded-xl shadow-2xs border border-slate-200">
-                            <span className="font-bold text-slate-800 text-xs">
-                              {period.time.split('(')[0]?.replace(/Sáng|Chiều|-/gi, '')?.trim() || `T${idx+1}`}
-                            </span>
-                            {period.time.includes('(') && (
-                              <span className="text-[10px] text-slate-500 font-medium mt-0.5">
-                                {period.time.substring(period.time.indexOf('(')).replace(/[()]/g, '')}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-base font-bold font-display text-teal-800 uppercase tracking-tight">
-                              {String(period[day.key as keyof SchedulePeriod])}
+                    <div className="space-y-2 bg-slate-50/60 rounded-xl p-2 border border-teal-100/60">
+                      {afternoonDay.map(({ period, originalIdx, norm }) => {
+                        if (norm.isBreak) {
+                          return (
+                            <div key={norm.id} className="p-2.5 bg-amber-50 rounded-lg text-amber-800 flex items-center gap-2 text-sm font-bold border border-amber-200">
+                              <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span>Ra chơi: 14:48 - 15:08 (20 phút)</span>
+                            </div>
+                          );
+                        }
+                        const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
+                        if (!cellVal) return null;
+
+                        return (
+                          <div key={originalIdx} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3 border border-teal-100 shadow-2xs">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-800 text-[14px]">{norm.name}</span>
+                              <span className="text-[14px] font-mono font-bold text-teal-700">{norm.timeRange}</span>
+                            </div>
+                            <div className="font-bold text-teal-950 text-[14px] bg-[#ccfbf1] px-3 py-1.5 rounded-lg border border-[#5eead4] shadow-2xs">
+                              {cellVal}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

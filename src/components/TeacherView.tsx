@@ -430,7 +430,13 @@ export default function TeacherView({
           )}
 
           {activeMenu === 'schedule' && (
-            <TeacherSchedule classId={selectedClassId} />
+            <TeacherSchedule 
+              classId={selectedClassId} 
+              role={role}
+              classes={allowedClasses}
+              onClassChange={handleClassChange}
+              className={allowedClasses.find(c => c.id === selectedClassId)?.name}
+            />
           )}
 
           {activeMenu === 'students' && (

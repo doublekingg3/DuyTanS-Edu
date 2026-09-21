@@ -99,6 +99,7 @@ export interface SchoolClass {
   homeroomTeacher: string;
   schoolYearId?: string;
   specialization?: 'Tự Nhiên' | 'Xã Hội' | 'Cơ Bản' | string;
+  room?: string;
 }
 
 export interface SubjectDetail {
@@ -464,15 +465,15 @@ export interface ClassSchedule {
 export const sortClasses = <T extends { name: string }>(classes: T[]): T[] => {
   return [...classes].sort((a, b) => {
     const parse = (name: string) => {
-      const match = name.match(/^(\d+)(.*)$/);
+      const match = (name || '').match(/^(\d+)(.*)$/);
       if (match) {
         return { num: parseInt(match[1], 10), str: match[2] };
       }
-      return { num: 0, str: name };
+      return { num: 0, str: name || '' };
     };
     const pA = parse(a.name);
     const pB = parse(b.name);
     if (pA.num !== pB.num) return pA.num - pB.num;
-    return pA.str.localeCompare(pB.str);
+    return pA.str.localeCompare(pB.str, 'vi', { numeric: true });
   });
 };
