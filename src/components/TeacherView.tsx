@@ -509,6 +509,8 @@ export default function TeacherView({
           {activeMenu === 'attendance' && (
             <TeacherAttendance 
               role={role}
+              user={user}
+              classes={classes}
               students={filteredStudents}
               classId={selectedClassId}
               className={allowedClasses.find(c => c.id === selectedClassId)?.name || ''}
@@ -519,7 +521,7 @@ export default function TeacherView({
           {activeMenu === 'schedule' && (
             <TeacherSchedule 
               classId={selectedClassId} 
-              role={role}
+              role={role} 
               classes={allowedClasses}
               onClassChange={handleClassChange}
               className={allowedClasses.find(c => c.id === selectedClassId)?.name}
@@ -529,6 +531,7 @@ export default function TeacherView({
           {activeMenu === 'students' && (
             <TeacherStudents 
               role={role}
+              user={user}
               students={filteredStudents}
               classId={selectedClassId}
               classes={classes}
@@ -555,6 +558,8 @@ export default function TeacherView({
             <TeacherWeeklyPlan 
               classId={selectedClassId} 
               role={role} 
+              user={user}
+              classes={classes}
               className={allowedClasses.find(c => c.id === selectedClassId)?.name}
               schoolYearName={schoolYears?.find(y => y.id === (allowedClasses.find(c => c.id === selectedClassId)?.schoolYearId || selectedYearId))?.name || 'Không xác định'}
               teacherName={user?.fullName}
@@ -565,6 +570,7 @@ export default function TeacherView({
             <TeacherLunchMenu 
               classId={selectedClassId} 
               role={role} 
+              user={user}
               schoolYearName={schoolYears?.find(y => y.id === (allowedClasses.find(c => c.id === selectedClassId)?.schoolYearId || selectedYearId))?.name || 'Không xác định'} 
             />
           )}

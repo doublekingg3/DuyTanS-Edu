@@ -18,15 +18,19 @@ import {
   Heart, 
   Eye,
   CheckCircle,
-  Save
+  Save,
+  Shield
 } from 'lucide-react';
 import { useAlert } from '../contexts/AlertContext';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../lib/firebase';
 import { doc, writeBatch, deleteDoc, setDoc } from 'firebase/firestore';
+import { canUserEdit } from '../lib/permissions';
+import { UserAccount } from '../data';
 
 export default function TeacherStudents({ 
   role,
+  user,
   students, 
   classId,
   onAddComment, 
@@ -39,6 +43,7 @@ export default function TeacherStudents({
   schoolYears
 }: { 
   role?: string,
+  user?: UserAccount,
   students: Student[],
   classId: string,
   onAddComment: (studentId: string, text: string) => void,
@@ -51,6 +56,15 @@ export default function TeacherStudents({
   schoolYears: SchoolYear[]
 }) {
   const { showAlert, showConfirm } = useAlert();
+  const currentClass = classes.find(c => c.id === classId);
+  const isHomeroom = 
+    role === 'admin' || 
+    user?.homeroomClasses?.includes(classId) || 
+    Boolean(currentClass && user?.fullName && currentClass.homeroomTeacher === user.fullName);
+
+  // Chỉ GVCN của lớp (hoặc Admin) mới có quyền chỉnh sửa, thêm, xóa danh sách lớp.
+  // GV bộ môn hoặc GV dạy tiết 1 không phải chủ nhiệm lớp này chỉ có quyền XEM (view only).
+  const canEdit = isHomeroom && canUserEdit(user, role, 'students');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   
@@ -76,8 +90,6 @@ export default function TeacherStudents({
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const currentClass = classes.find(c => c.id === classId);
 
   // Sorting: by STT if available, then by Vietnamese first name
   const getFirstName = (fullName: string) => {
@@ -559,8 +571,15 @@ export default function TeacherStudents({
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+            {!canEdit && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-800 rounded-xl border border-amber-200 text-xs font-medium shrink-0">
+                <Shield className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Chế độ chỉ xem (Chỉ GVCN mới được sửa danh sách lớp)</span>
+              </div>
+            )}
+
             {/* Bulk Delete */}
-            {selectedStudentIds.length > 0 && role !== 'subject_teacher' && (
+            {selectedStudentIds.length > 0 && canEdit && (
               <button
                 onClick={handleDeleteSelected}
                 className="px-3 py-2 bg-red-50 text-red-600 font-medium text-xs sm:text-sm rounded-xl hover:bg-red-100 transition-colors flex items-center gap-1.5 shadow-2xs border border-red-200 shrink-0"
@@ -569,7 +588,7 @@ export default function TeacherStudents({
               </button>
             )}
 
-            {role !== 'subject_teacher' && (
+            {canEdit && (
               <>
                 {/* Add Student */}
                 <button 
@@ -627,7 +646,7 @@ export default function TeacherStudents({
           <table className="w-full text-left text-xs sm:text-sm">
             <thead className="bg-[#0f766e] text-white font-semibold">
               <tr>
-                {role !== 'subject_teacher' && (
+                {canEdit && (
                   <th className="hidden sm:table-cell px-3 sm:px-4 py-3 sm:py-3.5 text-center w-10 sm:w-12 text-white">
                     <input
                       type="checkbox"
@@ -690,7 +709,7 @@ export default function TeacherStudents({
                       title="Bấm vào để xem hồ sơ chi tiết học sinh"
                     >
                       {/* Checkbox (Desktop/Tablet: sm:) */}
-                      {role !== 'subject_teacher' && (
+                      {canEdit && (
                         <td 
                           className="hidden sm:table-cell px-3 sm:px-4 py-2.5 sm:py-3.5 text-center"
                           onClick={(e) => e.stopPropagation()}
@@ -792,7 +811,7 @@ export default function TeacherStudents({
                           >
                             <Eye className="w-4 h-4 text-teal-600" />
                           </button>
-                          {role !== 'subject_teacher' && (
+                          {canEdit && (
                             <button
                               onClick={() => handleDeleteSingle(student.id, student.fullName)}
                               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors hidden sm:block opacity-0 group-hover:opacity-100"
@@ -846,7 +865,7 @@ export default function TeacherStudents({
 
               <div className="flex items-center gap-2">
                 {!isEditingInModal ? (
-                  role !== 'subject_teacher' && (
+                  canEdit && (
                     <button
                       onClick={() => setIsEditingInModal(true)}
                       className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
@@ -1171,7 +1190,7 @@ export default function TeacherStudents({
             {/* Modal Footer */}
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
               <div>
-                {role !== 'subject_teacher' && !isEditingInModal && (
+                {canEdit && !isEditingInModal && (
                   <button
                     onClick={() => handleDeleteSingle(selectedStudentForDetails.id, selectedStudentForDetails.fullName)}
                     className="text-red-600 hover:text-red-700 text-xs font-medium flex items-center gap-1 transition-colors"

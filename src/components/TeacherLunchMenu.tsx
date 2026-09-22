@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { useAlert } from '../contexts/AlertContext';
-import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Download, Save, Plus, Trash2, Upload, X, RotateCcw } from 'lucide-react';
+import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Download, Save, Plus, Trash2, Upload, X, RotateCcw, Eye, Shield } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { generateSchoolWeeks, getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
+import { canUserEdit } from '../lib/permissions';
+import { UserAccount } from '../data';
 
 // Helper function to format various Excel date formats (Date, serial number, DD/MM/YYYY, YYYY-MM-DD)
 const formatExcelDate = (val: any): string => {
@@ -45,7 +47,18 @@ const formatExcelDate = (val: any): string => {
   return str;
 };
 
-export default function TeacherLunchMenu({ classId, role, schoolYearName }: { classId: string, role?: string, schoolYearName?: string }) {
+export default function TeacherLunchMenu({ 
+  classId, 
+  role, 
+  user,
+  schoolYearName 
+}: { 
+  classId: string; 
+  role?: string; 
+  user?: UserAccount;
+  schoolYearName?: string; 
+}) {
+  const canEdit = canUserEdit(user, role, 'lunchMenu');
   const [weeks, setWeeks] = useState<{id: number, name: string, status: string, startDate?: string, endDate?: string, dateRangeFormatted?: string}[]>([]);
   const realtimeCurrentWeek = getCurrentSchoolWeek(schoolYearName);
   const [selectedWeek, setSelectedWeek] = useState(() => realtimeCurrentWeek);
@@ -95,6 +108,10 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
   }, [selectedWeek, schoolYearName]);
 
   const saveToFirebase = async (weekId: number, updateData: any) => {
+    if (!canEdit) {
+      showAlert('Bạn chỉ có quyền xem thực đơn, không có quyền thay đổi.', 'error');
+      return;
+    }
     try {
       await setDoc(doc(db, 'lunch_menus', 'general'), {
         weeks: {
@@ -108,6 +125,10 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
   };
 
   const handleApprove = async () => {
+    if (!canEdit) {
+      showAlert('Chỉ Ban Giám Hiệu hoặc Giáo vụ mới có quyền duyệt thực đơn.', 'error');
+      return;
+    }
     const confirmed = await showConfirm(`Bạn có chắc chắn muốn duyệt thực đơn Tuần ${selectedWeek} không?\nSau khi duyệt, thực đơn sẽ áp dụng cho toàn bộ học sinh và hiển thị chính thức cho Phụ huynh.`);
     if (confirmed) {
       await saveToFirebase(selectedWeek, { status: 'approved', menus });
@@ -117,12 +138,20 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
   };
 
   const handleSaveDraft = async () => {
+    if (!canEdit) {
+      showAlert('Chỉ Ban Giám Hiệu hoặc Giáo vụ mới có quyền lưu thực đơn.', 'error');
+      return;
+    }
     await saveToFirebase(selectedWeek, { status: 'draft', menus });
     setWeeks(prev => prev.map(w => w.id === selectedWeek ? { ...w, status: 'draft' } : w));
     showAlert(`Đã lưu nháp thực đơn Tuần ${selectedWeek}`, 'success');
   };
 
   const handleCancelApprove = async () => {
+    if (!canEdit) {
+      showAlert('Chỉ Ban Giám Hiệu hoặc Giáo vụ mới có quyền hủy duyệt.', 'error');
+      return;
+    }
     const confirmed = await showConfirm(`Bạn có chắc chắn muốn hủy duyệt thực đơn Tuần ${selectedWeek} không?\nTrạng thái sẽ trở về Bản nháp để có thể chỉnh sửa và lên lại món ăn.`);
     if (confirmed) {
       await saveToFirebase(selectedWeek, { status: 'draft' });
@@ -139,6 +168,9 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
   };
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const handleExportPDF = () => {
+    window.print();
+  };
 
   const handleDownloadTemplate = () => {
     const currentWeek = weeks.find(w => w.id === selectedWeek);
@@ -182,6 +214,10 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
   };
 
   const handleUploadTemplate = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canEdit) {
+      showAlert('Bạn chỉ có quyền xem thực đơn, không có quyền thay đổi.', 'error');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -338,15 +374,17 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
           </h2>
           <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1">Lên thực đơn dinh dưỡng hàng ngày cho toàn bộ học sinh bán trú của trường (áp dụng chung tất cả các lớp)</p>
         </div>
-        <div className="grid grid-cols-3 sm:flex sm:flex-row gap-2 w-full md:w-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full md:w-auto">
           <button onClick={handleDownloadTemplate} className="flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors text-xs sm:text-sm shadow-2xs whitespace-nowrap">
             <Download className="w-4 h-4" /> <span>Tải mẫu</span>
           </button>
-          <label className="flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-2 border border-amber-500 text-amber-600 font-medium rounded-xl hover:bg-amber-50 transition-colors cursor-pointer text-xs sm:text-sm shadow-2xs whitespace-nowrap">
-            <Upload className="w-4 h-4" /> <span>Upload</span>
-            <input type="file" ref={fileInputRef} onChange={handleUploadTemplate} accept=".xlsx, .xls, .csv" className="hidden" />
-          </label>
-          <button className="flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-2 bg-amber-500 text-white font-medium rounded-xl hover:bg-amber-600 transition-colors text-xs sm:text-sm shadow-2xs whitespace-nowrap">
+          {canEdit && (
+            <label className="flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-2 border border-amber-500 text-amber-600 font-medium rounded-xl hover:bg-amber-50 transition-colors cursor-pointer text-xs sm:text-sm shadow-2xs whitespace-nowrap">
+              <Upload className="w-4 h-4" /> <span>Upload</span>
+              <input type="file" ref={fileInputRef} onChange={handleUploadTemplate} accept=".xlsx, .xls, .csv" className="hidden" />
+            </label>
+          )}
+          <button onClick={handleExportPDF} className="flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-2 bg-amber-500 text-white font-medium rounded-xl hover:bg-amber-600 transition-colors text-xs sm:text-sm shadow-2xs whitespace-nowrap">
             <Download className="w-4 h-4" /> <span>Xuất PDF</span>
           </button>
         </div>
@@ -423,41 +461,47 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
             </div>
           </div>
           <div className="flex items-center flex-wrap gap-2.5 self-end sm:self-auto">
-            <button 
-              onClick={handleSaveDraft} 
-              className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 text-slate-700 font-medium text-sm rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
-            >
-              <Save className="w-4 h-4 text-slate-500" /> Lưu nháp
-            </button>
-
-            {weeks.find(w => w.id === selectedWeek)?.status === 'approved' ? (
+            {!canEdit ? (
+              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-100/90 text-slate-600 border border-slate-200/80 rounded-xl text-xs font-semibold shadow-2xs">
+                <Shield className="w-3.5 h-3.5 text-slate-500" />
+                <span>Chế độ chỉ xem (Chỉ Admin & Giáo vụ mới có quyền thay đổi)</span>
+              </div>
+            ) : (
               <>
                 <button 
-                  onClick={handleCancelApprove} 
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 text-rose-700 border border-rose-200 font-semibold text-sm rounded-lg hover:bg-rose-100 transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed" 
-                  disabled={role === 'teacher'} 
-                  title={role === 'teacher' ? 'Chỉ Ban Giám Hiệu hoặc Admin mới có quyền hủy duyệt' : 'Hủy duyệt để chuyển về bản nháp và lên lại món ăn'}
+                  onClick={handleSaveDraft} 
+                  className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 text-slate-700 font-medium text-sm rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
                 >
-                  <RotateCcw className="w-4 h-4 text-rose-600" /> Hủy duyệt
+                  <Save className="w-4 h-4 text-slate-500" /> Lưu nháp
                 </button>
-                <button 
-                  onClick={handleApprove} 
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white font-medium text-sm rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" 
-                  disabled={role === 'teacher'} 
-                  title={role === 'teacher' ? 'Chỉ Ban Giám Hiệu hoặc Admin mới có quyền duyệt' : 'Cập nhật lại duyệt thực đơn cho toàn trường'}
-                >
-                  <CheckCircle className="w-4 h-4" /> Cập nhật duyệt
-                </button>
+
+                {weeks.find(w => w.id === selectedWeek)?.status === 'approved' ? (
+                  <>
+                    <button 
+                      onClick={handleCancelApprove} 
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 text-rose-700 border border-rose-200 font-semibold text-sm rounded-lg hover:bg-rose-100 transition-colors shadow-2xs" 
+                      title="Hủy duyệt để chuyển về bản nháp và lên lại món ăn"
+                    >
+                      <RotateCcw className="w-4 h-4 text-rose-600" /> Hủy duyệt
+                    </button>
+                    <button 
+                      onClick={handleApprove} 
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white font-medium text-sm rounded-lg hover:bg-emerald-700 transition-colors shadow-sm" 
+                      title="Cập nhật lại duyệt thực đơn cho toàn trường"
+                    >
+                      <CheckCircle className="w-4 h-4" /> Cập nhật duyệt
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={handleApprove} 
+                    className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white font-semibold text-sm rounded-lg hover:bg-emerald-700 transition-colors shadow-sm" 
+                    title="Duyệt thực đơn cho toàn trường"
+                  >
+                    <CheckCircle className="w-4 h-4" /> Duyệt thực đơn
+                  </button>
+                )}
               </>
-            ) : (
-              <button 
-                onClick={handleApprove} 
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white font-semibold text-sm rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" 
-                disabled={role === 'teacher'} 
-                title={role === 'teacher' ? 'Chỉ Ban Giám Hiệu hoặc Admin mới có quyền duyệt' : 'Duyệt thực đơn cho toàn trường'}
-              >
-                <CheckCircle className="w-4 h-4" /> Duyệt thực đơn
-              </button>
             )}
           </div>
         </div>
@@ -466,21 +510,30 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div>
               <label className="block text-sm font-medium text-slate-500 mb-2">Từ ngày (Bắt đầu)</label>
-              <input type="date" className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none" 
+              <input 
+                type="date" 
+                disabled={!canEdit}
+                className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-600 disabled:cursor-not-allowed" 
                 value={weeks.find(w => w.id === selectedWeek)?.startDate || ''}
-                onChange={(e) => saveToFirebase(selectedWeek, { startDate: e.target.value })}
+                onChange={(e) => canEdit && saveToFirebase(selectedWeek, { startDate: e.target.value })}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-500 mb-2">Đến ngày (Kết thúc)</label>
-              <input type="date" className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none" 
+              <input 
+                type="date" 
+                disabled={!canEdit}
+                className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-600 disabled:cursor-not-allowed" 
                 value={weeks.find(w => w.id === selectedWeek)?.endDate || ''}
-                onChange={(e) => saveToFirebase(selectedWeek, { endDate: e.target.value })}
+                onChange={(e) => canEdit && saveToFirebase(selectedWeek, { endDate: e.target.value })}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-500 mb-2">Nhà cung cấp/Bếp ăn</label>
-              <select className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white">
+              <select 
+                disabled={!canEdit}
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white disabled:bg-slate-100/70 disabled:text-slate-600 disabled:cursor-not-allowed"
+              >
                 <option>Bếp ăn trường Duy Tân</option>
                 <option>Công ty cung cấp suất ăn A</option>
               </select>
@@ -500,44 +553,66 @@ export default function TeacherLunchMenu({ classId, role, schoolYearName }: { cl
                   <div key={idx} className="flex flex-col sm:flex-row items-start gap-4 p-4 border border-slate-200 rounded-xl bg-white hover:border-amber-300 transition-colors">
                     <div className="w-24 h-10 mt-1 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold shrink-0 border border-amber-100">{day}</div>
                     <div className="flex-1 w-full space-y-2">
-                       {dayMenu.dishes.map((dish, dishIdx) => (
-                         <div key={dishIdx} className="flex items-center gap-2">
-                            <input 
-                              type="text"
-                              placeholder={`Món ${dishIdx + 1} (Ví dụ: Cơm trắng, Canh chua)`}
-                              value={dish}
-                              onChange={(e) => {
-                          const newMenus = [...menus];
-                          newMenus[dayIdx].dishes[dishIdx] = e.target.value;
-                          setMenus(newMenus);
-                        }}
-                        onBlur={() => saveToFirebase(selectedWeek, { menus })}
-                              className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-medium text-slate-700"
-                            />
-                            <button 
-                              onClick={() => {
-                        const newMenus = [...menus];
-                        newMenus[dayIdx].dishes.splice(dishIdx, 1);
-                        setMenus(newMenus);
-                        saveToFirebase(selectedWeek, { menus: newMenus });
-                      }}
-                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                       {canEdit ? (
+                         <>
+                           {dayMenu.dishes.map((dish, dishIdx) => (
+                             <div key={dishIdx} className="flex items-center gap-2">
+                                <input 
+                                  type="text"
+                                  placeholder={`Món ${dishIdx + 1} (Ví dụ: Cơm trắng, Canh chua)`}
+                                  value={dish}
+                                  onChange={(e) => {
+                                    const newMenus = [...menus];
+                                    newMenus[dayIdx].dishes[dishIdx] = e.target.value;
+                                    setMenus(newMenus);
+                                  }}
+                                  onBlur={() => saveToFirebase(selectedWeek, { menus })}
+                                  className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-medium text-slate-700"
+                                />
+                                <button 
+                                  onClick={() => {
+                                    const newMenus = [...menus];
+                                    newMenus[dayIdx].dishes.splice(dishIdx, 1);
+                                    setMenus(newMenus);
+                                    saveToFirebase(selectedWeek, { menus: newMenus });
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                             </div>
+                           ))}
+                           <button 
+                             onClick={() => {
+                               const newMenus = [...menus];
+                               newMenus[dayIdx].dishes.push('');
+                               setMenus(newMenus);
+                               saveToFirebase(selectedWeek, { menus: newMenus });
+                             }}
+                             className="text-sm font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2 py-1.5 rounded-md transition-colors flex items-center gap-1"
+                           >
+                             <Plus className="w-4 h-4" /> Thêm món
+                           </button>
+                         </>
+                       ) : (
+                         <div className="py-1">
+                           {dayMenu.dishes.filter(d => d && d.trim()).length > 0 ? (
+                             <div className="flex flex-wrap gap-2">
+                               {dayMenu.dishes.filter(d => d && d.trim()).map((dish, dishIdx) => (
+                                 <span 
+                                   key={dishIdx} 
+                                   className="inline-flex items-center px-3.5 py-1.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-900 border border-amber-200/80 shadow-2xs"
+                                 >
+                                   <span className="w-2 h-2 rounded-full bg-amber-500 mr-2 shrink-0"></span>
+                                   {dish}
+                                 </span>
+                               ))}
+                             </div>
+                           ) : (
+                             <p className="text-sm text-slate-400 italic py-1.5">Chưa cập nhật món ăn cho ngày này</p>
+                           )}
                          </div>
-                       ))}
-                       <button 
-                         onClick={() => {
-                      const newMenus = [...menus];
-                      newMenus[dayIdx].dishes.push('');
-                      setMenus(newMenus);
-                      saveToFirebase(selectedWeek, { menus: newMenus });
-                    }}
-                         className="text-sm font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2 py-1.5 rounded-md transition-colors flex items-center gap-1"
-                       >
-                         <Plus className="w-4 h-4" /> Thêm món
-                       </button>
+                       )}
                     </div>
                   </div>
                 );

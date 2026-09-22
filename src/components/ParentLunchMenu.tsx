@@ -127,7 +127,7 @@ export default function ParentLunchMenu() {
           </h2>
           <p className="text-slate-500 text-xs sm:text-sm mt-1">Dinh dưỡng hàng ngày của học sinh tại trường</p>
         </div>
-        <button className="self-start sm:self-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-medium text-sm rounded-xl transition-colors shadow-sm">
+        <button onClick={() => window.print()} className="self-start sm:self-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-medium text-sm rounded-xl transition-colors shadow-sm">
           <Download className="w-4 h-4" /> Tải về (.pdf)
         </button>
       </div>

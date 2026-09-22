@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { SchoolClass, Student, UserAccount, SchoolYear, AppSettings, defaultSettings, sortClasses } from '../data';
+import { SchoolClass, Student, UserAccount, UserPermissions, SchoolYear, AppSettings, defaultSettings, sortClasses } from '../data';
 import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw, Settings } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
@@ -214,7 +214,18 @@ export default function AdminView({ classes, students, users, schoolYears, setti
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [userAssignmentYear, setUserAssignmentYear] = useState('');
-  const [userFormData, setUserFormData] = useState<{username: string, password: string, fullName: string, role: 'admin'|'teacher'|'subject_teacher'|'staff', isHomeroom: boolean, isSubject: boolean, subjects: string[], homeroomClasses: string[], subjectClasses: string[]}>({
+  const [userFormData, setUserFormData] = useState<{
+    username: string;
+    password: string;
+    fullName: string;
+    role: 'admin' | 'teacher' | 'subject_teacher' | 'staff';
+    isHomeroom: boolean;
+    isSubject: boolean;
+    subjects: string[];
+    homeroomClasses: string[];
+    subjectClasses: string[];
+    permissions: UserPermissions;
+  }>({
     username: '',
     password: '',
     fullName: '',
@@ -223,7 +234,15 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     isSubject: false,
     subjects: [],
     homeroomClasses: [],
-    subjectClasses: []
+    subjectClasses: [],
+    permissions: {
+      schedule: 'edit',
+      students: 'edit',
+      grades: 'edit',
+      weeklyPlan: 'edit',
+      lunchMenu: 'view',
+      attendance: 'edit'
+    }
   });
 
   const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
@@ -511,43 +530,90 @@ export default function AdminView({ classes, students, users, schoolYears, setti
       return;
     }
     const userId = editingUser ? editingUser.id : uuidv4();
+    const cleanUsername = (editingUser && isMasterAdmin(editingUser)) ? editingUser.username : userFormData.username.trim();
+
+    // Check for duplicate username when creating a new user or changing username
+    const isDuplicate = users.some(u => 
+      u.id !== userId && 
+      !u.isDeleted && 
+      u.username.trim().toLowerCase() === cleanUsername.toLowerCase()
+    );
+    if (isDuplicate) {
+      showAlert(`Tên tài khoản (mã giáo viên) "${cleanUsername}" đã tồn tại. Vui lòng chọn tên khác.`, 'error');
+      return;
+    }
+
+    const homeroomClasses = (userFormData.role === 'teacher' || userFormData.role === 'admin') && userFormData.isHomeroom ? userFormData.homeroomClasses : [];
+    const subjectClasses = (userFormData.role === 'teacher' || userFormData.role === 'admin') && userFormData.isSubject 
+      ? userFormData.subjectClasses.filter(cId => !homeroomClasses.includes(cId))
+      : [];
+
     const userData: any = {
       id: userId,
-      username: userFormData.username,
-      fullName: userFormData.fullName,
+      username: cleanUsername,
+      fullName: userFormData.fullName.trim(),
       role: userFormData.role,
-      subjects: userFormData.role === 'teacher' && userFormData.isSubject ? userFormData.subjects : [],
-      homeroomClasses: userFormData.role === 'teacher' && userFormData.isHomeroom ? userFormData.homeroomClasses : [],
-      subjectClasses: userFormData.role === 'teacher' && userFormData.isSubject ? userFormData.subjectClasses : []
+      subjects: (userFormData.role === 'teacher' || userFormData.role === 'admin') && userFormData.isSubject ? userFormData.subjects : [],
+      homeroomClasses: homeroomClasses,
+      subjectClasses: subjectClasses
     };
+
+    if (userFormData.role !== 'admin' && userFormData.permissions) {
+      userData.permissions = userFormData.permissions;
+    }
+
     if (userFormData.password) {
       userData.password = userFormData.password;
-    } else if (editingUser) {
+    } else if (editingUser && editingUser.password) {
       userData.password = editingUser.password;
     }
     try {
       const docRef = doc(db, 'users', userId);
-      await setDoc(docRef, userData);
+      await setDoc(docRef, userData, { merge: true });
+      showAlert(editingUser ? 'Đã cập nhật tài khoản thành công!' : 'Đã tạo tài khoản mới thành công!', 'success');
       setIsAddUserModalOpen(false);
       setEditingUser(null);
-      setUserFormData({ username: '', password: '', fullName: '', role: 'teacher' as any, isHomeroom: false, isSubject: false, subjects: [], homeroomClasses: [], subjectClasses: [] });
+      setUserFormData({ 
+        username: '', 
+        password: '', 
+        fullName: '', 
+        role: 'teacher' as any, 
+        isHomeroom: false, 
+        isSubject: false, 
+        subjects: [], 
+        homeroomClasses: [], 
+        subjectClasses: [],
+        permissions: {
+          schedule: 'edit',
+          students: 'edit',
+          grades: 'edit',
+          weeklyPlan: 'edit',
+          lunchMenu: 'view',
+          attendance: 'edit'
+        }
+      });
     } catch (error) {
       console.error('Lỗi khi lưu tài khoản:', error);
-      showAlert('Đã xảy ra lỗi khi lưu tài khoản.', 'error');
+      const errMsg = error instanceof Error ? error.message : String(error);
+      showAlert(`Đã xảy ra lỗi khi lưu tài khoản: ${errMsg}`, 'error');
     }
   };
 
-  const handleDeleteSelectedUsers = async () => {
+  const isMasterAdmin = (u?: UserAccount | null) => {
+    if (!u) return false;
+    return u.username?.trim().toLowerCase() === 'admin' || u.id === 'admin';
+  };
 
+  const handleDeleteSelectedUsers = async () => {
     if (selectedUserIds.length === 0) return;
     
     const safeSelectedIds = selectedUserIds.filter(id => {
       const u = users.find(user => user.id === id);
-      return u && u.username !== 'admin' && u.role !== 'admin';
+      return u && !isMasterAdmin(u);
     });
 
     if (safeSelectedIds.length === 0) {
-      showAlert('Không có tài khoản hợp lệ để xoá (không thể xoá tài khoản admin).', 'error');
+      showAlert('Không có tài khoản hợp lệ để xoá (không thể xoá tài khoản Admin quản trị hệ thống).', 'error');
       return;
     }
 
@@ -570,9 +636,13 @@ export default function AdminView({ classes, students, users, schoolYears, setti
   };
 
   const handleDeleteUser = async (userId: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (targetUser && isMasterAdmin(targetUser)) {
+      showAlert('Tài khoản Admin quản trị hệ thống là cố định, không thể xóa.', 'error');
+      return;
+    }
 
-
-    const isConfirmed = await showConfirm('Bạn có chắc chắn muốn chuyển tài khoản này vào thùng rác?');
+    const isConfirmed = await showConfirm(`Bạn có chắc chắn muốn chuyển tài khoản ${targetUser?.fullName ? `"${targetUser.fullName}"` : 'này'} vào thùng rác?`);
     if (isConfirmed) {
       try {
         const docRef = doc(db, 'users', userId);
@@ -587,7 +657,27 @@ export default function AdminView({ classes, students, users, schoolYears, setti
 
   const openEditUserModal = (u: UserAccount) => {
     setEditingUser(u);
-    setUserFormData({ username: u.username, password: '', fullName: u.fullName, role: u.role, isHomeroom: !!u.homeroomClasses?.length, isSubject: !!u.subjectClasses?.length, subjects: u.subjects || [], homeroomClasses: u.homeroomClasses || [], subjectClasses: u.subjectClasses || [] });
+    const homeroomClasses = u.homeroomClasses || [];
+    const subjectClasses = (u.subjectClasses || []).filter(cId => !homeroomClasses.includes(cId));
+    setUserFormData({ 
+      username: u.username, 
+      password: '', 
+      fullName: u.fullName, 
+      role: u.role, 
+      isHomeroom: !!homeroomClasses.length, 
+      isSubject: !!subjectClasses.length, 
+      subjects: u.subjects || [], 
+      homeroomClasses: homeroomClasses, 
+      subjectClasses: subjectClasses,
+      permissions: {
+        schedule: u.permissions?.schedule || (u.role === 'staff' ? 'view' : 'edit'),
+        students: u.permissions?.students || (u.role === 'staff' || u.role === 'subject_teacher' ? 'view' : 'edit'),
+        grades: u.permissions?.grades || (u.role === 'staff' ? 'view' : 'edit'),
+        weeklyPlan: u.permissions?.weeklyPlan || (u.role === 'staff' ? 'view' : 'edit'),
+        lunchMenu: u.role === 'staff' ? (u.permissions?.lunchMenu || 'edit') : 'view',
+        attendance: u.permissions?.attendance || (u.role === 'staff' || u.role === 'subject_teacher' ? 'view' : 'edit')
+      }
+    });
     setIsAddUserModalOpen(true);
   };
 
@@ -661,7 +751,25 @@ export default function AdminView({ classes, students, users, schoolYears, setti
 
   const openAddUserModal = () => {
     setEditingUser(null);
-    setUserFormData({ username: '', password: '', fullName: '', role: 'teacher' as any, isHomeroom: false, isSubject: false, subjects: [], homeroomClasses: [], subjectClasses: [] });
+    setUserFormData({ 
+      username: '', 
+      password: '', 
+      fullName: '', 
+      role: 'teacher' as any, 
+      isHomeroom: false, 
+      isSubject: false, 
+      subjects: [], 
+      homeroomClasses: [], 
+      subjectClasses: [],
+      permissions: {
+        schedule: 'edit',
+        students: 'edit',
+        grades: 'edit',
+        weeklyPlan: 'edit',
+        lunchMenu: 'view',
+        attendance: 'edit'
+      }
+    });
     setIsAddUserModalOpen(true);
   };
 
@@ -1096,10 +1204,10 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                         <input
                           type="checkbox"
                           className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                          checked={selectedUserIds.length > 0 && filteredUsers.filter(u => u.username !== 'admin' && u.role !== 'admin').length > 0 && selectedUserIds.length === filteredUsers.filter(u => u.username !== 'admin' && u.role !== 'admin').length}
+                          checked={selectedUserIds.length > 0 && filteredUsers.filter(u => !isMasterAdmin(u)).length > 0 && selectedUserIds.length === filteredUsers.filter(u => !isMasterAdmin(u)).length}
                           onChange={(e) => {
                             if (e.target.checked) {
-                                const ids = filteredUsers.filter(u => u.username !== 'admin' && u.role !== 'admin').map(u => u.id);
+                                const ids = filteredUsers.filter(u => !isMasterAdmin(u)).map(u => u.id);
                                 setSelectedUserIds(ids);
                             } else {
                                 setSelectedUserIds([]);
@@ -1128,7 +1236,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                             <input
                               type="checkbox"
                               className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50 cursor-pointer"
-                              disabled={u.username === 'admin' || u.role === 'admin'}
+                              disabled={isMasterAdmin(u)}
                               checked={selectedUserIds.includes(u.id)}
                               onChange={(e) => {
                                 if (e.target.checked) {
@@ -1156,7 +1264,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                             </span>
                           </td>
                           <td className="px-6 py-4 border-b border-slate-50">
-                            {u.role === 'teacher' && (
+                            {(u.role === 'teacher' || u.role === 'admin') && (
                               <div className="text-sm text-slate-600">
                                 {u.homeroomClasses && u.homeroomClasses.length > 0 && (
                                   <div className="mb-1"><span className="font-semibold text-indigo-600">GVCN:</span> {u.homeroomClasses.map(cid => classes.find(c => c.id === cid)?.name).filter(Boolean).join(', ')}</div>
@@ -1164,7 +1272,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                                 {u.subjectClasses && u.subjectClasses.length > 0 && (
                                   <div><span className="font-semibold text-emerald-600">GVBM:</span> {u.subjectClasses.map(cid => classes.find(c => c.id === cid)?.name).filter(Boolean).join(', ')}</div>
                                 )}
-                                {(!u.homeroomClasses?.length && !u.subjectClasses?.length) && <span className="text-slate-400 italic">Chưa phân công</span>}
+                                {(!u.homeroomClasses?.length && !u.subjectClasses?.length) && (u.role === 'teacher' ? <span className="text-slate-400 italic">Chưa phân công</span> : null)}
                               </div>
                             )}
                           </td>
@@ -1179,9 +1287,9 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                               </button>
                               <button 
                                 onClick={() => handleDeleteUser(u.id)}
-                                disabled={u.username === 'admin' || u.role === 'admin'}
+                                disabled={isMasterAdmin(u)}
                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Chuyển vào thùng rác"
+                                title={isMasterAdmin(u) ? 'Tài khoản Admin quản trị hệ thống không thể xóa' : 'Chuyển vào thùng rác'}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1895,9 +2003,13 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                   type="text" 
                   value={userFormData.username}
                   onChange={e => setUserFormData({...userFormData, username: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                  disabled={isMasterAdmin(editingUser)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                   placeholder="Ví dụ: teacher_abc"
                 />
+                {isMasterAdmin(editingUser) && (
+                  <p className="text-xs text-slate-400 mt-1">Tài khoản Admin quản trị viên hệ thống có tên đăng nhập cố định.</p>
+                )}
               </div>
               
               <div>
@@ -1938,7 +2050,82 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                 </select>
 
               </div>
-              {userFormData.role === 'teacher' && (
+              {userFormData.role !== 'admin' && (
+                <div className="col-span-1 border-t border-slate-100 pt-4 mt-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="font-semibold text-slate-800 text-sm flex items-center gap-1.5">
+                        <Shield className="w-4 h-4 text-indigo-600" />
+                        <span>Phân quyền chi tiết chức năng</span>
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Thiết lập quyền "Chỉ xem" hoặc "Toàn quyền / Sửa đổi" cho từng phân hệ (BGH Admin giữ nguyên toàn quyền)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2.5">
+                    {[
+                      { key: 'schedule', label: '1. Thời khóa biểu & Lịch học' },
+                      { key: 'students', label: '2. Danh sách học sinh & Hồ sơ' },
+                      { key: 'grades', label: '3. Bảng điểm & Đánh giá' },
+                      { key: 'weeklyPlan', label: '4. Kế hoạch tuần & Phê duyệt' },
+                      { key: 'lunchMenu', label: '5. Thực đơn bán trú & Duyệt' },
+                      { key: 'attendance', label: '6. Điểm danh chuyên cần' }
+                    ].map(({ key, label }) => {
+                      const isLunchForTeacher = key === 'lunchMenu' && userFormData.role !== 'staff';
+                      const currentVal = isLunchForTeacher ? 'view' : (userFormData.permissions?.[key as keyof UserPermissions] || 'edit');
+                      return (
+                        <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200 gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-slate-700">{label}</span>
+                            {isLunchForTeacher && (
+                              <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">Chỉ BGH & Giáo vụ</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-1.5 cursor-pointer text-xs">
+                              <input 
+                                type="radio" 
+                                name={`perm_${key}`}
+                                value="view"
+                                checked={currentVal === 'view'}
+                                onChange={() => setUserFormData({
+                                  ...userFormData,
+                                  permissions: { ...userFormData.permissions, [key]: 'view' }
+                                })}
+                                className="w-3.5 h-3.5 text-amber-600 focus:ring-amber-500"
+                              />
+                              <span className={currentVal === 'view' ? 'font-medium text-amber-700' : 'text-slate-600'}>
+                                Chỉ xem
+                              </span>
+                            </label>
+                            <label className={`flex items-center gap-1.5 text-xs ${isLunchForTeacher ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                              <input 
+                                type="radio" 
+                                name={`perm_${key}`}
+                                value="edit"
+                                disabled={isLunchForTeacher}
+                                checked={currentVal === 'edit'}
+                                onChange={() => !isLunchForTeacher && setUserFormData({
+                                  ...userFormData,
+                                  permissions: { ...userFormData.permissions, [key]: 'edit' }
+                                })}
+                                className="w-3.5 h-3.5 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed"
+                              />
+                              <span className={currentVal === 'edit' ? 'font-medium text-indigo-700' : 'text-slate-600'}>
+                                Sửa đổi / Đầy đủ
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {(userFormData.role === 'teacher' || userFormData.role === 'admin') && (
                 <div className="col-span-1 border-t border-slate-100 pt-4 mt-2">
                   <div className="flex items-center gap-4 mb-4">
                     <h4 className="font-semibold text-slate-800">Phân công chuyên môn</h4>
@@ -1962,7 +2149,16 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                       <input 
                         type="checkbox" 
                         checked={userFormData.isHomeroom} 
-                        onChange={e => setUserFormData({...userFormData, isHomeroom: e.target.checked})}
+                        onChange={e => {
+                          const isChecked = e.target.checked;
+                          setUserFormData(prev => ({
+                            ...prev, 
+                            isHomeroom: isChecked,
+                            subjectClasses: isChecked 
+                              ? prev.subjectClasses.filter(cId => !prev.homeroomClasses.includes(cId))
+                              : prev.subjectClasses
+                          }));
+                        }}
                         className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                       />
                       <span className="font-medium text-slate-700">Là Giáo viên Chủ nhiệm (GVCN)</span>
@@ -1974,7 +2170,11 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                           value={userFormData.homeroomClasses}
                           onChange={e => {
                             const values = Array.from(e.target.selectedOptions, (option: any) => option.value);
-                            setUserFormData({...userFormData, homeroomClasses: values});
+                            setUserFormData(prev => ({
+                              ...prev, 
+                              homeroomClasses: values,
+                              subjectClasses: prev.subjectClasses.filter(cId => !values.includes(cId))
+                            }));
                           }}
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all h-24"
                         >
@@ -2032,10 +2232,18 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                             }}
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all h-24"
                           >
-                            {classes.filter(c => !userAssignmentYear || c.schoolYearId === userAssignmentYear).map(c => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
+                            {classes
+                              .filter(c => !userAssignmentYear || c.schoolYearId === userAssignmentYear)
+                              .filter(c => !userFormData.isHomeroom || !userFormData.homeroomClasses.includes(c.id))
+                              .map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
                           </select>
+                          {userFormData.isHomeroom && userFormData.homeroomClasses.length > 0 && (
+                            <p className="text-xs text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200 mt-1.5">
+                              Lớp chủ nhiệm ({classes.filter(c => userFormData.homeroomClasses.includes(c.id)).map(c => c.name).join(', ')}) đã được tự động ẩn khỏi danh sách lớp GVBM.
+                            </p>
+                          )}
                           <p className="text-xs text-slate-500 mt-1">Giữ Ctrl/Cmd để chọn nhiều lớp</p>
                         </div>
                       </div>

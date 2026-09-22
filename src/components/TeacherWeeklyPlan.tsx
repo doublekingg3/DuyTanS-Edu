@@ -1,14 +1,42 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAlert } from '../contexts/AlertContext';
-import { Calendar as CalendarIcon, CheckCircle, ChevronLeft, ChevronRight, FileText, Download, Save, Trash2, Plus, X } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle, ChevronLeft, ChevronRight, FileText, Download, Save, Trash2, Plus, X, Shield } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { exportWeeklyPlanToDocx } from '../lib/docxExport';
 import { exportCumulativePlanToDocx } from '../lib/docxCumulativeExport';
 import { generateSchoolWeeks, getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
+import { canUserEdit } from '../lib/permissions';
+import { UserAccount, SchoolClass } from '../data';
 
-export default function TeacherWeeklyPlan({ classId, role, className, schoolYearName, teacherName }: { classId: string, role?: string, className?: string, schoolYearName?: string, teacherName?: string }) {
+export default function TeacherWeeklyPlan({ 
+  classId, 
+  role, 
+  user,
+  classes,
+  className, 
+  schoolYearName, 
+  teacherName 
+}: { 
+  classId: string; 
+  role?: string; 
+  user?: UserAccount;
+  classes?: SchoolClass[];
+  className?: string; 
+  schoolYearName?: string; 
+  teacherName?: string; 
+}) {
   const { showAlert, showConfirm } = useAlert();
+
+  const currentClass = classes?.find(c => c.id === classId);
+  const isHomeroom = 
+    role === 'admin' || 
+    user?.homeroomClasses?.includes(classId) || 
+    Boolean(currentClass && user?.fullName && currentClass.homeroomTeacher === user.fullName);
+
+  // Chỉ GVCN của lớp (hoặc Admin) mới có quyền chỉnh sửa, thêm/xóa mục, lưu nháp hoặc duyệt kế hoạch tuần.
+  // GV bộ môn hoặc GV dạy tiết 1 không phải chủ nhiệm lớp này chỉ có quyền XEM (view only).
+  const canEditPlan = isHomeroom && role !== 'staff' && canUserEdit(user, role, 'weeklyPlan');
   
   const [weeks, setWeeks] = useState<{
     id: number;
@@ -79,6 +107,10 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
   }, [classId, schoolYearName]);
 
   const saveWeekToFirebase = async (weekId: number, updateData: Partial<typeof weeks[0]>) => {
+    if (!canEditPlan) {
+      showAlert('Bạn chỉ có quyền xem kế hoạch tuần của lớp này, không có quyền chỉnh sửa.', 'error');
+      return;
+    }
     try {
       const currentWeek = weeks.find(w => w.id === weekId);
       if (!currentWeek) return;
@@ -212,19 +244,26 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
             {currentWeekData?.status === 'draft' && <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-md">BẢN NHÁP</span>}
           </div>
           <div className="flex items-center gap-3">
-            {currentWeekData?.status !== 'approved' && (
+            {!canEditPlan && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-800 rounded-xl border border-amber-200 text-xs font-medium shrink-0">
+                <Shield className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Chế độ chỉ xem (Chỉ GVCN mới có quyền sửa & duyệt kế hoạch tuần)</span>
+              </div>
+            )}
+
+            {canEditPlan && currentWeekData?.status !== 'approved' && (
               <button 
                 onClick={async () => {
                   await saveWeekToFirebase(selectedWeek, { status: 'draft' });
                   showAlert('Đã lưu nháp kế hoạch tuần!', 'success');
                 }} 
-                className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors text-xs sm:text-sm"
               >
                 <Save className="w-4 h-4" /> Lưu nháp
               </button>
             )}
 
-            {currentWeekData?.status !== 'approved' && (
+            {canEditPlan && currentWeekData?.status !== 'approved' && (
               <button 
                 onClick={async () => {
                   const confirmed = await showConfirm('Bạn có chắc chắn muốn duyệt kế hoạch tuần này không?');
@@ -233,7 +272,7 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
                     showAlert('Duyệt kế hoạch thành công!', 'success');
                   }
                 }} 
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" 
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm" 
                 disabled={role === 'staff'} 
                 title={role === 'staff' ? 'Chỉ BGH và Giáo viên mới có quyền duyệt' : ''}
               >
@@ -241,7 +280,7 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
               </button>
             )}
 
-            {currentWeekData?.status === 'approved' && role === 'admin' && (
+            {canEditPlan && currentWeekData?.status === 'approved' && role === 'admin' && (
               <button 
                 onClick={async () => {
                   const confirmed = await showConfirm('Bạn có chắc chắn muốn hủy duyệt kế hoạch tuần này, yêu cầu Giáo viên làm lại?');
@@ -250,7 +289,7 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
                     showAlert('Đã hủy duyệt kế hoạch, trạng thái chuyển về Bản nháp.', 'success');
                   }
                 }} 
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors shadow-sm border border-red-200"
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors shadow-sm border border-red-200 text-xs sm:text-sm"
               >
                 <X className="w-4 h-4" /> Hủy duyệt
               </button>
@@ -266,14 +305,20 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-500 mb-2">Từ ngày (Bắt đầu)</label>
-              <input type="date" className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" 
+              <input 
+                type="date" 
+                disabled={!canEditPlan}
+                className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed" 
                 value={weeks.find(w => w.id === selectedWeek)?.startDate || ''}
                 onChange={(e) => saveWeekToFirebase(selectedWeek, { startDate: e.target.value })}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-500 mb-2">Đến ngày (Kết thúc)</label>
-              <input type="date" className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" 
+              <input 
+                type="date" 
+                disabled={!canEditPlan}
+                className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed" 
                 value={weeks.find(w => w.id === selectedWeek)?.endDate || ''}
                 onChange={(e) => saveWeekToFirebase(selectedWeek, { endDate: e.target.value })}
               />
@@ -281,7 +326,8 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
             <div>
               <label className="block text-sm font-medium text-slate-500 mb-2">Tổ trực nhật tuần</label>
               <select 
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+                disabled={!canEditPlan}
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                 value={currentWeekData?.dutyTeam || 'Tổ 1'}
                 onChange={(e) => saveWeekToFirebase(selectedWeek, { dutyTeam: e.target.value })}
               >
@@ -296,66 +342,81 @@ export default function TeacherWeeklyPlan({ classId, role, className, schoolYear
           <div>
             <div className="flex justify-between items-end mb-4">
               <h4 className="font-bold text-slate-800 uppercase text-sm">Các nội dung công việc trong tuần ({localTasks.length} mục)</h4>
-              <span className="text-xs text-slate-500">Có thể thêm, chỉnh sửa hoặc xóa từng mục</span>
+              <span className="text-xs text-slate-500">
+                {canEditPlan ? 'Có thể thêm, chỉnh sửa hoặc xóa từng mục' : 'Chế độ xem nội dung công việc'}
+              </span>
             </div>
             
             <div className="space-y-3 mb-4">
-              {localTasks.map((task, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl bg-white hover:border-indigo-300 transition-colors group">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">{idx + 1}</div>
-                  <input 
-                    type="text"
-                    value={task}
-                    onChange={(e) => {
-                      const newTasks = [...localTasks];
-                      newTasks[idx] = e.target.value;
-                      setLocalTasks(newTasks);
-                    }}
-                    onBlur={() => {
-                      saveWeekToFirebase(selectedWeek, { tasks: localTasks });
-                    }}
-                    className="flex-1 bg-transparent outline-none font-medium text-slate-700"
-                  />
-                  <button 
-                    onClick={() => {
-                      const newTasks = [...localTasks];
-                      newTasks.splice(idx, 1);
-                      saveWeekToFirebase(selectedWeek, { tasks: newTasks });
-                    }}
-                    className="p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+              {localTasks.length === 0 ? (
+                <p className="text-sm text-slate-400 italic py-4 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">Chưa có nội dung công việc nào cho tuần này.</p>
+              ) : (
+                localTasks.map((task, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl bg-white hover:border-indigo-300 transition-colors group">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">{idx + 1}</div>
+                    {canEditPlan ? (
+                      <>
+                        <input 
+                          type="text"
+                          value={task}
+                          onChange={(e) => {
+                            const newTasks = [...localTasks];
+                            newTasks[idx] = e.target.value;
+                            setLocalTasks(newTasks);
+                          }}
+                          onBlur={() => {
+                            saveWeekToFirebase(selectedWeek, { tasks: localTasks });
+                          }}
+                          className="flex-1 bg-transparent outline-none font-medium text-slate-700 text-sm"
+                        />
+                        <button 
+                          onClick={() => {
+                            const newTasks = [...localTasks];
+                            newTasks.splice(idx, 1);
+                            saveWeekToFirebase(selectedWeek, { tasks: newTasks });
+                          }}
+                          className="p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                          title="Xóa mục này"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="flex-1 font-medium text-slate-700 text-sm py-1">{task}</div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <input 
-                type="text" 
-                placeholder="Nhập thêm mục công việc mới (Ví dụ: Kiểm tra chuyên cần...)" 
-                className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newTask.trim()) {
-                    saveWeekToFirebase(selectedWeek, { tasks: [...localTasks, newTask] });
-                    setNewTask('');
-                  }
-                }}
-              />
-              <button 
-                onClick={() => {
-                  if (newTask.trim()) {
-                    saveWeekToFirebase(selectedWeek, { tasks: [...localTasks, newTask] });
-                    setNewTask('');
-                  }
-                }}
-                className="px-6 py-3 bg-teal-500 text-white font-medium rounded-xl hover:bg-teal-600 transition-colors flex items-center gap-2 shrink-0"
-              >
-                <Plus className="w-5 h-5" /> Thêm mục
-              </button>
-            </div>
+            {canEditPlan && (
+              <div className="flex items-center gap-3">
+                <input 
+                  type="text" 
+                  placeholder="Nhập thêm mục công việc mới (Ví dụ: Kiểm tra chuyên cần...)" 
+                  className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                  value={newTask}
+                  onChange={(e) => setNewTask(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newTask.trim()) {
+                      saveWeekToFirebase(selectedWeek, { tasks: [...localTasks, newTask] });
+                      setNewTask('');
+                    }
+                  }}
+                />
+                <button 
+                  onClick={() => {
+                    if (newTask.trim()) {
+                      saveWeekToFirebase(selectedWeek, { tasks: [...localTasks, newTask] });
+                      setNewTask('');
+                    }
+                  }}
+                  className="px-6 py-3 bg-teal-500 text-white font-medium rounded-xl hover:bg-teal-600 transition-colors flex items-center gap-2 shrink-0 text-sm"
+                >
+                  <Plus className="w-5 h-5" /> Thêm mục
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

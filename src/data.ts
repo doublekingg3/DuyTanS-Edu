@@ -69,6 +69,21 @@ export interface Notification {
   isRead: boolean;
 }
 
+export interface UserPermissions {
+  // Lịch học & Thời khóa biểu
+  schedule?: 'view' | 'edit';
+  // Danh sách học sinh & Hồ sơ lớp
+  students?: 'view' | 'edit';
+  // Sổ điểm & Đánh giá
+  grades?: 'view' | 'edit';
+  // Kế hoạch tuần & Phê duyệt kế hoạch
+  weeklyPlan?: 'view' | 'edit';
+  // Thực đơn bán trú & Phê duyệt thực đơn
+  lunchMenu?: 'view' | 'edit';
+  // Điểm danh chuyên cần
+  attendance?: 'view' | 'edit';
+}
+
 export interface UserAccount {
   isDeleted?: boolean;
   id: string;
@@ -79,6 +94,7 @@ export interface UserAccount {
   homeroomClasses?: string[];
   subjectClasses?: string[];
   subjects?: string[];
+  permissions?: UserPermissions;
 }
 
 

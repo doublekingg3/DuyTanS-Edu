@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Student } from '../data';
+import { Student, UserAccount, SchoolClass } from '../data';
 import { 
   Calendar, 
   Search, 
@@ -23,6 +23,8 @@ import { useAlert } from '../contexts/AlertContext';
 
 interface TeacherAttendanceProps {
   role?: string;
+  user?: UserAccount;
+  classes?: SchoolClass[];
   students: Student[];
   classId: string;
   className?: string;
@@ -44,12 +46,20 @@ const QUICK_REASONS = {
 
 export default function TeacherAttendance({
   role,
+  user,
+  classes,
   students,
   classId,
   className = '',
   onEditStudent
 }: TeacherAttendanceProps) {
   const { showAlert } = useAlert();
+  const currentClass = classes?.find(c => c.id === classId);
+  const isHomeroom = 
+    role === 'admin' || 
+    user?.homeroomClasses?.includes(classId) || 
+    Boolean(currentClass && user?.fullName && currentClass.homeroomTeacher === user.fullName);
+
   const [attendanceDate, setAttendanceDate] = useState(() => getLocalDateISO());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'absent' | 'late' | 'leave_early' | 'unmarked'>('all');
@@ -270,6 +280,17 @@ export default function TeacherAttendance({
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
               {isToday ? 'Hôm nay' : `Ngày ${formattedDisplayDate}`}
             </span>
+            {role !== 'admin' && role !== 'staff' && (
+              isHomeroom ? (
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                  GVCN
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 shrink-0" title="Quy tắc: Giáo viên dạy tiết 1 điểm danh cho lớp">
+                  GV dạy tiết 1 (Điểm danh)
+                </span>
+              )
+            )}
           </div>
           <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
             Quản lý chuyên cần • Chạm nhanh để điểm danh trực tiếp
