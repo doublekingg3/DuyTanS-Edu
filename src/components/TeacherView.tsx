@@ -33,6 +33,7 @@ interface TeacherViewProps {
   role?: string;
   users?: UserAccount[];
   settings?: AppSettings;
+  onUpdateSettings?: (newSettings: AppSettings) => Promise<void> | void;
   students: Student[];
   classes?: SchoolClass[];
   user?: UserAccount;
@@ -55,6 +56,7 @@ export default function TeacherView({
   role,
   users,
   settings,
+  onUpdateSettings,
   students, 
   classes, 
   user,
@@ -584,6 +586,7 @@ export default function TeacherView({
                   users={users} 
                   schoolYears={schoolYears || []} 
                   settings={settings} 
+                  onUpdateSettings={onUpdateSettings}
                   externalActiveTab={
                     activeMenu === 'admin_classes' ? 'classes' :
                     activeMenu === 'admin_school_years' ? 'school_years' :

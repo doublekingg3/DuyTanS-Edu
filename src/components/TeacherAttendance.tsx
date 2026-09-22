@@ -286,8 +286,8 @@ export default function TeacherAttendance({
                   GVCN
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 shrink-0" title="Quy tắc: Giáo viên dạy tiết 1 điểm danh cho lớp">
-                  GV dạy tiết 1 (Điểm danh)
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0" title="Giáo viên bộ môn có quyền điểm danh các lớp được phân công">
+                  GV Bộ môn (Điểm danh)
                 </span>
               )
             )}

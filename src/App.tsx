@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { initialStudents, initialClasses, initialUsers, initialSchoolYears, Student, SchoolClass, Grades, UserAccount, SchoolYear, AppSettings, defaultSettings } from './data';
+import { initialStudents, initialClasses, initialUsers, initialSchoolYears, Student, SchoolClass, Grades, UserAccount, SchoolYear, AppSettings, defaultSettings, getUserTeacherType } from './data';
 import TeacherView from './components/TeacherView';
 import ParentView from './components/ParentView';
 import AdminView from './components/AdminView';
@@ -10,6 +10,7 @@ import { GraduationCap, Calendar, Users, UserCircle, Shield, Loader2, LogOut, Ar
 import ChangePasswordModal from './components/ChangePasswordModal';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from './lib/firebase';
+import { defaultDb } from './lib/firebase_default';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 
 export default function App() {
@@ -237,6 +238,21 @@ export default function App() {
       link.href = settings.pageIcon;
     }
   }, [settings.pageTitle, settings.pageIcon]);
+
+  const handleUpdateSettings = async (newSettings: AppSettings) => {
+    setSettings(newSettings);
+    try {
+      const settingsRef = doc(db, 'settings', 'general');
+      await setDoc(settingsRef, newSettings, { merge: true });
+    } catch (e) {
+      console.error("Error saving settings to active db:", e);
+    }
+    try {
+      await setDoc(doc(defaultDb, 'settings', 'general'), newSettings, { merge: true });
+    } catch (e) {
+      console.warn("Cross-syncing settings to defaultDb:", e);
+    }
+  };
 
   const handleAddComment = async (studentId: string, text: string) => {
     const student = students.find(s => s.id === studentId);
@@ -625,6 +641,7 @@ export default function App() {
             role={role}
             users={users}
             settings={settings}
+            onUpdateSettings={handleUpdateSettings}
             students={students}
             classes={classes}
             user={users.find(u => u.id === loggedInUserId)}

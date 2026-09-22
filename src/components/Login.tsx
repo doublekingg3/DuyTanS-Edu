@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, BookOpen, UserCircle, GraduationCap, ArrowRight, Lock, User, ArrowLeft, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
+import { Shield, BookOpen, UserCircle, GraduationCap, Lock, User, ArrowLeft, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
 import { SchoolClass, Student, UserAccount, AppSettings } from '../data';
 
 export default function Login({ 
@@ -319,7 +319,7 @@ export default function Login({
               type="submit"
               className="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 mt-6"
             >
-              Đăng nhập <ArrowRight className="w-4 h-4" />
+              Đăng nhập
             </button>
             
             {selectedRole === 'parent' && (

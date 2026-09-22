@@ -90,12 +90,32 @@ export interface UserAccount {
   username: string;
   password?: string;
   role: 'admin' | 'teacher' | 'subject_teacher' | 'staff';
+  teacherType?: 'gvcn' | 'gvbm';
   fullName: string;
   homeroomClasses?: string[];
   subjectClasses?: string[];
   subjects?: string[];
   permissions?: UserPermissions;
 }
+
+/**
+ * Safely resolves teacher sub-role (GVCN vs GVBM).
+ * Preserves 100% backward compatibility for existing users in Firestore.
+ */
+export function getUserTeacherType(u?: UserAccount | null): 'gvcn' | 'gvbm' {
+  if (!u) return 'gvcn';
+  if (u.teacherType === 'gvbm' || u.teacherType === 'gvcn') {
+    return u.teacherType;
+  }
+  if (u.role === 'subject_teacher') return 'gvbm';
+  // Existing data heuristic: if teacher has no homeroom classes but has subject classes, they are GVBM
+  if ((!u.homeroomClasses || u.homeroomClasses.length === 0) && (u.subjectClasses && u.subjectClasses.length > 0)) {
+    return 'gvbm';
+  }
+  // Otherwise, existing teacher data defaults to GVCN (preserving existing data)
+  return 'gvcn';
+}
+
 
 
 export interface SchoolYear {

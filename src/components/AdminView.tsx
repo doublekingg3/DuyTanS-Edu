@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { SchoolClass, Student, UserAccount, UserPermissions, SchoolYear, AppSettings, defaultSettings, sortClasses } from '../data';
-import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw, Settings } from 'lucide-react';
+import { SchoolClass, Student, UserAccount, UserPermissions, SchoolYear, AppSettings, defaultSettings, sortClasses, getUserTeacherType } from '../data';
+import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw, Settings, CheckCircle, X, BookOpen, Check, FileSpreadsheet, Copy, CheckCheck, LayoutList, Grid } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
 import { db } from '../lib/firebase';
@@ -9,12 +9,32 @@ import { defaultDb } from '../lib/firebase_default';
 import { doc, setDoc, deleteDoc, updateDoc, writeBatch, addDoc, collection } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import AdminReports from './AdminReports';
+import ClassAssignmentPicker from './ClassAssignmentPicker';
 
-export default function AdminView({ classes, students, users, schoolYears, settings, externalActiveTab, onTabChange }: { classes: SchoolClass[], students: Student[], users: UserAccount[], schoolYears: SchoolYear[], settings?: AppSettings, externalActiveTab?: string, onTabChange?: (tab: string) => void }) {
+export default function AdminView({ 
+  classes, 
+  students, 
+  users, 
+  schoolYears, 
+  settings, 
+  onUpdateSettings,
+  externalActiveTab, 
+  onTabChange 
+}: { 
+  classes: SchoolClass[], 
+  students: Student[], 
+  users: UserAccount[], 
+  schoolYears: SchoolYear[], 
+  settings?: AppSettings, 
+  onUpdateSettings?: (newSettings: AppSettings) => Promise<void> | void,
+  externalActiveTab?: string, 
+  onTabChange?: (tab: string) => void 
+}) {
   const { showAlert, showConfirm } = useAlert();
 
   const [appSettings, setAppSettings] = useState<AppSettings>(settings || defaultSettings);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string>('');
   
   React.useEffect(() => {
     if (settings) {
@@ -26,22 +46,39 @@ export default function AdminView({ classes, students, users, schoolYears, setti
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: keyof AppSettings) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        showAlert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh < 2MB.', 'error');
+      if (file.size > 5 * 1024 * 1024) {
+        showAlert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh < 5MB.', 'error');
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Compress image using canvas
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
           
-          // Max dimensions
-          const MAX_WIDTH = 1200;
-          const MAX_HEIGHT = 1200;
+          let MAX_WIDTH = 1200;
+          let MAX_HEIGHT = 800;
+          let quality = 0.72;
+          let maxByteLength = 260000;
+          
+          if (field === 'portalLogo' || field === 'loginLogo') {
+            MAX_WIDTH = 400;
+            MAX_HEIGHT = 400;
+            quality = 0.82;
+            maxByteLength = 120000;
+          } else if (field === 'pageIcon') {
+            MAX_WIDTH = 128;
+            MAX_HEIGHT = 128;
+            quality = 0.85;
+            maxByteLength = 40000;
+          } else {
+            MAX_WIDTH = 1280;
+            MAX_HEIGHT = 720;
+            quality = 0.65;
+            maxByteLength = 260000;
+          }
           
           if (width > height) {
             if (width > MAX_WIDTH) {
@@ -58,15 +95,15 @@ export default function AdminView({ classes, students, users, schoolYears, setti
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
+          if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, width, height);
+          }
           
-          // Compress to JPEG with 0.7 quality
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          
-          // Check size of base64 (approximate)
-          if (compressedDataUrl.length > 800000) {
-             showAlert('Ảnh sau khi nén vẫn quá lớn. Vui lòng chọn ảnh khác đơn giản hơn.', 'error');
-             return;
+          let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          if (compressedDataUrl.length > maxByteLength) {
+            compressedDataUrl = canvas.toDataURL('image/jpeg', quality * 0.7);
           }
           
           setAppSettings(prev => ({ ...prev, [field]: compressedDataUrl }));
@@ -80,12 +117,46 @@ export default function AdminView({ classes, students, users, schoolYears, setti
   const handleSaveSettings = async () => {
     setIsSavingSettings(true);
     try {
+      const cleanSettings: AppSettings = {
+        pageTitle: (appSettings.pageTitle || '').trim() || defaultSettings.pageTitle,
+        appName: (appSettings.appName || '').trim() || defaultSettings.appName,
+        pageIcon: appSettings.pageIcon || '',
+        portalLogo: appSettings.portalLogo || '',
+        loginLogo: appSettings.loginLogo || '',
+        portalBackground: appSettings.portalBackground || '',
+        loginBackground: appSettings.loginBackground || '',
+        disablePortal: !!appSettings.disablePortal
+      };
+
+      // 1. Sync to current active Firebase Firestore
       const settingsRef = doc(db, 'settings', 'general');
-      await setDoc(settingsRef, appSettings);
-      showAlert('Đã lưu cấu hình giao diện thành công!', 'success');
+      await setDoc(settingsRef, cleanSettings, { merge: true });
+
+      // 2. Cross-sync to default Firebase instance as permanent fallback
+      try {
+        const defaultSettingsRef = doc(defaultDb, 'settings', 'general');
+        await setDoc(defaultSettingsRef, cleanSettings, { merge: true });
+      } catch (err) {
+        console.warn('Cross-sync to defaultDb skipped/warn:', err);
+      }
+
+      // 3. Save local cache backup for instant restoration
+      try {
+        localStorage.setItem('edumanage_app_settings', JSON.stringify(cleanSettings));
+      } catch (e) {}
+
+      // 4. Update parent app state
+      if (onUpdateSettings) {
+        await onUpdateSettings(cleanSettings);
+      }
+
+      const nowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastSavedTime(nowStr);
+
+      showAlert('Đã lưu và đồng bộ cấu hình giao diện & logo lên Firebase thành công!', 'success');
     } catch (error) {
-      console.error(error);
-      showAlert('Lỗi khi lưu cấu hình. Vui lòng thử lại với ảnh dung lượng nhỏ hơn.', 'error');
+      console.error("Error saving settings to Firebase:", error);
+      showAlert('Lỗi khi lưu cấu hình lên Firebase. Vui lòng thử lại với ảnh dung lượng nhỏ hơn.', 'error');
     } finally {
       setIsSavingSettings(false);
     }
@@ -219,6 +290,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     password: string;
     fullName: string;
     role: 'admin' | 'teacher' | 'subject_teacher' | 'staff';
+    teacherType: 'gvcn' | 'gvbm';
     isHomeroom: boolean;
     isSubject: boolean;
     subjects: string[];
@@ -230,7 +302,8 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     password: '',
     fullName: '',
     role: 'teacher' as 'admin' | 'teacher' | 'staff',
-    isHomeroom: false,
+    teacherType: 'gvcn',
+    isHomeroom: true,
     isSubject: false,
     subjects: [],
     homeroomClasses: [],
@@ -261,6 +334,130 @@ export default function AdminView({ classes, students, users, schoolYears, setti
     (c.homeroomTeacher || '').toLowerCase().includes((searchTerm || '').toLowerCase())) &&
     (classFilterYear ? c.schoolYearId === classFilterYear : true)
   );
+
+  // Parent Access Codes state
+  const [parentAccessClassId, setParentAccessClassId] = useState<string>('all');
+  const [parentAccessSearch, setParentAccessSearch] = useState<string>('');
+  const [parentAccessCopiedId, setParentAccessCopiedId] = useState<string | null>(null);
+  const [parentAccessViewMode, setParentAccessViewMode] = useState<'table' | 'cards'>('table');
+
+  // Filtered students for Parent Access list
+  const parentAccessStudents = React.useMemo(() => {
+    let list = students.filter(s => !s.isDeleted);
+    
+    // Filter by selected class
+    if (parentAccessClassId !== 'all') {
+      list = list.filter(s => s.classId === parentAccessClassId);
+    }
+    
+    // Filter by search query (name, code, class)
+    if (parentAccessSearch.trim()) {
+      const q = parentAccessSearch.trim().toLowerCase();
+      list = list.filter(s => {
+        const studentClass = classes.find(c => c.id === s.classId);
+        const className = studentClass ? studentClass.name.toLowerCase() : '';
+        const code = (s.code || (studentClass ? `${studentClass.name}-${s.stt.toString().padStart(3, '0')}` : '')).toLowerCase();
+        return (
+          s.fullName.toLowerCase().includes(q) ||
+          code.includes(q) ||
+          className.includes(q)
+        );
+      });
+    }
+
+    // Sort by class name then by STT
+    return [...list].sort((a, b) => {
+      const classA = classes.find(c => c.id === a.classId)?.name || '';
+      const classB = classes.find(c => c.id === b.classId)?.name || '';
+      if (classA !== classB) {
+        return classA.localeCompare(classB, undefined, { numeric: true });
+      }
+      return (a.stt || 0) - (b.stt || 0);
+    });
+  }, [students, classes, parentAccessClassId, parentAccessSearch]);
+
+  // Export Parent Access Excel: STT | Lớp | Mã định danh | Họ và tên | Mật khẩu
+  const handleExportParentAccessExcel = () => {
+    let exportList = students.filter(s => !s.isDeleted);
+    let targetClassName = 'Tất cả các lớp';
+    
+    if (parentAccessClassId !== 'all') {
+      exportList = exportList.filter(s => s.classId === parentAccessClassId);
+      const selectedClass = classes.find(c => c.id === parentAccessClassId);
+      if (selectedClass) {
+        targetClassName = `Lớp ${selectedClass.name}`;
+      }
+    }
+
+    exportList = [...exportList].sort((a, b) => {
+      const classA = classes.find(c => c.id === a.classId)?.name || '';
+      const classB = classes.find(c => c.id === b.classId)?.name || '';
+      if (classA !== classB) {
+        return classA.localeCompare(classB, undefined, { numeric: true });
+      }
+      return (a.stt || 0) - (b.stt || 0);
+    });
+
+    if (exportList.length === 0) {
+      showAlert('Không có dữ liệu học sinh để xuất Excel.', 'info');
+      return;
+    }
+
+    // Formatted rows strictly as requested: STT | Lớp | Mã định danh | Họ và tên | Mật khẩu
+    const headers = ['STT', 'Lớp', 'Mã định danh', 'Họ và tên', 'Mật khẩu'];
+    
+    const rows = exportList.map((s, idx) => {
+      const studentClass = classes.find(c => c.id === s.classId);
+      const className = studentClass ? studentClass.name : 'Chưa xếp lớp';
+      const studentCode = s.code || (studentClass ? `${studentClass.name}-${s.stt.toString().padStart(3, '0')}` : `HS-${s.stt}`);
+      const password = (s as any).password || '12345678';
+      
+      return [
+        idx + 1,
+        className,
+        studentCode,
+        s.fullName,
+        password
+      ];
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [
+      { wch: 8 },  // STT
+      { wch: 14 }, // Lớp
+      { wch: 22 }, // Mã định danh
+      { wch: 30 }, // Họ và tên
+      { wch: 18 }  // Mật khẩu
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const sheetName = (parentAccessClassId !== 'all' 
+      ? `Ma_Truy_Cap_${classes.find(c => c.id === parentAccessClassId)?.name || 'Lop'}`
+      : 'Ma_Truy_Cap_Phu_Huynh'
+    ).substring(0, 31);
+      
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+    const safeClassName = targetClassName.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_');
+    const fileName = `Danh_Sach_Ma_Truy_Cap_Phu_Huynh_${safeClassName}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    showAlert(`Đã xuất file Excel mã truy cập phụ huynh (${exportList.length} học sinh) thành công!`, 'success');
+  };
+
+  const handleCopyAccessInfo = (student: Student) => {
+    const studentClass = classes.find(c => c.id === student.classId);
+    const className = studentClass ? studentClass.name : '';
+    const code = student.code || (studentClass ? `${studentClass.name}-${student.stt.toString().padStart(3, '0')}` : '');
+    const password = (student as any).password || '12345678';
+    
+    const textToCopy = `Học sinh: ${student.fullName} (Lớp: ${className})\nMã định danh: ${code}\nMật khẩu: ${password}`;
+    navigator.clipboard.writeText(textToCopy);
+    setParentAccessCopiedId(student.id);
+    setTimeout(() => {
+      setParentAccessCopiedId(null);
+    }, 2000);
+  };
 
   const handleExportTemplate = async () => {
     try {
@@ -543,23 +740,48 @@ export default function AdminView({ classes, students, users, schoolYears, setti
       return;
     }
 
-    const homeroomClasses = (userFormData.role === 'teacher' || userFormData.role === 'admin') && userFormData.isHomeroom ? userFormData.homeroomClasses : [];
-    const subjectClasses = (userFormData.role === 'teacher' || userFormData.role === 'admin') && userFormData.isSubject 
-      ? userFormData.subjectClasses.filter(cId => !homeroomClasses.includes(cId))
-      : [];
+    const isTeacher = userFormData.role === 'teacher' || userFormData.role === 'subject_teacher';
+    const effectiveRole = isTeacher ? 'teacher' : userFormData.role;
+    const effectiveTeacherType: 'gvcn' | 'gvbm' = isTeacher ? (userFormData.teacherType || 'gvcn') : 'gvcn';
+
+    let homeroomClasses: string[] = [];
+    let subjectClasses: string[] = [];
+
+    if (effectiveRole === 'admin') {
+      homeroomClasses = userFormData.isHomeroom ? userFormData.homeroomClasses : [];
+      subjectClasses = userFormData.isSubject ? userFormData.subjectClasses.filter(cId => !homeroomClasses.includes(cId)) : [];
+    } else if (isTeacher) {
+      if (effectiveTeacherType === 'gvbm') {
+        homeroomClasses = [];
+        subjectClasses = userFormData.subjectClasses || [];
+      } else {
+        // GVCN
+        homeroomClasses = userFormData.isHomeroom ? userFormData.homeroomClasses : [];
+        subjectClasses = userFormData.isSubject ? userFormData.subjectClasses.filter(cId => !homeroomClasses.includes(cId)) : [];
+      }
+    }
 
     const userData: any = {
       id: userId,
       username: cleanUsername,
       fullName: userFormData.fullName.trim(),
-      role: userFormData.role,
-      subjects: (userFormData.role === 'teacher' || userFormData.role === 'admin') && userFormData.isSubject ? userFormData.subjects : [],
+      role: effectiveRole,
+      subjects: isTeacher ? userFormData.subjects : [],
       homeroomClasses: homeroomClasses,
       subjectClasses: subjectClasses
     };
 
-    if (userFormData.role !== 'admin' && userFormData.permissions) {
-      userData.permissions = userFormData.permissions;
+    if (isTeacher) {
+      userData.teacherType = effectiveTeacherType;
+    }
+
+    if (effectiveRole !== 'admin') {
+      const finalPermissions = { ...userFormData.permissions };
+      if (effectiveTeacherType === 'gvbm') {
+        finalPermissions.students = 'view';
+        finalPermissions.attendance = 'edit'; // GVBM được quyền điểm danh các lớp
+      }
+      userData.permissions = finalPermissions;
     }
 
     if (userFormData.password) {
@@ -578,7 +800,8 @@ export default function AdminView({ classes, students, users, schoolYears, setti
         password: '', 
         fullName: '', 
         role: 'teacher' as any, 
-        isHomeroom: false, 
+        teacherType: 'gvcn',
+        isHomeroom: true, 
         isSubject: false, 
         subjects: [], 
         homeroomClasses: [], 
@@ -657,25 +880,27 @@ export default function AdminView({ classes, students, users, schoolYears, setti
 
   const openEditUserModal = (u: UserAccount) => {
     setEditingUser(u);
+    const teacherType = getUserTeacherType(u);
     const homeroomClasses = u.homeroomClasses || [];
     const subjectClasses = (u.subjectClasses || []).filter(cId => !homeroomClasses.includes(cId));
     setUserFormData({ 
       username: u.username, 
       password: '', 
       fullName: u.fullName, 
-      role: u.role, 
-      isHomeroom: !!homeroomClasses.length, 
-      isSubject: !!subjectClasses.length, 
+      role: (u.role === 'subject_teacher' ? 'teacher' : u.role) as any, 
+      teacherType: teacherType,
+      isHomeroom: teacherType === 'gvcn', 
+      isSubject: teacherType === 'gvbm' || !!subjectClasses.length, 
       subjects: u.subjects || [], 
       homeroomClasses: homeroomClasses, 
       subjectClasses: subjectClasses,
       permissions: {
-        schedule: u.permissions?.schedule || (u.role === 'staff' ? 'view' : 'edit'),
-        students: u.permissions?.students || (u.role === 'staff' || u.role === 'subject_teacher' ? 'view' : 'edit'),
-        grades: u.permissions?.grades || (u.role === 'staff' ? 'view' : 'edit'),
-        weeklyPlan: u.permissions?.weeklyPlan || (u.role === 'staff' ? 'view' : 'edit'),
+        schedule: u.permissions?.schedule || (u.role === 'staff' || teacherType === 'gvbm' ? 'view' : 'edit'),
+        students: u.permissions?.students || (u.role === 'staff' || teacherType === 'gvbm' ? 'view' : 'edit'),
+        grades: u.permissions?.grades || (u.role === 'staff' || teacherType === 'gvbm' ? 'view' : 'edit'),
+        weeklyPlan: u.permissions?.weeklyPlan || (u.role === 'staff' || teacherType === 'gvbm' ? 'view' : 'edit'),
         lunchMenu: u.role === 'staff' ? (u.permissions?.lunchMenu || 'edit') : 'view',
-        attendance: u.permissions?.attendance || (u.role === 'staff' || u.role === 'subject_teacher' ? 'view' : 'edit')
+        attendance: u.permissions?.attendance || 'edit'
       }
     });
     setIsAddUserModalOpen(true);
@@ -756,7 +981,8 @@ export default function AdminView({ classes, students, users, schoolYears, setti
       password: '', 
       fullName: '', 
       role: 'teacher' as any, 
-      isHomeroom: false, 
+      teacherType: 'gvcn',
+      isHomeroom: true, 
       isSubject: false, 
       subjects: [], 
       homeroomClasses: [], 
@@ -1215,11 +1441,11 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                           }}
                         />
                       </th>
-                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Mã GV (Tài khoản)</th>
-                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Tên hiển thị</th>
-                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Phân quyền</th>
-                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50">Lớp phân công</th>
-                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-right">Thao tác</th>
+                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 whitespace-nowrap">Mã GV (Tài khoản)</th>
+                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 whitespace-nowrap">Tên hiển thị</th>
+                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 whitespace-nowrap text-center">Phân quyền</th>
+                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 min-w-[220px]">Lớp phân công</th>
+                      <th className="px-6 py-4 border-b border-slate-100 font-bold text-xs uppercase tracking-wider text-slate-500 bg-slate-50 text-right whitespace-nowrap">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1247,10 +1473,10 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                               }}
                             />
                           </td>
-                          <td className="px-6 py-4 border-b border-slate-50">
+                          <td className="px-6 py-4 border-b border-slate-50 whitespace-nowrap">
                             <span className="font-bold text-slate-800 font-mono">{u.username}</span>
                           </td>
-                          <td className="px-6 py-4 border-b border-slate-50">
+                          <td className="px-6 py-4 border-b border-slate-50 whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium text-sm">
                                 {(u.fullName || 'U').charAt(0)}
@@ -1258,10 +1484,20 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                               <span className="font-medium text-slate-700">{u.fullName || 'Chưa cập nhật'}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 border-b border-slate-50">
-                            <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full font-semibold text-sm ${u.role === 'admin' ? 'bg-purple-50 text-purple-700' : u.role === 'staff' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
-                              {u.role === 'admin' ? 'Ban Giám Hiệu' : u.role === 'staff' ? 'Giáo vụ' : u.role === 'subject_teacher' ? 'Giáo viên Bộ môn' : 'Giáo viên'}
-                            </span>
+                          <td className="px-6 py-4 border-b border-slate-50 whitespace-nowrap text-center">
+                            {u.role === 'admin' ? (
+                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full font-semibold text-xs whitespace-nowrap bg-purple-50 text-purple-700 border border-purple-200">
+                                Ban Giám Hiệu
+                              </span>
+                            ) : u.role === 'staff' ? (
+                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full font-semibold text-xs whitespace-nowrap bg-amber-50 text-amber-700 border border-amber-200">
+                                Giáo vụ
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full font-semibold text-xs whitespace-nowrap bg-blue-50 text-blue-700 border border-blue-200">
+                                Giáo viên
+                              </span>
+                            )}
                           </td>
                           <td className="px-6 py-4 border-b border-slate-50">
                             {(u.role === 'teacher' || u.role === 'admin') && (
@@ -1303,38 +1539,322 @@ export default function AdminView({ classes, students, users, schoolYears, setti
               </div>
             </div>
             
-            {/* Phụ huynh codes (Read-only list generated from students) */}
+            {/* Phụ huynh codes (Interactive list & Excel Export by Class) */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col mt-6">
-              <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+              {/* Header with Title & Excel Export */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/60">
                 <div>
-                  <h3 className="font-bold text-slate-800">Mã truy cập Phụ huynh</h3>
-                  <p className="text-sm text-slate-500">Mã được tạo tự động dựa trên: Lớp-STT</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-800 text-base sm:text-lg flex items-center gap-2">
+                      <Key className="w-5 h-5 text-teal-700" />
+                      <span>Mã truy cập Phụ huynh</span>
+                    </h3>
+                    <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                      Cổng Phụ Huynh
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    Quản lý mã định danh và mật khẩu đăng nhập của từng học sinh theo lớp
+                  </p>
+                </div>
+
+                {/* Nút Xuất file Excel theo lớp */}
+                <button
+                  type="button"
+                  onClick={handleExportParentAccessExcel}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center gap-2 cursor-pointer shrink-0"
+                  title="Xuất file Excel theo lớp: STT | Lớp | Mã định danh | Họ và tên | Mật khẩu"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-100 shrink-0" />
+                  <span>
+                    {parentAccessClassId === 'all'
+                      ? 'Xuất Excel tất cả các lớp'
+                      : `Xuất Excel lớp ${classes.find(c => c.id === parentAccessClassId)?.name || ''}`}
+                  </span>
+                  <span className="bg-emerald-700/80 px-2 py-0.5 rounded-md text-xs font-mono font-bold text-emerald-100">
+                    {parentAccessClassId === 'all'
+                      ? students.filter(s => !s.isDeleted).length
+                      : students.filter(s => !s.isDeleted && s.classId === parentAccessClassId).length} HS
+                  </span>
+                </button>
+              </div>
+
+              {/* Menu tùy chọn hiển thị dữ liệu theo lớp & Thanh tìm kiếm */}
+              <div className="p-4 border-b border-slate-100 bg-slate-50/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Menu chọn Lớp */}
+                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs">
+                    <Building2 className="w-4 h-4 text-teal-700 shrink-0" />
+                    <label htmlFor="parent-access-class-menu" className="text-xs font-bold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+                      Xem theo lớp:
+                    </label>
+                    <select
+                      id="parent-access-class-menu"
+                      value={parentAccessClassId}
+                      onChange={e => setParentAccessClassId(e.target.value)}
+                      className="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none cursor-pointer pr-1"
+                    >
+                      <option value="all">
+                        Tất cả các lớp ({students.filter(s => !s.isDeleted).length} HS)
+                      </option>
+                      {activeClasses.map(c => {
+                        const count = students.filter(s => !s.isDeleted && s.classId === c.id).length;
+                        return (
+                          <option key={c.id} value={c.id}>
+                            Lớp {c.name} ({count} học sinh)
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  {/* Badge số lượng hiển thị */}
+                  <span className="text-xs font-medium text-slate-600 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs">
+                    Đang hiển thị: <strong className="text-teal-700 font-bold">{parentAccessStudents.length}</strong> học sinh
+                  </span>
+                </div>
+
+                {/* Ô tìm kiếm & Chuyển chế độ xem */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={parentAccessSearch}
+                      onChange={e => setParentAccessSearch(e.target.value)}
+                      placeholder="Tìm tên HS, mã định danh..."
+                      className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
+                    />
+                    {parentAccessSearch && (
+                      <button
+                        onClick={() => setParentAccessSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Toggle chế độ xem: Bảng / Thẻ */}
+                  <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-2xs shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setParentAccessViewMode('table')}
+                      className={`p-1.5 rounded-lg text-xs font-medium transition-all ${
+                        parentAccessViewMode === 'table'
+                          ? 'bg-teal-50 text-teal-700 border border-teal-200 shadow-2xs'
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                      title="Hiển thị dạng Bảng chi tiết"
+                    >
+                      <LayoutList className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setParentAccessViewMode('cards')}
+                      className={`p-1.5 rounded-lg text-xs font-medium transition-all ${
+                        parentAccessViewMode === 'cards'
+                          ? 'bg-teal-50 text-teal-700 border border-teal-200 shadow-2xs'
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                      title="Hiển thị dạng Thẻ"
+                    >
+                      <Grid className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="p-6">
-                <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm border border-amber-200 mb-4 flex gap-3">
-                  <Key className="w-5 h-5 shrink-0" />
-                  <p>Phụ huynh đăng nhập bằng mã học sinh (VD: <strong>10QT3A-001</strong>). Không cần mật khẩu. Dưới đây là danh sách gợi ý mã để gửi cho phụ huynh.</p>
+
+              {/* Hướng dẫn & Định dạng xuất Excel */}
+              <div className="p-4 sm:p-5">
+                <div className="bg-teal-50/70 border border-teal-200/80 rounded-xl p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-teal-900">
+                  <div className="flex items-start sm:items-center gap-2.5">
+                    <Key className="w-4 h-4 text-teal-700 shrink-0 mt-0.5 sm:mt-0" />
+                    <span>
+                      Phụ huynh đăng nhập tại Cổng Phụ huynh bằng <strong>Mã định danh</strong> (Mã HS hoặc TênLớp-STT) và <strong>Mật khẩu</strong> mặc định: <strong className="font-mono text-teal-800 bg-white px-1.5 py-0.5 rounded border border-teal-200">12345678</strong>.
+                    </span>
+                  </div>
+                  <div className="text-slate-600 shrink-0 flex items-center gap-1.5">
+                    <span className="font-medium">Cấu trúc Excel:</span>
+                    <span className="font-bold text-teal-800 bg-white px-2 py-0.5 rounded border border-teal-200">
+                      STT | Lớp | Mã định danh | Họ và tên | Mật khẩu
+                    </span>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto pr-2">
-                  {students.map(student => {
-                    const studentClass = classes.find(c => c.id === student.classId);
-                    if (!studentClass) return null;
-                    const code = student.code || `${studentClass.name}-${student.stt.toString().padStart(3, '0')}`;
-                    return (
-                      <div key={student.id} className="border border-slate-200 rounded-xl p-3 flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-shadow">
-                        <div>
-                          <p className="font-medium text-slate-800">{student.fullName}</p>
-                          <p className="text-xs text-slate-500">Lớp: {studentClass.name}</p>
-                        </div>
-                        <div className="bg-slate-100 text-slate-700 font-mono font-bold text-sm px-3 py-1.5 rounded-lg border border-slate-200">
-                          {code}
-                        </div>
+
+                {/* Danh sách học sinh: Dạng Bảng */}
+                {parentAccessViewMode === 'table' ? (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                    <div className="overflow-x-auto max-h-[500px]">
+                      <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead className="sticky top-0 z-10">
+                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                            <th className="py-3 px-4 font-bold text-center w-16 whitespace-nowrap bg-slate-50">STT</th>
+                            <th className="py-3 px-4 font-bold text-center w-28 whitespace-nowrap bg-slate-50">Lớp</th>
+                            <th className="py-3 px-4 font-bold whitespace-nowrap bg-slate-50">Mã định danh</th>
+                            <th className="py-3 px-4 font-bold whitespace-nowrap bg-slate-50 min-w-[200px]">Họ và tên</th>
+                            <th className="py-3 px-4 font-bold text-center w-36 whitespace-nowrap bg-slate-50">Mật khẩu</th>
+                            <th className="py-3 px-4 font-bold text-right whitespace-nowrap bg-slate-50 w-32">Thao tác</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {parentAccessStudents.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="py-10 text-center text-slate-500">
+                                <Key className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                <p className="font-medium">Không tìm thấy học sinh nào phù hợp.</p>
+                                {(parentAccessClassId !== 'all' || parentAccessSearch) && (
+                                  <button
+                                    onClick={() => { setParentAccessClassId('all'); setParentAccessSearch(''); }}
+                                    className="mt-2 text-xs text-teal-700 hover:underline font-semibold"
+                                  >
+                                    Xem tất cả các lớp
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ) : (
+                            parentAccessStudents.map((student, idx) => {
+                              const studentClass = classes.find(c => c.id === student.classId);
+                              const className = studentClass ? studentClass.name : 'Chưa xếp';
+                              const code = student.code || (studentClass ? `${studentClass.name}-${student.stt.toString().padStart(3, '0')}` : `HS-${student.stt}`);
+                              const password = (student as any).password || '12345678';
+                              const isCopied = parentAccessCopiedId === student.id;
+
+                              return (
+                                <tr key={student.id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="py-3 px-4 text-center font-medium text-slate-500">
+                                    {idx + 1}
+                                  </td>
+                                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                      {className}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2.5 py-1 rounded-md border border-slate-200">
+                                      {code}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                        {(student.fullName || 'H').charAt(0)}
+                                      </div>
+                                      <span className="font-semibold text-slate-800 whitespace-nowrap">
+                                        {student.fullName}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                                    <span className="inline-flex items-center font-mono text-xs bg-amber-50 text-amber-800 px-2.5 py-1 rounded-md border border-amber-200 font-medium">
+                                      {password}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyAccessInfo(student)}
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                                        isCopied
+                                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                          : 'bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border border-slate-200 hover:border-teal-200'
+                                      }`}
+                                      title="Sao chép tên, mã định danh và mật khẩu"
+                                    >
+                                      {isCopied ? (
+                                        <>
+                                          <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                          <span>Đã chép</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="w-3.5 h-3.5" />
+                                          <span>Sao chép</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  /* Danh sách học sinh: Dạng Thẻ */
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[500px] overflow-y-auto pr-1">
+                    {parentAccessStudents.length === 0 ? (
+                      <div className="col-span-full py-10 text-center text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
+                        <Key className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <p className="font-medium">Không tìm thấy học sinh nào phù hợp.</p>
                       </div>
-                    );
-                  })}
-                </div>
+                    ) : (
+                      parentAccessStudents.map((student, idx) => {
+                        const studentClass = classes.find(c => c.id === student.classId);
+                        const className = studentClass ? studentClass.name : 'Chưa xếp';
+                        const code = student.code || (studentClass ? `${studentClass.name}-${student.stt.toString().padStart(3, '0')}` : `HS-${student.stt}`);
+                        const password = (student as any).password || '12345678';
+                        const isCopied = parentAccessCopiedId === student.id;
+
+                        return (
+                          <div
+                            key={student.id}
+                            className="border border-slate-200 rounded-xl p-3.5 bg-white shadow-2xs hover:shadow-xs hover:border-teal-200 transition-all flex flex-col justify-between gap-3"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[11px] font-mono font-bold text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">
+                                  #{idx + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-slate-800 text-sm truncate">
+                                    {student.fullName}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    Lớp: <span className="font-semibold text-indigo-700">{className}</span>
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200 shrink-0">
+                                {code}
+                              </span>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                              <span className="text-slate-500">
+                                MK: <strong className="font-mono text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">{password}</strong>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyAccessInfo(student)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                                  isCopied
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : 'bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border border-slate-200'
+                                }`}
+                              >
+                                {isCopied ? (
+                                  <>
+                                    <CheckCheck className="w-3 h-3 text-emerald-600" />
+                                    <span>Đã chép</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Sao chép</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -1402,19 +1922,30 @@ export default function AdminView({ classes, students, users, schoolYears, setti
             {/* Sub-tab 1: Giao diện & Logo */}
             {configSubTab === 'settings' && (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <LayoutTemplate className="w-5 h-5 text-[#0f766e]" />
-                    Cấu hình Giao diện & Thương hiệu
-                  </h2>
-                  <button
-                    onClick={handleSaveSettings}
-                    disabled={isSavingSettings}
-                    className="px-4 py-2 bg-teal-gradient text-white font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 shadow-xs disabled:opacity-50 text-sm"
-                  >
-                    <Save className="w-4 h-4" />
-                    {isSavingSettings ? 'Đang lưu...' : 'Lưu Cấu hình'}
-                  </button>
+                <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/50">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                      <LayoutTemplate className="w-5 h-5 text-[#0f766e]" />
+                      Cấu hình Giao diện & Thương hiệu
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Tùy biến tên trường, logo và hình nền. Tự động đồng bộ lên Firebase khi lưu.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {lastSavedTime && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-full">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        Đã đồng bộ Firebase ({lastSavedTime})
+                      </span>
+                    )}
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={isSavingSettings}
+                      className="px-4 py-2 bg-teal-gradient text-white font-medium rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 shadow-xs disabled:opacity-50 text-sm cursor-pointer"
+                    >
+                      <Save className="w-4 h-4" />
+                      {isSavingSettings ? 'Đang lưu & Đồng bộ...' : 'Lưu Cấu hình'}
+                    </button>
+                  </div>
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -1473,6 +2004,18 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                       </label>
                     </div>
                     <p className="text-xs text-slate-500 mt-1">URL hình ảnh nền cho trang Portal.</p>
+                    {appSettings.portalBackground && (
+                      <div className="mt-2 relative rounded-xl overflow-hidden border border-slate-200 h-28 bg-slate-100">
+                        <img src={appSettings.portalBackground} alt="Preview Portal Background" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setAppSettings(prev => ({ ...prev, portalBackground: '' }))}
+                          className="absolute top-2 right-2 px-2 py-1 bg-black/60 hover:bg-black/80 text-white rounded-lg opacity-90 hover:opacity-100 transition-opacity text-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" /> Xóa ảnh
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Icon Tiêu đề (Favicon URL)</label>
@@ -1491,6 +2034,19 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                       </label>
                     </div>
                     <p className="text-xs text-slate-500 mt-1">URL hình ảnh nhỏ trên thẻ trình duyệt.</p>
+                    {appSettings.pageIcon && (
+                      <div className="mt-2 flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                        <img src={appSettings.pageIcon} alt="Preview Icon" className="w-8 h-8 rounded object-contain border border-slate-300 bg-white" />
+                        <span className="text-xs text-slate-600 font-medium">Xem trước Icon browser</span>
+                        <button
+                          type="button"
+                          onClick={() => setAppSettings(prev => ({ ...prev, pageIcon: '' }))}
+                          className="ml-auto text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" /> Xóa
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Logo Giao diện Portal (URL)</label>
@@ -1509,6 +2065,19 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                       </label>
                     </div>
                     <p className="text-xs text-slate-500 mt-1">Sẽ thay thế icon cái mũ ở trang Portal.</p>
+                    {appSettings.portalLogo && (
+                      <div className="mt-2 flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                        <img src={appSettings.portalLogo} alt="Preview Portal Logo" className="w-12 h-12 rounded-full object-cover border-2 border-teal-500 bg-white" />
+                        <span className="text-xs text-slate-600 font-medium">Xem trước Logo Portal</span>
+                        <button
+                          type="button"
+                          onClick={() => setAppSettings(prev => ({ ...prev, portalLogo: '' }))}
+                          className="ml-auto text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" /> Xóa
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Logo Trang Đăng nhập (URL)</label>
@@ -1527,6 +2096,19 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                       </label>
                     </div>
                     <p className="text-xs text-slate-500 mt-1">Sẽ thay thế icon cái mũ ở trang Đăng nhập.</p>
+                    {appSettings.loginLogo && (
+                      <div className="mt-2 flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                        <img src={appSettings.loginLogo} alt="Preview Login Logo" className="w-12 h-12 rounded-full object-cover border-2 border-teal-500 bg-white" />
+                        <span className="text-xs text-slate-600 font-medium">Xem trước Logo Đăng nhập</span>
+                        <button
+                          type="button"
+                          onClick={() => setAppSettings(prev => ({ ...prev, loginLogo: '' }))}
+                          className="ml-auto text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" /> Xóa
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -1546,6 +2128,18 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                       </label>
                     </div>
                     <p className="text-xs text-slate-500 mt-1">URL hình ảnh nền cho trang Đăng nhập.</p>
+                    {appSettings.loginBackground && (
+                      <div className="mt-2 relative rounded-xl overflow-hidden border border-slate-200 h-28 bg-slate-100">
+                        <img src={appSettings.loginBackground} alt="Preview Login Background" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setAppSettings(prev => ({ ...prev, loginBackground: '' }))}
+                          className="absolute top-2 right-2 px-2 py-1 bg-black/60 hover:bg-black/80 text-white rounded-lg opacity-90 hover:opacity-100 transition-opacity text-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" /> Xóa ảnh
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1988,15 +2582,15 @@ export default function AdminView({ classes, students, users, schoolYears, setti
       {/* Add/Edit User Modal */}
       {isAddUserModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
               <h3 className="font-bold text-slate-800 text-lg">{editingUser ? 'Sửa Tài khoản' : 'Thêm Tài khoản mới'}</h3>
               <button onClick={() => setIsAddUserModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 space-y-4 flex-1 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Mã Giáo viên (Tài khoản đăng nhập) <span className="text-red-500">*</span></label>
                 <input 
@@ -2039,17 +2633,135 @@ export default function AdminView({ classes, students, users, schoolYears, setti
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Phân quyền</label>
                 <select
-                  value={userFormData.role}
-                  onChange={e => setUserFormData({...userFormData, role: e.target.value as 'admin' | 'teacher' | 'subject_teacher' | 'staff'})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  value={userFormData.role === 'subject_teacher' ? 'teacher' : userFormData.role}
+                  onChange={e => {
+                    const newRole = e.target.value as 'admin' | 'teacher' | 'staff';
+                    if (newRole === 'teacher') {
+                      const tType = userFormData.teacherType || 'gvcn';
+                      setUserFormData({
+                        ...userFormData,
+                        role: 'teacher',
+                        teacherType: tType,
+                        isHomeroom: tType === 'gvcn',
+                        isSubject: tType === 'gvbm' ? true : userFormData.isSubject,
+                        permissions: {
+                          schedule: tType === 'gvbm' ? 'view' : 'edit',
+                          students: tType === 'gvbm' ? 'view' : 'edit',
+                          grades: tType === 'gvbm' ? 'view' : 'edit',
+                          weeklyPlan: tType === 'gvbm' ? 'view' : 'edit',
+                          lunchMenu: 'view',
+                          attendance: 'edit'
+                        }
+                      });
+                    } else {
+                      setUserFormData({
+                        ...userFormData,
+                        role: newRole
+                      });
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-slate-800"
                 >
-                  <option value="teacher">Giáo viên Chủ nhiệm</option>
-                  <option value="subject_teacher">Giáo viên Bộ môn</option>
+                  <option value="teacher">Giáo viên</option>
                   <option value="staff">Giáo vụ</option>
                   <option value="admin">Ban Giám Hiệu (Admin)</option>
                 </select>
-
               </div>
+
+              {/* 2 vai trò nhỏ của Giáo viên: GVCN và GVBM */}
+              {(userFormData.role === 'teacher' || userFormData.role === 'subject_teacher') && (
+                <div className="col-span-1 bg-slate-50/80 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Vai trò cụ thể của Giáo viên <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[11px] font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                      {userFormData.teacherType === 'gvbm' ? 'Chế độ GV Bộ môn' : 'Chế độ GV Chủ nhiệm'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Option 1: GVCN */}
+                    <div 
+                      onClick={() => {
+                        setUserFormData(prev => ({
+                          ...prev,
+                          teacherType: 'gvcn',
+                          isHomeroom: true,
+                          permissions: {
+                            schedule: 'edit',
+                            students: 'edit',
+                            grades: 'edit',
+                            weeklyPlan: 'edit',
+                            lunchMenu: 'view',
+                            attendance: 'edit'
+                          }
+                        }));
+                      }}
+                      className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                        userFormData.teacherType !== 'gvbm'
+                          ? 'border-teal-600 bg-teal-50/70 shadow-xs'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="radio" 
+                          name="teacherType"
+                          checked={userFormData.teacherType !== 'gvbm'}
+                          onChange={() => {}}
+                          className="w-4 h-4 text-teal-700 focus:ring-teal-500 cursor-pointer"
+                        />
+                        <span className="font-bold text-sm text-slate-800">1. Giáo viên Chủ nhiệm (GVCN)</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 pl-6 leading-relaxed">
+                        Quản lý lớp chủ nhiệm của mình. Toàn quyền quản lý học sinh, kế hoạch tuần, nhận xét và điểm danh lớp mình.
+                      </p>
+                    </div>
+
+                    {/* Option 2: GVBM */}
+                    <div 
+                      onClick={() => {
+                        setUserFormData(prev => ({
+                          ...prev,
+                          teacherType: 'gvbm',
+                          isHomeroom: false,
+                          isSubject: true,
+                          homeroomClasses: [],
+                          permissions: {
+                            schedule: 'view',
+                            students: 'view',
+                            grades: 'view',
+                            weeklyPlan: 'view',
+                            lunchMenu: 'view',
+                            attendance: 'edit' // GVBM được quyền điểm danh các lớp
+                          }
+                        }));
+                      }}
+                      className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                        userFormData.teacherType === 'gvbm'
+                          ? 'border-indigo-600 bg-indigo-50/70 shadow-xs'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="radio" 
+                          name="teacherType"
+                          checked={userFormData.teacherType === 'gvbm'}
+                          onChange={() => {}}
+                          className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <span className="font-bold text-sm text-slate-800">2. Giáo viên Bộ môn (GVBM)</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 pl-6 leading-relaxed">
+                        Chỉ xem thông tin các lớp học cần xem. <strong>Được quyền điểm danh các lớp</strong> giảng dạy; không được sửa/xóa hồ sơ học sinh.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {userFormData.role !== 'admin' && (
                 <div className="col-span-1 border-t border-slate-100 pt-4 mt-2">
                   <div className="flex items-center justify-between mb-3">
@@ -2059,7 +2771,13 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                         <span>Phân quyền chi tiết chức năng</span>
                       </h4>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Thiết lập quyền "Chỉ xem" hoặc "Toàn quyền / Sửa đổi" cho từng phân hệ (BGH Admin giữ nguyên toàn quyền)
+                        {userFormData.role === 'teacher' && userFormData.teacherType === 'gvbm' ? (
+                          <span className="text-indigo-700 font-medium">
+                            Quy tắc GVBM: Xem hồ sơ học sinh & lịch học. Được quyền điểm danh các lớp phụ trách; khóa quyền sửa/xóa học sinh.
+                          </span>
+                        ) : (
+                          'Thiết lập quyền "Chỉ xem" hoặc "Toàn quyền / Sửa đổi" cho từng phân hệ (BGH Admin giữ nguyên toàn quyền)'
+                        )}
                       </p>
                     </div>
                   </div>
@@ -2074,6 +2792,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                       { key: 'attendance', label: '6. Điểm danh chuyên cần' }
                     ].map(({ key, label }) => {
                       const isLunchForTeacher = key === 'lunchMenu' && userFormData.role !== 'staff';
+                      const isGVBM = userFormData.role === 'teacher' && userFormData.teacherType === 'gvbm';
                       const currentVal = isLunchForTeacher ? 'view' : (userFormData.permissions?.[key as keyof UserPermissions] || 'edit');
                       return (
                         <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200 gap-2">
@@ -2081,6 +2800,12 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                             <span className="text-xs font-semibold text-slate-700">{label}</span>
                             {isLunchForTeacher && (
                               <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">Chỉ BGH & Giáo vụ</span>
+                            )}
+                            {isGVBM && key === 'attendance' && (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-medium">GVBM được quyền điểm danh</span>
+                            )}
+                            {isGVBM && key === 'students' && (
+                              <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-medium">Chỉ xem (khóa sửa/xóa)</span>
                             )}
                           </div>
                           <div className="flex items-center gap-3">
@@ -2094,7 +2819,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                                   ...userFormData,
                                   permissions: { ...userFormData.permissions, [key]: 'view' }
                                 })}
-                                className="w-3.5 h-3.5 text-amber-600 focus:ring-amber-500"
+                                className="w-3.5 h-3.5 text-amber-600 focus:ring-amber-500 cursor-pointer"
                               />
                               <span className={currentVal === 'view' ? 'font-medium text-amber-700' : 'text-slate-600'}>
                                 Chỉ xem
@@ -2111,7 +2836,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                                   ...userFormData,
                                   permissions: { ...userFormData.permissions, [key]: 'edit' }
                                 })}
-                                className="w-3.5 h-3.5 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed"
+                                className="w-3.5 h-3.5 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed cursor-pointer"
                               />
                               <span className={currentVal === 'edit' ? 'font-medium text-indigo-700' : 'text-slate-600'}>
                                 Sửa đổi / Đầy đủ
@@ -2125,7 +2850,7 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                 </div>
               )}
 
-              {(userFormData.role === 'teacher' || userFormData.role === 'admin') && (
+              {(userFormData.role === 'teacher' || userFormData.role === 'admin' || userFormData.role === 'subject_teacher') && (
                 <div className="col-span-1 border-t border-slate-100 pt-4 mt-2">
                   <div className="flex items-center gap-4 mb-4">
                     <h4 className="font-semibold text-slate-800">Phân công chuyên môn</h4>
@@ -2144,108 +2869,164 @@ export default function AdminView({ classes, students, users, schoolYears, setti
                     </div>
                   </div>
                   
-                  <div className="bg-slate-50 p-4 rounded-xl space-y-4 mb-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={userFormData.isHomeroom} 
-                        onChange={e => {
-                          const isChecked = e.target.checked;
-                          setUserFormData(prev => ({
-                            ...prev, 
-                            isHomeroom: isChecked,
-                            subjectClasses: isChecked 
-                              ? prev.subjectClasses.filter(cId => !prev.homeroomClasses.includes(cId))
-                              : prev.subjectClasses
-                          }));
-                        }}
-                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                      />
-                      <span className="font-medium text-slate-700">Là Giáo viên Chủ nhiệm (GVCN)</span>
-                    </label>
-                    {userFormData.isHomeroom && (
-                      <div className="ml-6">
-                        <select
-                          multiple
-                          value={userFormData.homeroomClasses}
-                          onChange={e => {
-                            const values = Array.from(e.target.selectedOptions, (option: any) => option.value);
+                  {/* Phân công lớp Chủ nhiệm (Chỉ dành cho GVCN hoặc Admin) */}
+                  {userFormData.teacherType !== 'gvbm' && (
+                    <div className="bg-white border border-teal-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5 mb-4">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={userFormData.isHomeroom} 
+                            onChange={e => {
+                              const isChecked = e.target.checked;
+                              setUserFormData(prev => ({
+                                ...prev, 
+                                isHomeroom: isChecked,
+                                subjectClasses: isChecked 
+                                  ? prev.subjectClasses.filter(cId => !prev.homeroomClasses.includes(cId))
+                                  : prev.subjectClasses
+                              }));
+                            }}
+                            className="w-4 h-4 text-teal-700 rounded border-slate-300 focus:ring-teal-500 cursor-pointer"
+                          />
+                          <span className="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-1.5">
+                            <Building2 className="w-4 h-4 text-teal-700" />
+                            <span>1. Lớp Chủ nhiệm (GVCN)</span>
+                          </span>
+                        </label>
+
+                        {userFormData.isHomeroom && (
+                          <span className="text-xs font-semibold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
+                            Chế độ Giáo viên Chủ nhiệm
+                          </span>
+                        )}
+                      </div>
+
+                      {userFormData.isHomeroom && (
+                        <ClassAssignmentPicker
+                          title="Danh sách chọn Lớp Chủ nhiệm"
+                          subtitle="Chọn một hoặc nhiều lớp học mà giáo viên này làm chủ nhiệm. Giáo viên sẽ có toàn quyền quản lý lớp."
+                          badgeLabel="GVCN"
+                          classes={classes.filter(c => !userAssignmentYear || c.schoolYearId === userAssignmentYear)}
+                          selectedClassIds={userFormData.homeroomClasses}
+                          onChange={(newHomeroom) => {
                             setUserFormData(prev => ({
-                              ...prev, 
-                              homeroomClasses: values,
-                              subjectClasses: prev.subjectClasses.filter(cId => !values.includes(cId))
+                              ...prev,
+                              homeroomClasses: newHomeroom,
+                              subjectClasses: prev.subjectClasses.filter(cId => !newHomeroom.includes(cId))
                             }));
                           }}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all h-24"
-                        >
-                          {classes.filter(c => !userAssignmentYear || c.schoolYearId === userAssignmentYear).map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </select>
-                        <p className="text-xs text-slate-500 mt-1">Giữ Ctrl/Cmd để chọn nhiều lớp</p>
-                      </div>
-                    )}
-                  </div>
+                          students={students}
+                          accentColor="teal"
+                          allowSelectAll={true}
+                        />
+                      )}
+                    </div>
+                  )}
 
-                  <div className="bg-slate-50 p-4 rounded-xl space-y-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={userFormData.isSubject} 
-                        onChange={e => setUserFormData({...userFormData, isSubject: e.target.checked})}
-                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                      />
-                      <span className="font-medium text-slate-700">Là Giáo viên Bộ môn (GVBM)</span>
-                    </label>
-                    {userFormData.isSubject && (
-                      <div className="ml-6 space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Môn học</label>
-                          <div className="flex flex-wrap gap-2">
-                            {['Toán', 'Ngữ Văn', 'Tiếng Anh', 'Vật Lý', 'Hóa Học', 'Sinh Học', 'Lịch Sử', 'Địa Lý', 'GDCD', 'Tin Học', 'Thể Dục', 'Công Nghệ'].map(subject => (
-                              <label key={subject} className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-                                <input 
-                                  type="checkbox"
-                                  checked={userFormData.subjects.includes(subject)}
-                                  onChange={e => {
-                                    if (e.target.checked) {
-                                      setUserFormData({...userFormData, subjects: [...userFormData.subjects, subject]});
+                  {/* Phân công Môn học & Lớp giảng dạy (GVBM) */}
+                  <div className="bg-white border border-indigo-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <label className="flex items-center gap-2.5 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={userFormData.teacherType === 'gvbm' ? true : userFormData.isSubject} 
+                          disabled={userFormData.teacherType === 'gvbm'}
+                          onChange={e => setUserFormData({...userFormData, isSubject: e.target.checked})}
+                          className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 disabled:opacity-60 cursor-pointer"
+                        />
+                        <span className="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-1.5">
+                          <BookOpen className="w-4 h-4 text-indigo-600" />
+                          <span>
+                            {userFormData.teacherType === 'gvbm' 
+                              ? '2. Môn học & Lớp giảng dạy (GVBM)' 
+                              : '2. Giảng dạy thêm lớp khác (với vai trò GVBM)'}
+                          </span>
+                        </span>
+                      </label>
+
+                      <span className="text-xs font-semibold text-indigo-800 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                        Được quyền điểm danh các lớp này
+                      </span>
+                    </div>
+
+                    {(userFormData.teacherType === 'gvbm' || userFormData.isSubject) && (
+                      <div className="space-y-4 pt-1">
+                        {/* Môn học phụ trách */}
+                        <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                              Môn học phụ trách ({userFormData.subjects.length} môn đã chọn)
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const allSubs = ['Toán', 'Ngữ Văn', 'Tiếng Anh', 'Vật Lý', 'Hóa Học', 'Sinh Học', 'Lịch Sử', 'Địa Lý', 'GDCD', 'Tin Học', 'Thể Dục', 'Công Nghệ', 'Âm Nhạc', 'Mỹ Thuật', 'KHTN', 'KHXH'];
+                                  setUserFormData(prev => ({ ...prev, subjects: allSubs }));
+                                }}
+                                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
+                              >
+                                Chọn tất cả
+                              </button>
+                              <span className="text-slate-300">|</span>
+                              <button
+                                type="button"
+                                onClick={() => setUserFormData(prev => ({ ...prev, subjects: [] }))}
+                                className="text-xs text-slate-500 hover:text-slate-700 font-medium"
+                              >
+                                Bỏ chọn
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            {['Toán', 'Ngữ Văn', 'Tiếng Anh', 'Vật Lý', 'Hóa Học', 'Sinh Học', 'Lịch Sử', 'Địa Lý', 'GDCD', 'Tin Học', 'Thể Dục', 'Công Nghệ', 'Âm Nhạc', 'Mỹ Thuật', 'KHTN', 'KHXH'].map(subject => {
+                              const isSubSelected = userFormData.subjects.includes(subject);
+                              return (
+                                <button
+                                  key={subject}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isSubSelected) {
+                                      setUserFormData(prev => ({ ...prev, subjects: prev.subjects.filter(s => s !== subject) }));
                                     } else {
-                                      setUserFormData({...userFormData, subjects: userFormData.subjects.filter(s => s !== subject)});
+                                      setUserFormData(prev => ({ ...prev, subjects: [...prev.subjects, subject] }));
                                     }
                                   }}
-                                  className="text-indigo-600 focus:ring-indigo-500 rounded-sm w-3.5 h-3.5"
-                                />
-                                <span className="text-sm font-medium text-slate-700">{subject}</span>
-                              </label>
-                            ))}
+                                  className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold transition-all flex items-center gap-1 shadow-2xs ${
+                                    isSubSelected
+                                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {isSubSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                  <span>{subject}</span>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Lớp giảng dạy</label>
-                          <select
-                            multiple
-                            value={userFormData.subjectClasses}
-                            onChange={e => {
-                              const values = Array.from(e.target.selectedOptions, (option: any) => option.value);
-                              setUserFormData({...userFormData, subjectClasses: values});
-                            }}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all h-24"
-                          >
-                            {classes
-                              .filter(c => !userAssignmentYear || c.schoolYearId === userAssignmentYear)
-                              .filter(c => !userFormData.isHomeroom || !userFormData.homeroomClasses.includes(c.id))
-                              .map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
-                          </select>
-                          {userFormData.isHomeroom && userFormData.homeroomClasses.length > 0 && (
-                            <p className="text-xs text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200 mt-1.5">
-                              Lớp chủ nhiệm ({classes.filter(c => userFormData.homeroomClasses.includes(c.id)).map(c => c.name).join(', ')}) đã được tự động ẩn khỏi danh sách lớp GVBM.
-                            </p>
-                          )}
-                          <p className="text-xs text-slate-500 mt-1">Giữ Ctrl/Cmd để chọn nhiều lớp</p>
-                        </div>
+
+                        {/* ClassAssignmentPicker for GVBM */}
+                        <ClassAssignmentPicker
+                          title="Danh sách chọn Lớp Giảng dạy"
+                          subtitle="Chọn các lớp học giáo viên bộ môn giảng dạy. Giáo viên có quyền điểm danh chuyên cần và theo dõi học sinh các lớp này."
+                          badgeLabel="GVBM"
+                          classes={classes.filter(c => !userAssignmentYear || c.schoolYearId === userAssignmentYear)}
+                          selectedClassIds={userFormData.subjectClasses}
+                          onChange={(newSubjects) => {
+                            setUserFormData(prev => ({
+                              ...prev,
+                              subjectClasses: newSubjects
+                            }));
+                          }}
+                          students={students}
+                          accentColor="indigo"
+                          disabledClassIds={userFormData.teacherType !== 'gvbm' && userFormData.isHomeroom ? userFormData.homeroomClasses : []}
+                          disabledReason="Đã là lớp GVCN"
+                          allowSelectAll={true}
+                        />
                       </div>
                     )}
                   </div>
