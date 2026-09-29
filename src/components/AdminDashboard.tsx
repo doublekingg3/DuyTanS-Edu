@@ -96,6 +96,17 @@ export default function AdminDashboard({
 
   // Thống kê điểm danh toàn trường / theo khối đang chọn theo ngày đang chọn
   const todayStats = useMemo(() => {
+    // Lọc lớp theo khối đang chọn (hoặc toàn trường nếu 'all')
+    const targetClasses = selectedGrade === 'all' 
+      ? currentClasses 
+      : currentClasses.filter(c => {
+          const match = (c.name || '').match(/^(\d+)/);
+          return match ? match[1] === selectedGrade : c.name.startsWith(selectedGrade);
+        });
+
+    const targetClassIds = new Set(targetClasses.map(c => c.id));
+    const targetStudents = currentStudents.filter(s => targetClassIds.has(s.classId));
+
     let present = 0;
     let absent = 0;
     let absentP = 0;
@@ -106,6 +117,8 @@ export default function AdminDashboard({
     let uncheckedClassesCount = 0;
 
     classStats.forEach(c => {
+      if (!targetClassIds.has(c.id)) return;
+
       if (c.isAttendanceDone) {
         checkedClassesCount++;
         totalCheckedStudents += c.total;
@@ -131,10 +144,10 @@ export default function AdminDashboard({
       }
     });
 
-    // Tỷ lệ có mặt tính trên tổng số học sinh của các lớp ĐÃ điểm danh (để phản ánh chính xác)
-    const presentPercent = totalCheckedStudents > 0 
-      ? Math.round((present / totalCheckedStudents) * 100) 
-      : 0;
+    // Tỉ lệ % đang có mặt lấy số có mặt chia cho tổng sĩ số theo đúng yêu cầu
+    const totalStudents = targetStudents.length;
+    const rawRate = totalStudents > 0 ? (present / totalStudents) * 100 : 0;
+    const presentPercent = Math.round(rawRate * 10) / 10;
 
     return { 
       present, 
@@ -142,14 +155,14 @@ export default function AdminDashboard({
       absentP, 
       absentKP, 
       late, 
-      total: currentStudents.length, 
+      total: totalStudents, 
       totalCheckedStudents,
       checkedClassesCount,
       uncheckedClassesCount,
-      totalClasses: currentClasses.length,
+      totalClasses: targetClasses.length,
       presentPercent 
     };
-  }, [classStats, currentStudents, currentClasses, selectedDate]);
+  }, [classStats, currentStudents, currentClasses, selectedDate, selectedGrade]);
 
   // Filtered classes based on selectedGrade tab
   const filteredClassStats = useMemo(() => {
@@ -290,16 +303,16 @@ export default function AdminDashboard({
             <span className="text-3xl font-extrabold text-teal-700">
               {todayStats.present}
             </span>
-            <span className="text-xs font-semibold text-teal-600">
+            <span className="text-sm font-extrabold text-teal-600">
               ({todayStats.presentPercent}%)
             </span>
             <span className="text-[11px] text-slate-400 font-normal ml-0.5">
-              / {todayStats.totalCheckedStudents > 0 ? `${todayStats.totalCheckedStudents} HS đã ĐD` : `${todayStats.total} HS`}
+              / {todayStats.total} tổng sĩ số
             </span>
           </div>
           <p className="text-xs text-teal-700 font-medium">
             {todayStats.uncheckedClassesCount > 0 
-              ? `Tổng hợp từ ${todayStats.checkedClassesCount} lớp đã điểm danh (Còn ${todayStats.uncheckedClassesCount} lớp chưa ĐD)`
+              ? `${todayStats.present}/${todayStats.total} HS có mặt (${todayStats.checkedClassesCount}/${todayStats.totalClasses} lớp đã ĐD)`
               : 'Hiện diện đầy đủ trên lớp học'}
           </p>
         </div>

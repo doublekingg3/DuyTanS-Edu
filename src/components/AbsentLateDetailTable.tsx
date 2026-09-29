@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   UserX, 
   Clock, 
@@ -15,7 +15,10 @@ import {
   Check, 
   ArrowRight,
   Filter,
-  Users
+  Users,
+  X,
+  FileSpreadsheet,
+  Calendar
 } from 'lucide-react';
 import { Student, SchoolClass } from '../data';
 import * as XLSX from 'xlsx';
@@ -55,6 +58,21 @@ export default function AbsentLateDetailTable({
   const [statusFilter, setStatusFilter] = useState<'all' | 'excused' | 'unexcused' | 'late'>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // State for Date-range Excel Export Modal
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportStartDate, setExportStartDate] = useState(selectedDate);
+  const [exportEndDate, setExportEndDate] = useState(selectedDate);
+  const [exportClassId, setExportClassId] = useState<string>('all');
+  const [exportScope, setExportScope] = useState<'all' | 'absent_only' | 'late_only'>('all');
+
+  // Synchronize export dates when selectedDate changes and modal is closed
+  useEffect(() => {
+    if (!showExportModal) {
+      setExportStartDate(selectedDate);
+      setExportEndDate(selectedDate);
+    }
+  }, [selectedDate, showExportModal]);
 
   // Helper formatting for date
   const formattedDisplayDate = useMemo(() => {
@@ -215,15 +233,181 @@ export default function AbsentLateDetailTable({
     });
   }, [allRecords, statusFilter, classFilter, searchTerm]);
 
-  // Export to Excel handler
+  // Quick preset helper for export modal
+  const handleSetPreset = (preset: 'selected' | 'today' | 'last7' | 'week' | 'month') => {
+    const today = new Date().toISOString().split('T')[0];
+    if (preset === 'selected') {
+      setExportStartDate(selectedDate);
+      setExportEndDate(selectedDate);
+    } else if (preset === 'today') {
+      setExportStartDate(today);
+      setExportEndDate(today);
+    } else if (preset === 'last7') {
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      setExportStartDate(d.toISOString().split('T')[0]);
+      setExportEndDate(today);
+    } else if (preset === 'week') {
+      const now = new Date();
+      const day = now.getDay();
+      const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(now.setDate(diffToMonday));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      setExportStartDate(monday.toISOString().split('T')[0]);
+      setExportEndDate(sunday.toISOString().split('T')[0]);
+    } else if (preset === 'month') {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const start = `${y}-${m}-01`;
+      setExportStartDate(start);
+      setExportEndDate(today);
+    }
+  };
+
+  // Records matching the export modal range & filters
+  const exportRangeRecords = useMemo(() => {
+    if (!exportStartDate || !exportEndDate) return [];
+    const start = exportStartDate <= exportEndDate ? exportStartDate : exportEndDate;
+    const end = exportStartDate <= exportEndDate ? exportEndDate : exportStartDate;
+
+    const list: Array<AbsentLateRecord & { date: string; dateDisplay: string }> = [];
+    const classMap = new Map<string, string>();
+    classes.forEach(c => classMap.set(c.id, c.name));
+
+    students.forEach(s => {
+      if (exportClassId !== 'all' && s.classId !== exportClassId) return;
+      if (!s.attendanceRecords) return;
+
+      Object.entries(s.attendanceRecords).forEach(([dateStr, record]) => {
+        if (dateStr >= start && dateStr <= end) {
+          if (record && (record.status === 'absent' || record.status === 'late' || record.status === 'leave_early')) {
+            const isAbsent = record.status === 'absent';
+            const isLate = record.status === 'late' || record.status === 'leave_early';
+
+            if (exportScope === 'absent_only' && !isAbsent) return;
+            if (exportScope === 'late_only' && !isLate) return;
+
+            const reasonLower = (record.reason || '').toLowerCase().trim();
+            let absentType: 'excused' | 'unexcused' | undefined = undefined;
+            let statusLabel = record.status === 'leave_early' ? 'Về sớm' : 'Đi trễ';
+
+            if (isAbsent) {
+              if (
+                reasonLower.includes('không phép') || 
+                reasonLower === 'kp' || 
+                reasonLower === 'k' || 
+                reasonLower.startsWith('kp ') ||
+                reasonLower.includes('(không phép)')
+              ) {
+                absentType = 'unexcused';
+                statusLabel = 'Vắng không phép';
+              } else if (
+                reasonLower.includes('có phép') || 
+                reasonLower.includes('phép') || 
+                reasonLower === 'p' || 
+                reasonLower.startsWith('p ') ||
+                reasonLower.includes('ốm') || 
+                reasonLower.includes('bệnh') || 
+                reasonLower.includes('xin')
+              ) {
+                absentType = 'excused';
+                statusLabel = 'Vắng có phép';
+              } else {
+                if (reasonLower.length > 0) {
+                  absentType = 'excused';
+                  statusLabel = 'Vắng có phép';
+                } else {
+                  absentType = 'unexcused';
+                  statusLabel = 'Vắng không phép';
+                }
+              }
+            }
+
+            const parts = dateStr.split('-');
+            const dateDisplay = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
+
+            list.push({
+              student: s,
+              className: classMap.get(s.classId) || 'Chưa rõ',
+              status: record.status,
+              absentType,
+              statusLabel,
+              reason: record.reason || '',
+              time: record.time || '',
+              parentPhone: s.parentPhone || s.phone || '',
+              parentName: s.parentName || 'Phụ huynh',
+              date: dateStr,
+              dateDisplay
+            });
+          }
+        }
+      });
+    });
+
+    // Sắp xếp: ngày giảm dần, sau đó theo lớp, rồi STT
+    list.sort((a, b) => {
+      const dateCmp = b.date.localeCompare(a.date);
+      if (dateCmp !== 0) return dateCmp;
+      const classCmp = a.className.localeCompare(b.className, 'vi', { numeric: true });
+      if (classCmp !== 0) return classCmp;
+      return (a.student.stt || 0) - (b.student.stt || 0);
+    });
+
+    return list;
+  }, [students, classes, exportStartDate, exportEndDate, exportClassId, exportScope]);
+
+  const rangeStats = useMemo(() => {
+    let absentCount = 0;
+    let excusedCount = 0;
+    let unexcusedCount = 0;
+    let lateCount = 0;
+
+    exportRangeRecords.forEach(r => {
+      if (r.status === 'absent') {
+        absentCount++;
+        if (r.absentType === 'excused') excusedCount++;
+        else unexcusedCount++;
+      } else {
+        lateCount++;
+      }
+    });
+
+    return {
+      total: exportRangeRecords.length,
+      absentCount,
+      excusedCount,
+      unexcusedCount,
+      lateCount
+    };
+  }, [exportRangeRecords]);
+
+  // Mở modal xuất excel theo khoảng ngày
   const handleExportExcel = () => {
-    if (allRecords.length === 0) {
-      alert('Không có học sinh nào vắng hoặc đi trễ trong ngày này để xuất Excel.');
+    setExportStartDate(selectedDate);
+    setExportEndDate(selectedDate);
+    setShowExportModal(true);
+  };
+
+  // Execute export based on date range
+  const handleExecuteRangeExport = () => {
+    if (exportRangeRecords.length === 0) {
       return;
     }
 
+    const start = exportStartDate <= exportEndDate ? exportStartDate : exportEndDate;
+    const end = exportStartDate <= exportEndDate ? exportEndDate : exportStartDate;
+    const startVN = start.split('-').reverse().join('/');
+    const endVN = end.split('-').reverse().join('/');
+
+    const selectedClassName = exportClassId === 'all' 
+      ? 'Toàn trường' 
+      : (classes.find(c => c.id === exportClassId)?.name || 'Lớp');
+
     const headers = [
       'STT',
+      'Ngày',
       'Lớp',
       'Mã Định Danh',
       'Họ và Tên Học Sinh',
@@ -235,22 +419,28 @@ export default function AbsentLateDetailTable({
       'Giờ Ghi Nhận'
     ];
 
-    const data = filteredRecords.map((r, index) => [
+    const data = exportRangeRecords.map((r, index) => [
       index + 1,
+      r.dateDisplay,
       r.className,
-      r.student.code || `HS-${r.student.stt.toString().padStart(3, '0')}`,
+      r.student.code || `HS-${(r.student.stt || index + 1).toString().padStart(3, '0')}`,
       r.student.fullName,
       r.status === 'absent' ? 'Vắng mặt' : (r.status === 'late' ? 'Đi trễ' : 'Về sớm'),
       r.statusLabel,
       r.reason || 'Không có ghi chú',
       r.parentName,
       r.parentPhone || 'Chưa cập nhật',
-      r.time || 'Hôm nay'
+      r.time || 'Trong ngày'
     ]);
 
+    const titleText = startVN === endVN
+      ? `DANH SÁCH CHI TIẾT HỌC SINH VẮNG & ĐI TRỄ NGÀY ${startVN}`
+      : `BÁO CÁO THỐNG KÊ CHI TIẾT HỌC SINH VẮNG & ĐI TRỄ (TỪ ${startVN} ĐẾN ${endVN})`;
+
     const ws = XLSX.utils.aoa_to_sheet([
-      [`DANH SÁCH CHI TIẾT HỌC SINH VẮNG & ĐI TRỄ NGÀY ${formattedDisplayDate}`],
-      [`Tổng số trường hợp: ${filteredRecords.length} (Vắng có phép: ${stats.excused}, Vắng không phép: ${stats.unexcused}, Đi trễ: ${stats.late})`],
+      [titleText],
+      [`Phạm vi: ${selectedClassName} | Tổng số trường hợp: ${exportRangeRecords.length} (Vắng có phép: ${rangeStats.excusedCount}, Vắng không phép: ${rangeStats.unexcusedCount}, Đi trễ/Về sớm: ${rangeStats.lateCount})`],
+      [`Thời gian xuất file: ${new Date().toLocaleString('vi-VN')}`],
       [],
       headers,
       ...data
@@ -259,21 +449,24 @@ export default function AbsentLateDetailTable({
     // Column widths
     ws['!cols'] = [
       { wch: 6 },
+      { wch: 14 },
       { wch: 12 },
       { wch: 16 },
       { wch: 25 },
       { wch: 14 },
       { wch: 18 },
-      { wch: 30 },
-      { wch: 20 },
+      { wch: 32 },
+      { wch: 22 },
       { wch: 18 },
       { wch: 14 }
     ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Vang_Tre');
-    const safeDate = selectedDate.replace(/-/g, '_');
-    XLSX.writeFile(wb, `Danh_Sach_Vang_Tre_Ngay_${safeDate}.xlsx`);
+    const safeStart = start.replace(/-/g, '_');
+    const safeEnd = end.replace(/-/g, '_');
+    XLSX.writeFile(wb, `Thong_Ke_Vang_Tre_${safeStart}_den_${safeEnd}.xlsx`);
+    setShowExportModal(false);
   };
 
   return (
@@ -637,6 +830,230 @@ export default function AbsentLateDetailTable({
           </tbody>
         </table>
       </div>
+
+      {/* Modal Xuất Excel theo tùy chọn khoảng ngày bắt đầu và kết thúc */}
+      {showExportModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setShowExportModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-5 py-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between shrink-0 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                  <FileSpreadsheet className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold tracking-tight">
+                    Xuất Báo Cáo Thống Kê Học Sinh Vắng & Đi Trễ
+                  </h3>
+                  <p className="text-xs text-emerald-100 mt-0.5">
+                    Tùy chọn ngày bắt đầu & kết thúc để trích xuất file Excel chính xác
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                title="Đóng modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 text-slate-700">
+              {/* Presets */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Khoảng thời gian mẫu (Chọn nhanh)
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreset('today')}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors cursor-pointer"
+                  >
+                    Hôm nay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreset('week')}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    Tuần này
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreset('last7')}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    7 ngày gần nhất
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreset('month')}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    Tháng này
+                  </button>
+                </div>
+              </div>
+
+              {/* Date pickers (Start & End) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <CalendarIcon className="w-3.5 h-3.5 text-teal-600" />
+                    <span>Ngày bắt đầu:</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={exportStartDate}
+                    onChange={(e) => setExportStartDate(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <CalendarIcon className="w-3.5 h-3.5 text-teal-600" />
+                    <span>Ngày kết thúc:</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={exportEndDate}
+                    onChange={(e) => setExportEndDate(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              {/* Scope & Class Filter */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Phạm vi lớp học:
+                  </label>
+                  <select
+                    value={exportClassId}
+                    onChange={(e) => setExportClassId(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
+                  >
+                    <option value="all">Toàn trường (Tất cả các lớp)</option>
+                    {classes.map(c => (
+                      <option key={c.id} value={c.id}>Lớp {c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Loại học sinh cần xuất:
+                  </label>
+                  <select
+                    value={exportScope}
+                    onChange={(e) => setExportScope(e.target.value as any)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
+                  >
+                    <option value="all">Tất cả (Vắng mặt & Đi trễ / Về sớm)</option>
+                    <option value="absent_only">Chỉ danh sách vắng học (Có phép & Không phép)</option>
+                    <option value="late_only">Chỉ học sinh đi trễ / về sớm</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Stats Summary Preview */}
+              <div className="p-3.5 rounded-xl border border-teal-200 bg-[#f0fdfa] flex flex-col gap-2 shadow-2xs">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-bold text-teal-900 uppercase tracking-wider">
+                    Thống kê trong khoảng ngày:
+                  </span>
+                  <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-300">
+                    {exportRangeRecords.length} trường hợp
+                  </span>
+                </div>
+                
+                {exportRangeRecords.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2 pt-1.5 border-t border-teal-200/60 text-xs">
+                    <span className="text-emerald-800 font-bold bg-white px-2.5 py-1 rounded-md border border-emerald-200 shadow-2xs">
+                      Vắng có phép: {rangeStats.excusedCount}
+                    </span>
+                    <span className="text-rose-800 font-bold bg-white px-2.5 py-1 rounded-md border border-rose-200 shadow-2xs">
+                      Vắng không phép: {rangeStats.unexcusedCount}
+                    </span>
+                    <span className="text-amber-800 font-bold bg-white px-2.5 py-1 rounded-md border border-amber-200 shadow-2xs">
+                      Đi trễ / Về sớm: {rangeStats.lateCount}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-700 italic font-medium pt-1">
+                    Không có học sinh nào vắng hoặc đi trễ trong khoảng thời gian đã chọn.
+                  </p>
+                )}
+              </div>
+
+              {/* Quick Preview table (if items exist) */}
+              {exportRangeRecords.length > 0 && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden text-xs shadow-2xs">
+                  <div className="bg-slate-50 px-3 py-2 font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center">
+                    <span>Xem trước dữ liệu (5 dòng đầu)</span>
+                    <span className="text-[11px] font-normal text-slate-500">File Excel gồm đầy đủ {exportRangeRecords.length} dòng</span>
+                  </div>
+                  <div className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                    {exportRangeRecords.slice(0, 5).map((r, i) => (
+                      <div key={i} className="px-3 py-2 flex items-center justify-between gap-2 hover:bg-slate-50/80">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-slate-400 font-mono text-[11px] shrink-0">{r.dateDisplay}</span>
+                          <span className="font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded text-[11px] shrink-0">{r.className}</span>
+                          <span className="font-semibold text-slate-800 truncate">{r.student.fullName}</span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                          r.status === 'absent' 
+                            ? (r.absentType === 'excused' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200')
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          {r.statusLabel}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {exportRangeRecords.length > 5 && (
+                    <div className="bg-slate-50/80 px-3 py-1.5 text-center text-[11px] text-slate-500 font-medium italic border-t border-slate-100">
+                      + và {exportRangeRecords.length - 5} trường hợp khác trong file tải về
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/80 rounded-xl transition-colors cursor-pointer"
+              >
+                Hủy
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecuteRangeExport}
+                disabled={exportRangeRecords.length === 0}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Tải file Excel ({exportRangeRecords.length})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

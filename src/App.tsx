@@ -514,16 +514,16 @@ export default function App() {
     <div className="min-h-screen bg-[#f0fdfa]/30 flex flex-col font-sans text-slate-900 overflow-hidden">
       {/* Top Navigation styled to match Hình 1.jpg - Streamlined for Mobile & Desktop */}
       <header className="bg-white border-b border-teal-100 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 z-30 shrink-0 shadow-2xs">
-        {/* Left: School Logo & Title & Sổ Chủ Nhiệm Số & Year Selector */}
+        {/* Left: School Logo & Title & DuyTan Student360 & Year Selector */}
         <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1 mr-2">
           <SchoolLogo src={settings?.portalLogo || settings?.loginLogo} className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 object-contain" />
           <div className="flex flex-col min-w-0 justify-center">
-            <h1 className="text-[10px] sm:text-xs font-bold tracking-wider text-teal-800 uppercase font-display truncate max-w-[130px] sm:max-w-xs md:max-w-none">
+            <h1 className="text-[11px] sm:text-xs md:text-sm font-black tracking-wider text-[#0054a6] uppercase font-display truncate max-w-[140px] sm:max-w-xs md:max-w-none">
               {settings?.appName || "Trường Phổ Thông Duy Tân"}
             </h1>
             <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
               <span className="text-xs sm:text-sm md:text-base font-extrabold text-slate-800 tracking-tight whitespace-nowrap">
-                SỔ CHỦ NHIỆM SỐ
+                DuyTan Student360
               </span>
               {schoolYears && schoolYears.length > 0 && (
                 <div className="relative inline-flex items-center shrink-0">
