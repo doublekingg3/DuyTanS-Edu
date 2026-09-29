@@ -18,14 +18,10 @@ export default function Bootloader() {
           const data = configSnap.data();
           if (data && data.configStr) {
             localStorage.setItem('customFirebaseConfig', data.configStr);
-          } else {
-            localStorage.removeItem('customFirebaseConfig');
           }
-        } else {
-          localStorage.removeItem('customFirebaseConfig');
         }
       } catch (error) {
-        console.warn("Could not load remote firebase config, falling back to default configuration:", error);
+        console.warn("Could not load remote firebase config, maintaining active configuration:", error);
       } finally {
         setReady(true);
       }

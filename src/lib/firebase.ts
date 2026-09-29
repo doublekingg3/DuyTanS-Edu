@@ -1,7 +1,18 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
-const defaultConfig = {
+// The school's real Firebase database configuration (Duy Tân School Manager)
+export const duytanFirebaseConfig = {
+  apiKey: "AIzaSyDLejjtEEW53lhIs1ukCBaFRA7tYqj-MIU",
+  authDomain: "duytanmanager-dc628.firebaseapp.com",
+  projectId: "duytanmanager-dc628",
+  storageBucket: "duytanmanager-dc628.firebasestorage.app",
+  messagingSenderId: "109285855486",
+  appId: "1:109285855486:web:e93d478e57f919554215af"
+};
+
+// Sandbox default config (AI Studio fallback)
+export const sandboxConfig = {
   projectId: "gen-lang-client-0237302277",
   appId: "1:14049971656:web:12e834dfabcc9794fac4fd",
   apiKey: "AIzaSyAdSqjjyetCSTq1VOBx7bEo58qDsQPGKW0",
@@ -11,21 +22,25 @@ const defaultConfig = {
   measurementId: ""
 };
 
-let customConfigStr = localStorage.getItem('customFirebaseConfig');
 let customConfig = null;
-if (customConfigStr) {
-  try {
+try {
+  const customConfigStr = localStorage.getItem('customFirebaseConfig');
+  if (customConfigStr) {
     customConfig = JSON.parse(customConfigStr);
-  } catch (e) {
-    console.error("Invalid custom firebase config");
   }
+} catch (e) {
+  console.warn("Invalid custom firebase config in localStorage", e);
 }
+
+// Always prioritize user custom config, then school production config (duytanmanager-dc628)
+const activeConfig = customConfig || duytanFirebaseConfig;
 
 let app;
-if (customConfig) {
-  app = !getApps().some(a => a.name === "custom") ? initializeApp(customConfig, "custom") : getApp("custom");
+if (!getApps().some(a => a.name === "app")) {
+  app = initializeApp(activeConfig, "app");
 } else {
-  app = !getApps().some(a => a.name === "default") ? initializeApp(defaultConfig, "default") : getApp("default");
+  app = getApp("app");
 }
 
-export const db = customConfig ? getFirestore(app) : getFirestore(app, "ai-studio-edumanagepro-3db4613f-477a-4cf6-a5e6-2823c184867b");
+export const db = getFirestore(app);
+export const activeFirebaseProject = activeConfig.projectId;

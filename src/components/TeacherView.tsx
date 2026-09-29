@@ -505,6 +505,13 @@ export default function TeacherView({
               classId={selectedClassId}
               className={allowedClasses.find(c => c.id === selectedClassId)?.name || ''}
               students={filteredStudents}
+              allStudents={students}
+              classes={allowedClasses}
+              onSelectClass={handleClassChange}
+              onNavigateToAttendance={(cId) => {
+                if (cId) handleClassChange(cId);
+                setActiveMenu('attendance');
+              }}
             />
           )}
 

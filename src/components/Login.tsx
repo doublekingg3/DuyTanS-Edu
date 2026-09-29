@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, BookOpen, UserCircle, GraduationCap, Lock, User, ArrowLeft, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
 import { SchoolClass, Student, UserAccount, AppSettings } from '../data';
+import SchoolLogo from './SchoolLogo';
 
 export default function Login({ 
   classes, 
@@ -169,12 +170,12 @@ export default function Login({
           {settings?.loginLogo ? (
             <img src={settings.loginLogo} alt="Logo" className="w-24 h-24 rounded-full object-cover mx-auto mb-4 drop-shadow-md border-4 border-white/20" />
           ) : (
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-              <GraduationCap className="w-8 h-8 text-white" />
+            <div className="flex justify-center mb-4">
+              <SchoolLogo className="w-20 h-20 drop-shadow-md border-4 border-white/40 bg-white" />
             </div>
           )}
-          <h1 className="text-2xl font-bold font-display">{settings?.appName || "EduManage Pro"}</h1>
-          <p className="text-indigo-100 mt-2">Hệ thống quản lý học sinh online</p>
+          <h1 className="text-2xl font-bold font-display">{settings?.appName || "Trường Phổ Thông Duy Tân"}</h1>
+          <p className="text-indigo-100 mt-2">Hệ thống Sổ Chủ Nhiệm Số & Quản lý Học sinh Online</p>
         </div>
 
         <div className="p-8">

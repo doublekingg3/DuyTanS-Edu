@@ -4,7 +4,7 @@ import { SchoolClass, Student, UserAccount, UserPermissions, SchoolYear, AppSett
 import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw, Settings, CheckCircle, X, BookOpen, Check, FileSpreadsheet, Copy, CheckCheck, LayoutList, Grid } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
-import { db } from '../lib/firebase';
+import { db, activeFirebaseProject } from '../lib/firebase';
 import { defaultDb } from '../lib/firebase_default';
 import { doc, setDoc, deleteDoc, updateDoc, writeBatch, addDoc, collection } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
@@ -46,8 +46,8 @@ export default function AdminView({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: keyof AppSettings) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showAlert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh < 5MB.', 'error');
+      if (file.size > 8 * 1024 * 1024) {
+        showAlert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh < 8MB.', 'error');
         return;
       }
       const reader = new FileReader();
@@ -58,27 +58,13 @@ export default function AdminView({
           let width = img.width;
           let height = img.height;
           
-          let MAX_WIDTH = 1200;
-          let MAX_HEIGHT = 800;
-          let quality = 0.72;
-          let maxByteLength = 260000;
+          const isLogo = field === 'portalLogo' || field === 'loginLogo';
+          const isIcon = field === 'pageIcon';
           
-          if (field === 'portalLogo' || field === 'loginLogo') {
-            MAX_WIDTH = 400;
-            MAX_HEIGHT = 400;
-            quality = 0.82;
-            maxByteLength = 120000;
-          } else if (field === 'pageIcon') {
-            MAX_WIDTH = 128;
-            MAX_HEIGHT = 128;
-            quality = 0.85;
-            maxByteLength = 40000;
-          } else {
-            MAX_WIDTH = 1280;
-            MAX_HEIGHT = 720;
-            quality = 0.65;
-            maxByteLength = 260000;
-          }
+          let MAX_WIDTH = isLogo ? 320 : (isIcon ? 128 : 1280);
+          let MAX_HEIGHT = isLogo ? 320 : (isIcon ? 128 : 720);
+          let quality = isLogo ? 0.88 : (isIcon ? 0.9 : 0.7);
+          let maxByteLength = isLogo ? 80000 : (isIcon ? 30000 : 180000);
           
           if (width > height) {
             if (width > MAX_WIDTH) {
@@ -101,9 +87,10 @@ export default function AdminView({
             ctx.drawImage(img, 0, 0, width, height);
           }
           
-          let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-          if (compressedDataUrl.length > maxByteLength) {
-            compressedDataUrl = canvas.toDataURL('image/jpeg', quality * 0.7);
+          const mimeType = isLogo || isIcon ? (file.type === 'image/png' ? 'image/png' : 'image/jpeg') : 'image/jpeg';
+          let compressedDataUrl = canvas.toDataURL(mimeType, quality);
+          if (compressedDataUrl.length > maxByteLength && mimeType === 'image/png') {
+            compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
           }
           
           setAppSettings(prev => ({ ...prev, [field]: compressedDataUrl }));
@@ -140,7 +127,7 @@ export default function AdminView({
         console.warn('Cross-sync to defaultDb skipped/warn:', err);
       }
 
-      // 3. Save local cache backup for instant restoration
+      // 3. Save local cache backup for instant 0ms restoration
       try {
         localStorage.setItem('edumanage_app_settings', JSON.stringify(cleanSettings));
       } catch (e) {}
@@ -156,7 +143,8 @@ export default function AdminView({
       showAlert('Đã lưu và đồng bộ cấu hình giao diện & logo lên Firebase thành công!', 'success');
     } catch (error) {
       console.error("Error saving settings to Firebase:", error);
-      showAlert('Lỗi khi lưu cấu hình lên Firebase. Vui lòng thử lại với ảnh dung lượng nhỏ hơn.', 'error');
+      const errMsg = error instanceof Error ? error.message : String(error);
+      showAlert(`Lỗi khi lưu cấu hình lên Firebase: ${errMsg}. Vui lòng thử lại với ảnh dung lượng nhỏ hơn.`, 'error');
     } finally {
       setIsSavingSettings(false);
     }
@@ -1927,8 +1915,11 @@ export default function AdminView({
                     <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                       <LayoutTemplate className="w-5 h-5 text-[#0f766e]" />
                       Cấu hình Giao diện & Thương hiệu
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                        DB: {activeFirebaseProject}
+                      </span>
                     </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">Tùy biến tên trường, logo và hình nền. Tự động đồng bộ lên Firebase khi lưu.</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Tùy biến tên trường, logo và hình nền. Lưu vĩnh viễn trên Firebase Firestore & bộ nhớ đệm cache.</p>
                   </div>
                   <div className="flex items-center gap-3">
                     {lastSavedTime && (

@@ -27,7 +27,15 @@ export default function App() {
   
   // For parent view simulation, select the first student by default
   const [parentStudentId, setParentStudentId] = useState('');
-  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    try {
+      const cached = localStorage.getItem('edumanage_app_settings');
+      if (cached) {
+        return { ...defaultSettings, ...JSON.parse(cached) };
+      }
+    } catch (e) {}
+    return defaultSettings;
+  });
   const [selectedYearId, setSelectedYearId] = useState<string>('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [isUserMenuOpen, setIsUserMenuOpen] = useState<boolean>(false);
@@ -198,12 +206,23 @@ export default function App() {
 
     const unsubscribeSettings = onSnapshot(settingsRef, async (snapshot) => {
       if (snapshot.exists()) {
-        setSettings(snapshot.data() as AppSettings);
+        const remoteData = snapshot.data() as AppSettings;
+        setSettings(prev => {
+          const merged = { ...prev, ...remoteData };
+          try {
+            localStorage.setItem('edumanage_app_settings', JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
       } else {
+        // Document does not exist yet in this database
+        // Save current cached settings instead of empty defaultSettings
         try {
-          await setDoc(settingsRef, defaultSettings);
+          const cached = localStorage.getItem('edumanage_app_settings');
+          const toSave = cached ? { ...defaultSettings, ...JSON.parse(cached) } : defaultSettings;
+          await setDoc(settingsRef, toSave, { merge: true });
         } catch (error) {
-          console.error("Error creating default settings:", error);
+          console.error("Error creating initial settings:", error);
         }
       }
       settingsLoaded = true;
@@ -241,6 +260,10 @@ export default function App() {
 
   const handleUpdateSettings = async (newSettings: AppSettings) => {
     setSettings(newSettings);
+    try {
+      localStorage.setItem('edumanage_app_settings', JSON.stringify(newSettings));
+    } catch (e) {}
+
     try {
       const settingsRef = doc(db, 'settings', 'general');
       await setDoc(settingsRef, newSettings, { merge: true });

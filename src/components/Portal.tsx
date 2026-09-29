@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, GraduationCap, ArrowRight } from 'lucide-react';
 import { AppSettings } from '../data';
+import SchoolLogo from './SchoolLogo';
 
 export default function Portal({ onSelectEduManager, settings }: { onSelectEduManager: () => void, settings?: AppSettings }) {
   return (
@@ -13,14 +14,15 @@ export default function Portal({ onSelectEduManager, settings }: { onSelectEduMa
       <div className="max-w-4xl w-full relative z-10">
         <div className="text-center mb-12">
           {settings?.portalLogo ? (
-            <img src={settings.portalLogo} alt="Logo" className="w-[150px] h-[150px] rounded-full object-cover mb-6 mx-auto drop-shadow-xl border-4 border-white/50" />
+            <img src={settings.portalLogo} alt="Logo" className="w-[140px] h-[140px] rounded-full object-cover mb-6 mx-auto drop-shadow-xl border-4 border-white/80" />
           ) : (
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200 mb-6">
-              <GraduationCap className="w-8 h-8 text-white" />
+            <div className="flex justify-center mb-6">
+              <SchoolLogo className="w-28 h-28 drop-shadow-xl border-4 border-white/80 bg-white" />
             </div>
           )}
-          <h1 className="text-4xl font-bold font-display text-slate-800 mb-4">Ứng dụng quản lý học sinh online.</h1>
-          <p className="text-slate-500 text-lg">Vui lòng chọn hệ thống bạn muốn truy cập</p>
+          <h1 className="text-3xl sm:text-4xl font-bold font-display text-slate-800 mb-3">{settings?.appName || "Trường Phổ Thông Duy Tân"}</h1>
+          <p className="text-teal-700 font-semibold text-lg mb-2">Hệ thống Sổ Chủ Nhiệm Số & Quản lý Học sinh Online</p>
+          <p className="text-slate-500 text-sm sm:text-base">Vui lòng chọn phân hệ bạn muốn truy cập</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
