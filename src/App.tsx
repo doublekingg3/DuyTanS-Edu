@@ -522,7 +522,7 @@ export default function App() {
               {settings?.appName || "Trường Phổ Thông Duy Tân"}
             </h1>
             <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
-              <span className="text-xs sm:text-sm md:text-base font-extrabold text-slate-800 tracking-tight whitespace-nowrap">
+              <span className="text-xs sm:text-sm md:text-base font-extrabold text-[#b91c1c] tracking-tight whitespace-nowrap">
                 DuyTan Student360
               </span>
               {schoolYears && schoolYears.length > 0 && (

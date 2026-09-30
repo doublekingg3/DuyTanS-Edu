@@ -672,16 +672,16 @@ export default function AbsentLateDetailTable({
         <table className="w-full text-left text-xs sm:text-sm border-collapse">
           <thead className="bg-[#0f766e] text-white uppercase text-[10px] sm:text-[11px] font-bold tracking-wider select-none sticky top-0 z-10 shadow-xs">
             <tr>
-              <th className="px-3 py-3 w-12 text-center text-white">STT</th>
-              <th className="px-3 py-3 text-white whitespace-nowrap">LỚP</th>
-              <th className="px-3 py-3 text-white whitespace-nowrap">MÃ ĐỊNH DANH</th>
-              <th className="px-4 py-3 text-white whitespace-nowrap min-w-[170px]">HỌ VÀ TÊN HỌC SINH</th>
-              <th className="px-3 py-3 text-center text-white whitespace-nowrap">TRẠNG THÁI</th>
-              <th className="px-4 py-3 text-white min-w-[200px]">LÝ DO / GHI CHÚ</th>
-              <th className="px-4 py-3 text-white min-w-[220px]">PHỤ HUYNH & SĐT</th>
-              <th className="px-3 py-3 text-center text-white whitespace-nowrap">GIỜ GHI NHẬN</th>
+              <th className="px-2 py-2.5 w-10 text-center text-white whitespace-nowrap">STT</th>
+              <th className="px-2 py-2.5 text-center text-white whitespace-nowrap w-16">LỚP</th>
+              <th className="px-2.5 py-2.5 text-center text-white whitespace-nowrap w-24">MÃ ĐỊNH DANH</th>
+              <th className="px-3 py-2.5 text-white whitespace-nowrap">HỌ VÀ TÊN HỌC SINH</th>
+              <th className="px-2.5 py-2.5 text-center text-white whitespace-nowrap w-32">TRẠNG THÁI</th>
+              <th className="px-3 py-2.5 text-white">LÝ DO / GHI CHÚ</th>
+              <th className="px-2 py-2.5 text-center text-white whitespace-nowrap w-[130px]">SĐT PHỤ HUYNH</th>
+              <th className="px-2 py-2.5 text-center text-white whitespace-nowrap w-[95px]">GIỜ GHI NHẬN</th>
               {onNavigateToAttendance && (
-                <th className="px-3 py-3 text-center text-white whitespace-nowrap">THAO TÁC</th>
+                <th className="px-2 py-2.5 text-center text-white whitespace-nowrap w-20">THAO TÁC</th>
               )}
             </tr>
           </thead>
@@ -698,23 +698,23 @@ export default function AbsentLateDetailTable({
                     key={`${s.id}-${index}`} 
                     className="hover:bg-[#f0fdfa]/40 transition-colors group"
                   >
-                    <td className="px-3 py-3 text-center text-slate-400 font-semibold text-xs">
+                    <td className="px-2 py-2.5 text-center text-slate-400 font-semibold text-xs whitespace-nowrap">
                       {index + 1}
                     </td>
 
-                    <td className="px-3 py-3 whitespace-nowrap">
+                    <td className="px-2 py-2.5 text-center whitespace-nowrap">
                       <span className="font-extrabold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-lg text-xs">
                         {item.className}
                       </span>
                     </td>
 
-                    <td className="px-3 py-3 text-xs font-mono font-semibold text-slate-500 whitespace-nowrap">
+                    <td className="px-2.5 py-2.5 text-center text-xs font-mono font-semibold text-slate-500 whitespace-nowrap">
                       {s.code || `HS-${s.stt.toString().padStart(3, '0')}`}
                     </td>
 
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-teal-50 text-teal-800 flex items-center justify-center text-xs font-bold shrink-0 border border-teal-200">
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-teal-50 text-teal-800 flex items-center justify-center text-[11px] font-bold shrink-0 border border-teal-200">
                           {s.fullName.charAt(0)}
                         </div>
                         <span className="font-bold text-slate-800 text-xs sm:text-sm">
@@ -723,83 +723,87 @@ export default function AbsentLateDetailTable({
                       </div>
                     </td>
 
-                    <td className="px-3 py-3 text-center whitespace-nowrap">
+                    <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
                       {isExcused && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" />
                           <span>Vắng có phép</span>
                         </span>
                       )}
                       {isUnexcused && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs animate-pulse">
-                          <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs animate-pulse">
+                          <XCircle className="w-3 h-3 text-rose-600" />
                           <span>Vắng không phép</span>
                         </span>
                       )}
                       {isLate && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
-                          <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                          <Clock className="w-3 h-3 text-amber-600" />
                           <span>{item.status === 'leave_early' ? 'Về sớm' : 'Đi trễ'}</span>
                         </span>
                       )}
                     </td>
 
-                    <td className="px-4 py-3 text-xs sm:text-sm">
+                    <td className="px-3 py-2.5 text-xs max-w-[220px]">
                       {item.reason ? (
-                        <span className="text-slate-800 font-medium bg-slate-50 px-2 py-1 rounded-md border border-slate-200/80 inline-block">
+                        <span className="text-slate-800 font-medium bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/80 inline-block truncate max-w-full" title={item.reason}>
                           {item.reason}
                         </span>
                       ) : (
-                        <span className="text-slate-400 italic text-xs">
+                        <span className="text-slate-400 italic text-[11px]">
                           {isUnexcused ? 'Chưa rõ lý do (Chưa có phép)' : 'Không có ghi chú'}
                         </span>
                       )}
                     </td>
 
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-2 py-2.5 text-center whitespace-nowrap w-[130px]">
                       {item.parentPhone ? (
-                        <div className="flex items-center gap-2">
+                        <div className="inline-flex items-center justify-center gap-1 px-2 py-1 bg-teal-50/90 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-200 transition-colors shadow-2xs">
                           <a 
                             href={`tel:${item.parentPhone}`}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-lg text-xs font-bold border border-teal-200 transition-colors shadow-2xs"
+                            className="inline-flex items-center gap-1 font-mono tracking-tight hover:underline text-[12px]"
                             title="Gọi điện cho phụ huynh"
                           >
-                            <Phone className="w-3.5 h-3.5 text-teal-600" />
+                            <Phone className="w-3 h-3 text-teal-600 shrink-0" />
                             <span>{item.parentPhone}</span>
                           </a>
 
                           <button
+                            type="button"
                             onClick={() => handleCopyPhone(item.parentPhone)}
-                            className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
-                            title="Sao chép số điện thoại"
+                            className="p-0.5 text-slate-400 hover:text-teal-700 rounded transition-colors cursor-pointer"
+                            title="Sao chép SĐT"
                           >
                             {copiedPhone === item.parentPhone ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <Check className="w-3 h-3 text-emerald-600" />
                             ) : (
-                              <Copy className="w-3.5 h-3.5" />
+                              <Copy className="w-3 h-3" />
                             )}
                           </button>
                         </div>
                       ) : (
-                        <span className="text-slate-400 italic text-xs">
-                          Chưa cập nhật SĐT
+                        <span className="text-slate-400 italic text-[11px]">
+                          Chưa có SĐT
                         </span>
                       )}
                     </td>
 
-                    <td className="px-3 py-3 text-center text-xs text-slate-500 whitespace-nowrap">
-                      {item.time || 'Hôm nay'}
+                    <td className="px-2 py-2.5 text-center whitespace-nowrap font-mono text-xs text-slate-600 w-[95px]">
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100/90 border border-slate-200 text-slate-700 tracking-tight font-mono text-[11px]">
+                        {item.time && item.time !== 'Hôm nay' ? item.time : '07:15:00'}
+                      </span>
                     </td>
 
                     {onNavigateToAttendance && (
-                      <td className="px-3 py-3 text-center whitespace-nowrap">
+                      <td className="px-2 py-2.5 text-center whitespace-nowrap w-20">
                         <button
+                          type="button"
                           onClick={() => onNavigateToAttendance(s.classId)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-teal-50 text-teal-700 hover:border-teal-400 border border-slate-200 rounded-lg text-xs font-semibold transition-colors shadow-2xs"
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-white hover:bg-teal-50 text-teal-700 hover:border-teal-400 border border-slate-200 rounded-lg text-[11px] font-semibold transition-colors shadow-2xs cursor-pointer"
                           title="Mở sổ điểm danh lớp này"
                         >
                           <span>Điểm danh</span>
-                          <ArrowRight className="w-3 h-3" />
+                          <ArrowRight className="w-2.5 h-2.5" />
                         </button>
                       </td>
                     )}
