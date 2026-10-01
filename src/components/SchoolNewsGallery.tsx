@@ -281,8 +281,12 @@ export default function SchoolNewsGallery({
       const compressed = await compressImageFile(file, 1400, 0.8);
       setFormImageUrl(compressed);
     } catch (err) {
-      console.error('Lỗi nén ảnh banner:', err);
-      alert('Không thể xử lý ảnh này. Vui lòng chọn ảnh khác.');
+      console.warn('Lỗi nén ảnh, fallback sang đọc trực tiếp:', err);
+      const reader = new FileReader();
+      reader.onload = (re) => {
+        if (re.target?.result) setFormImageUrl(re.target.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -326,10 +330,7 @@ export default function SchoolNewsGallery({
       alert('Vui lòng nhập tiêu đề bài viết');
       return;
     }
-    if (!formImageUrl) {
-      alert('Vui lòng chọn ảnh bìa đại diện (Banner) cho bài viết');
-      return;
-    }
+    const finalImageUrl = formImageUrl.trim() || 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80';
 
     setIsSubmitting(true);
     try {
@@ -340,7 +341,7 @@ export default function SchoolNewsGallery({
         title: formTitle.trim(),
         category: formCategory,
         categoryLabel,
-        imageUrl: formImageUrl,
+        imageUrl: finalImageUrl,
         galleryImages: formGalleryImages,
         content: formContent.trim(),
         date: formDate,
@@ -359,7 +360,7 @@ export default function SchoolNewsGallery({
           title: formTitle.trim(),
           category: formCategory,
           categoryLabel,
-          imageUrl: formImageUrl,
+          imageUrl: finalImageUrl,
           galleryImages: formGalleryImages,
           content: formContent.trim(),
           date: formDate,
@@ -1274,62 +1275,83 @@ export default function SchoolNewsGallery({
               </div>
 
               {/* ẢNH BÌA ĐẠI DIỆN (BANNER CHÍNH) */}
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                <label className="block font-bold text-slate-800">
-                  Ảnh bìa đại diện của bài viết (Hiển thị trên Banner trang chủ) <span className="text-rose-500">*</span>
-                </label>
-                
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    type="button"
-                    onClick={() => bannerFileInputRef.current?.click()}
-                    className="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Chọn ảnh từ máy</span>
-                  </button>
-                  <input
-                    ref={bannerFileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleBannerFileChange}
-                    className="hidden"
-                  />
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={formImageUrl.startsWith('data:') ? '' : formImageUrl}
-                      onChange={(e) => setFormImageUrl(e.target.value)}
-                      placeholder={formImageUrl.startsWith('data:') ? '✓ Đã chọn ảnh từ máy thành công' : 'Hoặc dán liên kết URL ảnh bìa (tùy chọn)...'}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs bg-white"
-                    />
-                  </div>
+              <div className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-800 text-xs sm:text-sm">
+                    Ảnh bìa đại diện của bài viết (Hiển thị trên Banner trang chủ) <span className="text-rose-500">*</span>
+                  </label>
+                  {formImageUrl && (
+                    <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Đã tải ảnh lên thành công</span>
+                    </span>
+                  )}
                 </div>
+                
+                <input
+                  ref={bannerFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleBannerFileChange}
+                  className="hidden"
+                />
 
-                {/* Banner Preview */}
-                {formImageUrl && (
-                  <div className="space-y-1.5">
-                    <div className="relative aspect-[21/9] rounded-xl overflow-hidden border border-slate-200 max-h-44 bg-slate-900 group">
+                {!formImageUrl ? (
+                  <div 
+                    onClick={() => bannerFileInputRef.current?.click()}
+                    className="border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/40 hover:bg-teal-50/70 rounded-2xl p-5 text-center cursor-pointer transition-all group flex flex-col items-center justify-center gap-2"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800 group-hover:text-teal-700">
+                        Nhấp vào đây để chọn ảnh từ máy
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Hỗ trợ định dạng JPG, PNG, WEBP, GIF (Khuyến nghị tỉ lệ 16:9 hoặc 21:9)
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative aspect-[21/9] rounded-xl overflow-hidden border border-slate-200 max-h-48 bg-slate-900 group shadow-xs">
                       <img 
                         src={formImageUrl} 
                         alt="Ảnh bìa xem trước" 
                         className="w-full h-full object-cover"
                       />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => bannerFileInputRef.current?.click()}
+                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Đổi ảnh khác</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormImageUrl('')}
+                          className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Gỡ ảnh</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="text-emerald-700 font-medium flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Sẵn sàng xuất bản lên Banner tin tức
+                      </span>
                       <button
                         type="button"
-                        onClick={() => setFormImageUrl('')}
-                        className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-rose-600 text-white rounded-full transition-colors cursor-pointer"
-                        title="Xóa ảnh bìa này"
+                        onClick={() => bannerFileInputRef.current?.click()}
+                        className="text-teal-700 hover:underline font-semibold"
                       >
-                        <X className="w-4 h-4" />
+                        Chọn ảnh khác
                       </button>
                     </div>
-                    {formImageUrl.startsWith('data:') && (
-                      <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        <span>Đã tải ảnh lên thành công, sẵn sàng xuất bản</span>
-                      </p>
-                    )}
                   </div>
                 )}
               </div>

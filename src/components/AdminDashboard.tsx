@@ -4,6 +4,7 @@ import { Student, SchoolClass, sortClasses, SchoolActivityNews, UserAccount } fr
 import AbsentLateDetailTable from './AbsentLateDetailTable';
 import AttendanceRateTable from './AttendanceRateTable';
 import SchoolNewsGallery from './SchoolNewsGallery';
+import ClassComparisonChart from './ClassComparisonChart';
 
 interface AdminDashboardProps {
   classes: SchoolClass[];
@@ -353,6 +354,15 @@ export default function AdminDashboard({
         }}
         title={`DANH SÁCH CHI TIẾT HỌC SINH VẮNG, ĐI TRỄ NGÀY ${selectedDate.split('-').reverse().join('/')}`}
         description="Thống kê chi tiết các trường hợp vắng có phép, vắng không phép và đi trễ trên toàn trường kèm SĐT liên hệ phụ huynh"
+      />
+
+      {/* BIỂU ĐỒ SO SÁNH CÁC LỚP */}
+      <ClassComparisonChart
+        classes={currentClasses}
+        students={currentStudents}
+        selectedDate={selectedDate}
+        onSelectClass={onSelectClass}
+        onNavigateToAttendance={onNavigateToAttendance}
       />
 
       {/* BẢNG THỐNG KÊ & ĐỐI CHIẾU TỈ LỆ CHUYÊN CẦN (THEO NGÀY, TUẦN, THÁNG) */}
