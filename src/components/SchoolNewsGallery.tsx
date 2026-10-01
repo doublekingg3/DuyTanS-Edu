@@ -327,7 +327,7 @@ export default function SchoolNewsGallery({
       return;
     }
     if (!formImageUrl) {
-      alert('Vui lòng tải lên ảnh bìa đại diện (Banner) hoặc nhập liên kết ảnh');
+      alert('Vui lòng chọn ảnh bìa đại diện (Banner) cho bài viết');
       return;
     }
 
@@ -1218,7 +1218,7 @@ export default function SchoolNewsGallery({
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSaveActivity} className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
+            <form onSubmit={handleSaveActivity} noValidate className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
               
               {/* Tiêu đề bài viết */}
               <div>
@@ -1297,10 +1297,10 @@ export default function SchoolNewsGallery({
                   />
                   <div className="flex-1">
                     <input
-                      type="url"
-                      value={formImageUrl.startsWith('data:') ? '(Ảnh đã tải từ máy tính/điện thoại)' : formImageUrl}
+                      type="text"
+                      value={formImageUrl.startsWith('data:') ? '' : formImageUrl}
                       onChange={(e) => setFormImageUrl(e.target.value)}
-                      placeholder="Hoặc dán liên kết URL ảnh bìa..."
+                      placeholder={formImageUrl.startsWith('data:') ? '✓ Đã chọn ảnh từ máy thành công' : 'Hoặc dán liên kết URL ảnh bìa (tùy chọn)...'}
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs bg-white"
                     />
                   </div>
@@ -1308,20 +1308,28 @@ export default function SchoolNewsGallery({
 
                 {/* Banner Preview */}
                 {formImageUrl && (
-                  <div className="relative aspect-[21/9] rounded-xl overflow-hidden border border-slate-200 max-h-44 bg-slate-900 group">
-                    <img 
-                      src={formImageUrl} 
-                      alt="Ảnh bìa xem trước" 
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setFormImageUrl('')}
-                      className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-rose-600 text-white rounded-full transition-colors"
-                      title="Xóa ảnh bìa này"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                  <div className="space-y-1.5">
+                    <div className="relative aspect-[21/9] rounded-xl overflow-hidden border border-slate-200 max-h-44 bg-slate-900 group">
+                      <img 
+                        src={formImageUrl} 
+                        alt="Ảnh bìa xem trước" 
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormImageUrl('')}
+                        className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-rose-600 text-white rounded-full transition-colors cursor-pointer"
+                        title="Xóa ảnh bìa này"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {formImageUrl.startsWith('data:') && (
+                      <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span>Đã tải ảnh lên thành công, sẵn sàng xuất bản</span>
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1393,10 +1401,10 @@ export default function SchoolNewsGallery({
 
                   <div className="flex-1 flex gap-1.5">
                     <input
-                      type="url"
+                      type="text"
                       value={albumUrlInput}
                       onChange={(e) => setAlbumUrlInput(e.target.value)}
-                      placeholder="Hoặc dán link URL ảnh..."
+                      placeholder="Hoặc dán link ảnh (tùy chọn)..."
                       className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs bg-white"
                     />
                     <button
