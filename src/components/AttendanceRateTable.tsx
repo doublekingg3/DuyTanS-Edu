@@ -421,8 +421,8 @@ export default function AttendanceRateTable({
               <h3 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
                 <span>
                   {mode === 'admin' 
-                    ? 'Bảng Thống Kê & Đối Chiếu Tỉ Lệ Chuyên Cần' 
-                    : `Bảng Thống Kê Chuyên Cần Lớp ${currentClassName || 'Chủ Nhiệm'}`}
+                    ? 'BẢNG THỐNG KÊ & ĐỐI CHIẾU TỈ LỆ CHUYÊN CẦN' 
+                    : `BẢNG THỐNG KÊ CHUYÊN CẦN LỚP ${currentClassName || 'CHỦ NHIỆM'}`}
                 </span>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-teal-100/80 text-teal-800 border border-teal-200">
                   {mode === 'admin' ? 'So sánh đối chiếu tổng thể' : 'Nắm tình hình nề nếp lớp'}

@@ -419,7 +419,7 @@ export default function SchoolNewsGallery({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-bold font-sans text-slate-800 tracking-tight">
-                Hoạt Động & Sự Kiện Tiêu Biểu Nhà Trường
+                HOẠT ĐỘNG & SỰ KIỆN TIÊU BIỂU NHÀ TRƯỜNG
               </h2>
               <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-sans">
                 <Sparkles className="w-3 h-3 text-teal-600" />

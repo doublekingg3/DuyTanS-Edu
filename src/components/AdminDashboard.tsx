@@ -196,7 +196,7 @@ export default function AdminDashboard({
           <div>
             <div className="flex flex-wrap items-center gap-2.5 mb-1">
               <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
-                Tổng Thể Số Học Sinh Vắng Của Các Lớp
+                TỔNG THỂ SỐ HỌC SINH VẮNG CỦA CÁC LỚP
               </h2>
               <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
                 {todayStats.absent} HS vắng
