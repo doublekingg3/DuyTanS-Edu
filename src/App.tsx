@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { initialStudents, initialClasses, initialUsers, initialSchoolYears, Student, SchoolClass, Grades, UserAccount, SchoolYear, AppSettings, defaultSettings, getUserTeacherType } from './data';
+import { initialStudents, initialClasses, initialUsers, initialSchoolYears, initialSchoolActivities, Student, SchoolClass, Grades, UserAccount, SchoolYear, AppSettings, defaultSettings, getUserTeacherType, SchoolActivityNews } from './data';
 import TeacherView from './components/TeacherView';
 import ParentView from './components/ParentView';
 import AdminView from './components/AdminView';
@@ -17,12 +17,13 @@ export default function App() {
   const [appMode, setAppMode] = useState<'portal' | 'edu_manager' | 'tkb'>('portal');
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [role, setRole] = useState<'admin' | 'teacher' | 'subject_teacher' | 'parent' | 'staff'>('admin');
+  const [role, setRole] = useState<'admin' | 'teacher' | 'subject_teacher' | 'parent' | 'staff' | 'media'>('admin');
   const [loggedInUserId, setLoggedInUserId] = useState<string>('');
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [schoolYears, setSchoolYears] = useState<SchoolYear[]>([]);
   const [users, setUsers] = useState<UserAccount[]>([]);
+  const [activities, setActivities] = useState<SchoolActivityNews[]>(initialSchoolActivities);
   const [loading, setLoading] = useState(true);
   
   // For parent view simulation, select the first student by default
@@ -233,12 +234,37 @@ export default function App() {
       checkLoading();
     });
 
+    const activitiesRef = collection(db, 'school_activities');
+    const unsubscribeActivities = onSnapshot(activitiesRef, async (snapshot) => {
+      if (snapshot.empty) {
+        try {
+          const batch = writeBatch(db);
+          initialSchoolActivities.forEach(act => {
+            const docRef = doc(activitiesRef, act.id);
+            batch.set(docRef, act);
+          });
+          await batch.commit();
+        } catch (error) {
+          console.error("Error seeding initial school activities:", error);
+        }
+        setActivities(initialSchoolActivities);
+      } else {
+        const loadedActivities = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SchoolActivityNews));
+        loadedActivities.sort((a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime());
+        setActivities(loadedActivities);
+      }
+    }, (error) => {
+      console.warn("Activities sync warning, using local activities:", error);
+      setActivities(initialSchoolActivities);
+    });
+
     return () => {
       unsubscribeSchoolYears();
       unsubscribeStudents();
       unsubscribeClasses();
       unsubscribeUsers();
       unsubscribeSettings();
+      unsubscribeActivities();
     };
   }, []);
 
@@ -379,7 +405,43 @@ export default function App() {
     }
   };
 
-  const handleLogin = (selectedRole: 'admin' | 'teacher' | 'subject_teacher' | 'staff' | 'parent', studentId?: string, userId?: string) => {
+  const handleAddActivity = async (activity: Omit<SchoolActivityNews, 'id'>) => {
+    const newId = `act-${Date.now()}`;
+    const newActivity: SchoolActivityNews = {
+      ...activity,
+      id: newId,
+      createdAt: new Date().toISOString()
+    };
+    try {
+      const docRef = doc(db, 'school_activities', newId);
+      await setDoc(docRef, newActivity);
+    } catch (e) {
+      console.error("Error adding activity to Firestore:", e);
+      setActivities(prev => [newActivity, ...prev]);
+    }
+  };
+
+  const handleUpdateActivity = async (id: string, updates: Partial<SchoolActivityNews>) => {
+    try {
+      const docRef = doc(db, 'school_activities', id);
+      await updateDoc(docRef, updates);
+    } catch (e) {
+      console.error("Error updating activity in Firestore:", e);
+      setActivities(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    }
+  };
+
+  const handleDeleteActivity = async (id: string) => {
+    try {
+      const docRef = doc(db, 'school_activities', id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error("Error deleting activity in Firestore:", e);
+      setActivities(prev => prev.filter(a => a.id !== id));
+    }
+  };
+
+  const handleLogin = (selectedRole: 'admin' | 'teacher' | 'subject_teacher' | 'staff' | 'media' | 'parent', studentId?: string, userId?: string) => {
     setRole(selectedRole as any);
     if (studentId) {
       setParentStudentId(studentId);
@@ -576,6 +638,7 @@ export default function App() {
                   {role === 'admin' && 'Ban Giám Hiệu'}
                   {role === 'teacher' && 'Giáo viên'}
                   {role === 'staff' && 'Giáo vụ'}
+                  {role === 'media' && 'Phòng Truyền Thông'}
                   {role === 'parent' && 'Phụ huynh'}
                 </div>
               </div>
@@ -588,7 +651,7 @@ export default function App() {
                 <div className="px-4 py-2 border-b border-slate-100 sm:hidden">
                   <div className="text-sm font-bold text-slate-800">{currentUserDisplayName}</div>
                   <div className="text-xs text-slate-500">
-                    {role === 'admin' ? 'Ban Giám Hiệu' : role === 'teacher' ? 'Giáo viên' : 'Người dùng'}
+                    {role === 'admin' ? 'Ban Giám Hiệu' : role === 'teacher' ? 'Giáo viên' : role === 'staff' ? 'Giáo vụ' : role === 'media' ? 'Phòng Truyền Thông' : 'Người dùng'}
                   </div>
                 </div>
 
@@ -645,7 +708,7 @@ export default function App() {
             currentStudent={students.find(s => s.id === parentStudentId)}
           />
         )}
-        {role === "admin" || role === "teacher" || role === "staff" ? (
+        {role === "admin" || role === "teacher" || role === "staff" || role === "media" ? (
           <TeacherView 
             role={role}
             users={users}
@@ -667,6 +730,10 @@ export default function App() {
             onDeleteStudent={handleDeleteStudent}
             onUpdateGrade={handleUpdateGrade}
             onUpdateMultipleGrades={handleUpdateMultipleGrades}
+            activities={activities}
+            onAddActivity={handleAddActivity}
+            onUpdateActivity={handleUpdateActivity}
+            onDeleteActivity={handleDeleteActivity}
           />
         ) : (
           <div className="flex flex-col h-[calc(100vh-68px)]">

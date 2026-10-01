@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Users, UserX, Clock, Calendar, BookOpen, CheckCircle, Check, AlertCircle } from 'lucide-react';
-import { Student, SchoolClass, sortClasses } from '../data';
+import { Student, SchoolClass, sortClasses, SchoolActivityNews, UserAccount } from '../data';
 import AbsentLateDetailTable from './AbsentLateDetailTable';
 import AttendanceRateTable from './AttendanceRateTable';
+import SchoolNewsGallery from './SchoolNewsGallery';
 
 interface AdminDashboardProps {
   classes: SchoolClass[];
@@ -11,6 +12,12 @@ interface AdminDashboardProps {
   selectedClassId?: string;
   onSelectClass?: (classId: string) => void;
   onNavigateToAttendance?: (classId?: string) => void;
+  activities?: SchoolActivityNews[];
+  onAddActivity?: (activity: Omit<SchoolActivityNews, 'id'>) => Promise<void> | void;
+  onUpdateActivity?: (id: string, updates: Partial<SchoolActivityNews>) => Promise<void> | void;
+  onDeleteActivity?: (id: string) => Promise<void> | void;
+  canEditNews?: boolean;
+  currentUser?: UserAccount | null;
 }
 
 export default function AdminDashboard({ 
@@ -19,7 +26,13 @@ export default function AdminDashboard({
   schoolYearId,
   selectedClassId,
   onSelectClass,
-  onNavigateToAttendance
+  onNavigateToAttendance,
+  activities = [],
+  onAddActivity,
+  onUpdateActivity,
+  onDeleteActivity,
+  canEditNews = false,
+  currentUser
 }: AdminDashboardProps) {
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -164,6 +177,16 @@ export default function AdminDashboard({
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto bg-[#f0fdfa]/40 min-h-full">
+      {/* Bộ Menu Ảnh Hoạt Động Tiêu Biểu Nhà Trường (Hiển thị trên cùng của Dashboard) */}
+      <SchoolNewsGallery
+        activities={activities}
+        onAddActivity={onAddActivity}
+        onUpdateActivity={onUpdateActivity}
+        onDeleteActivity={onDeleteActivity}
+        canEdit={canEditNews}
+        currentUser={currentUser}
+      />
+
       {/* Top Banner Card */}
       <div className="bg-white rounded-[20px] p-5 sm:p-6 border border-teal-100 shadow-sm shadow-teal-500/5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-start gap-4">

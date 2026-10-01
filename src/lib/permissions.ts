@@ -21,6 +21,7 @@ export function isUserGVBM(
 /**
  * Checks whether a user can edit a specific module.
  * - Admin (Tổng thể BGH) has full 'edit' permissions on every module.
+ * - Media (Truyền Thông): Chỉ có quyền edit & view module 'news' (Tin tức hoạt động).
  * - GVBM (Giáo viên Bộ môn):
  *     - Điểm danh (attendance): ĐƯỢC quyền điểm danh các lớp giảng dạy.
  *     - Hồ sơ học sinh (students), Kế hoạch tuần (weeklyPlan), Lịch học (schedule): CHỈ XEM (view only, không được edit, xoá sửa).
@@ -34,7 +35,12 @@ export function canUserEdit(
   role: string | undefined,
   module: PermissionModule
 ): boolean {
-  // 1. Admin (Tổng thể BGH)
+  // 1. Vai trò Truyền Thông: Chỉ có quyền sửa/đăng 'news'
+  if (role === 'media' || user?.role === 'media') {
+    return module === 'news';
+  }
+
+  // 2. Admin (Tổng thể BGH)
   if (role === 'admin' || user?.role === 'admin') {
     // Nếu tài khoản BGH được thiết lập chế độ "Khóa chỉnh sửa" (Chỉ xem full & Xuất dữ liệu)
     if (user?.adminPermissionType === 'readonly' || user?.permissions?.lockEdit) {
@@ -43,7 +49,12 @@ export function canUserEdit(
     return true;
   }
 
-  // 2. Phân hệ Thực đơn bán trú:
+  // 3. Module Tin tức hoạt động: Chỉ Admin và Truyền Thông mới được edit (đã được xử lý ở trên)
+  if (module === 'news') {
+    return false;
+  }
+
+  // 4. Phân hệ Thực đơn bán trú:
   // Giáo viên và Phụ huynh CHỈ CÓ QUYỀN XEM (view-only), không được thay đổi.
   // Chỉ có Admin và Giáo vụ (staff) mới có quyền thay đổi.
   if (module === 'lunchMenu') {
@@ -56,7 +67,7 @@ export function canUserEdit(
     return false;
   }
 
-  // 3. Nếu là Giáo viên Bộ môn (GVBM):
+  // 5. Nếu là Giáo viên Bộ môn (GVBM):
   // "GVBM sẽ chỉ có chức năng view mấy cái của lớp họ cần xem, và GVBM được quyền điểm danh các lớp, chứ ko được edit, xoá sửa gì cả."
   if (isUserGVBM(user, role)) {
     if (module === 'attendance') {
@@ -69,12 +80,12 @@ export function canUserEdit(
     return false;
   }
 
-  // 4. If user has explicit granular permissions configured
+  // 6. If user has explicit granular permissions configured
   if (user?.permissions && user.permissions[module]) {
     return user.permissions[module] === 'edit';
   }
 
-  // 5. Fallback defaults by role
+  // 7. Fallback defaults by role
   if (role === 'teacher' || user?.role === 'teacher') {
     return true;
   }
@@ -93,12 +104,15 @@ export function canUserEdit(
 
 /**
  * Checks whether a user can view a specific module.
- * Everyone authenticated can view by default unless restricted.
+ * Media role can only view 'news' and 'overview'.
  */
 export function canUserView(
   user: UserAccount | undefined | null,
   role: string | undefined,
-  _module: PermissionModule
+  module: PermissionModule
 ): boolean {
+  if (role === 'media' || user?.role === 'media') {
+    return module === 'news';
+  }
   return true;
 }

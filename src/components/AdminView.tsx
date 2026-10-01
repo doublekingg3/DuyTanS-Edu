@@ -283,7 +283,7 @@ export default function AdminView({
     username: string;
     password: string;
     fullName: string;
-    role: 'admin' | 'teacher' | 'subject_teacher' | 'staff';
+    role: 'admin' | 'teacher' | 'subject_teacher' | 'staff' | 'media';
     teacherType: 'gvcn' | 'gvbm';
     adminPermissionType: 'full' | 'readonly';
     isHomeroom: boolean;
@@ -296,7 +296,7 @@ export default function AdminView({
     username: '',
     password: '',
     fullName: '',
-    role: 'teacher' as 'admin' | 'teacher' | 'staff',
+    role: 'teacher' as 'admin' | 'teacher' | 'staff' | 'media',
     teacherType: 'gvcn',
     adminPermissionType: 'full',
     isHomeroom: true,
@@ -809,6 +809,21 @@ export default function AdminView({
         schoolYears: isReadOnly ? 'view' : 'edit',
         accounts: isReadOnly ? 'view' : 'edit',
         systemConfig: isReadOnly ? 'view' : 'edit'
+      };
+    } else if (effectiveRole === 'media') {
+      userData.permissions = {
+        news: 'edit',
+        schedule: 'view',
+        students: 'view',
+        grades: 'view',
+        weeklyPlan: 'view',
+        lunchMenu: 'view',
+        attendance: 'view',
+        reports: 'view',
+        classes: 'view',
+        schoolYears: 'view',
+        accounts: 'view',
+        systemConfig: 'view'
       };
     } else {
       const finalPermissions = { ...userFormData.permissions };
@@ -1579,6 +1594,10 @@ export default function AdminView({
                                   </span>
                                 )}
                               </div>
+                            ) : u.role === 'media' ? (
+                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full font-bold text-xs whitespace-nowrap bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                Truyền Thông
+                              </span>
                             ) : u.role === 'staff' ? (
                               <span className="inline-flex items-center justify-center px-3 py-1 rounded-full font-semibold text-xs whitespace-nowrap bg-amber-50 text-amber-700 border border-amber-200">
                                 Giáo vụ
@@ -2757,6 +2776,7 @@ export default function AdminView({
                 >
                   <option value="teacher">Giáo viên</option>
                   <option value="staff">Giáo vụ</option>
+                  <option value="media">Truyền Thông</option>
                   <option value="admin">Ban Giám Hiệu (Admin)</option>
                 </select>
               </div>
@@ -3051,7 +3071,30 @@ export default function AdminView({
                 </div>
               )}
 
-              {userFormData.role !== 'admin' && (
+              {userFormData.role === 'media' && (
+                <div className="col-span-1 border-t border-slate-100 pt-4 mt-2">
+                  <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-4 space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                      <h4 className="font-bold text-indigo-900 text-sm">Phân quyền vai trò Truyền Thông</h4>
+                    </div>
+                    <p className="text-xs text-indigo-800 leading-relaxed">
+                      Tài khoản thuộc vai trò <strong>Truyền Thông</strong> chỉ có quyền xem, chỉnh sửa bài viết, tải hình ảnh và đăng tin tại chức năng <strong>"Tin tức hoạt động"</strong>.
+                    </p>
+                    <div className="bg-white px-3.5 py-2.5 rounded-lg border border-indigo-100 flex items-center justify-between text-xs font-semibold text-slate-800">
+                      <span>Tin tức hoạt động (Bảng tin ảnh & Hoạt động trường)</span>
+                      <span className="text-[11px] font-bold bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-md">
+                        Toàn quyền Quản lý & Đăng tin
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 italic">
+                      * Các chức năng học vụ khác (Hồ sơ học sinh, Điểm danh, Điểm số, Thời khóa biểu, Quản lý lớp, v.v.) không được xem và không được quản lý (tương tự như Giáo vụ).
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {userFormData.role !== 'admin' && userFormData.role !== 'media' && (
                 <div className="col-span-1 border-t border-slate-100 pt-4 mt-2">
                   <div className="flex items-center justify-between mb-3">
                     <div>

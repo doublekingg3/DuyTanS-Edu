@@ -94,6 +94,8 @@ export interface UserPermissions {
   accounts?: 'view' | 'edit';
   // Cài đặt hệ thống
   systemConfig?: 'view' | 'edit';
+  // Tin tức hoạt động
+  news?: 'view' | 'edit';
 }
 
 export interface UserAccount {
@@ -101,7 +103,7 @@ export interface UserAccount {
   id: string;
   username: string;
   password?: string;
-  role: 'admin' | 'teacher' | 'subject_teacher' | 'staff';
+  role: 'admin' | 'teacher' | 'subject_teacher' | 'staff' | 'media';
   teacherType?: 'gvcn' | 'gvbm';
   adminPermissionType?: 'full' | 'readonly'; // 'full': Toàn quyền, 'readonly': Khóa chỉnh sửa (Chỉ xem full & Xuất dữ liệu)
   fullName: string;
@@ -109,6 +111,25 @@ export interface UserAccount {
   subjectClasses?: string[];
   subjects?: string[];
   permissions?: UserPermissions;
+}
+
+export interface SchoolActivityNews {
+  id: string;
+  title: string;
+  category: 'stem' | 'sports' | 'arts' | 'extracurricular' | 'events' | string;
+  categoryLabel: string;
+  imageUrl: string; // Ảnh banner đại diện của bài viết
+  galleryImages?: string[]; // Danh sách nhiều hình ảnh trong album bài viết
+  content?: string; // Nội dung bài viết chi tiết đầy đủ
+  date: string; // YYYY-MM-DD
+  author: string;
+  description: string; // Lời dẫn / Tóm tắt bài viết (Sa-pô)
+  isFeatured?: boolean; // Tiêu biểu
+  isRecent?: boolean;   // Ảnh mới đăng
+  likesCount?: number;
+  likedBy?: string[];
+  createdAt?: string;
+  isDeleted?: boolean;
 }
 
 /**
@@ -207,7 +228,138 @@ export interface Student {
 export const initialUsers: UserAccount[] = [
   { id: 'u1', username: 'admin', password: 'admin', role: 'admin', fullName: 'Ban Giám Hiệu' },
   { id: 'u2', username: 'teacher', password: 'teacher', role: 'teacher', fullName: 'Giáo viên' },
-  { id: 'u3', username: 'staff', password: 'staff', role: 'staff', fullName: 'Giáo vụ' }
+  { id: 'u3', username: 'staff', password: 'staff', role: 'staff', fullName: 'Giáo vụ' },
+  { id: 'u4', username: 'truyenthong', password: 'truyenthong', role: 'media', fullName: 'Phòng Truyền Thông' }
+];
+
+export const initialSchoolActivities: SchoolActivityNews[] = [
+  {
+    id: 'act-1',
+    title: 'Hội Thi Sáng Tạo Robot & Ngày Hội STEM Duy Tân 2026',
+    category: 'stem',
+    categoryLabel: 'Học tập & STEM',
+    imageUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1563770660941-20978e870e26?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1000&q=80'
+    ],
+    date: '2026-09-30',
+    author: 'Thầy Trần Quốc Toản',
+    description: 'Học sinh các khối lớp hào hứng tranh tài lập trình robot và trình diễn các dự án khoa học kỹ thuật sáng tạo ứng dụng thực tế tại khuôn viên trường.',
+    content: `Ngày hội STEM & Hội thi Sáng tạo Robot 2026 của Trường Phổ Thông Duy Tân đã diễn ra thành công rực rỡ với sự tham gia của hơn 40 đội thi đến từ các khối lớp THCS và THPT.
+
+Tại ngày hội, các em học sinh đã tự tay lắp ráp và lập trình các mô hình robot thông minh thực hiện nhiệm vụ dò đường, phân loại rác tự động, xe tự hành tránh vật cản và cánh tay robot ứng dụng trong dây chuyền sản xuất nông nghiệp công nghệ cao.
+
+Ban Giám khảo đánh giá cao tư duy logic, sự am hiểu về vi điều khiển Arduino, cảm biến siêu âm cũng như kỹ năng làm việc nhóm nhuần nhuyễn của các đội. Không chỉ dừng lại ở thi đấu, ngày hội còn mở ra không gian trải nghiệm thực tế ảo VR, kính thiên văn ngắm mặt trời và các thí nghiệm hóa học vui thu hút đông đảo phụ huynh và học sinh tham quan.
+
+Kết quả chung cuộc, giải Nhất khối THPT thuộc về đội "Duy Tân CyberBot 10QT3A" với dự án Robot cứu hộ khẩn cấp; giải Nhất khối THCS thuộc về đội "STEM Star 9A" với mô hình nhà kính thông minh giám sát độ ẩm qua IoT.`,
+    isFeatured: true,
+    isRecent: true,
+    likesCount: 24,
+    createdAt: '2026-09-30T08:00:00.000Z'
+  },
+  {
+    id: 'act-2',
+    title: 'Giải Bóng Đá Nam Nữ Thiếu Niên Duy Tân Cup 2026',
+    category: 'sports',
+    categoryLabel: 'Thể dục thể thao',
+    imageUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?auto=format&fit=crop&w=1000&q=80'
+    ],
+    date: '2026-09-28',
+    author: 'Thầy Hoàng Nam',
+    description: 'Những pha bóng đẹp mắt, tinh thần fair-play và sự cổ vũ cuồng nhiệt từ các cổ động viên đã tạo nên bầu không khí thể thao sôi động.',
+    content: `Sau 2 tuần tranh tài sôi nổi với 24 trận cầu kịch tính, Giải bóng đá Nam Nữ Thiếu Niên Duy Tân Cup 2026 đã khép lại bằng trận chung kết nảy lửa trên sân vận động trung tâm của trường.
+
+Khán đài luôn chật kín các cổ động viên với cờ hoa, trống hội và những tiếng reo hò không ngớt tiếp lửa cho các cầu thủ nhí. Các đội bóng đã cống hiến cho khán giả những pha ban bật nhịp nhàng, những cú sút xa uy lực và tinh thần thi đấu kiên cường, fair-play đúng chất thể thao học đường.
+
+Đặc biệt, giải bóng đá nữ năm nay ghi nhận bước tiến vượt bậc về chiến thuật và sự dẻo dai của các nữ cầu thủ, mang đến nhiều khoảnh khắc xúc động và bất ngờ cho ban huấn luyện.
+
+Ban Tổ chức đã trao cúp vô địch cho đội tuyển liên quân khối 11, giải Nhì cho khối 10 và giải Cầu thủ xuất sắc nhất thuộc về em Nguyễn Hữu Thắng (lớp 11A1) với 8 bàn thắng được ghi trong suốt giải đấu.`,
+    isFeatured: true,
+    isRecent: true,
+    likesCount: 18,
+    createdAt: '2026-09-28T15:30:00.000Z'
+  },
+  {
+    id: 'act-3',
+    title: 'Đêm Nhạc Hội & Lửa Trại Chào Đón Khóa Mới',
+    category: 'arts',
+    categoryLabel: 'Văn nghệ & Hội trại',
+    imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=1000&q=80'
+    ],
+    date: '2026-09-25',
+    author: 'Cô Lan Anh',
+    description: 'Đêm hội ngập tràn thanh âm và ánh sáng với các tiết mục nhảy hiện đại, acoustic và thắp sáng ngọn lửa nhiệt huyết tuổi trẻ Duy Tân.',
+    content: `Trong không khí rạo rực của mùa thu, Đêm hội văn nghệ và Lửa trại truyền thống chào đón tân học sinh đã để lại những kỷ niệm khó phai trong lòng toàn thể thầy cô và học sinh Trường Phổ Thông Duy Tân.
+
+Sân khấu ngoài trời bùng nổ với các màn trình diễn ca múa nhạc đa màu sắc: từ những làn điệu dân ca quê hương được phối lại theo phong cách hiện đại, đến những vũ điệu flashmob sôi động và ban nhạc acoustic học sinh với những giai điệu mộc mạc về tuổi học trò.
+
+Khoảnh khắc thiêng liêng nhất là khi ngọn đuốc truyền thống được Ban Giám Hiệu thắp lên giữa đống lửa trại, ngọn lửa tượng trưng cho tri thức, lòng nhiệt huyết và tinh thần đoàn kết của đại gia đình Duy Tân. Thầy cô và học sinh cùng nắm chặt tay nhau nối thành vòng tròn lớn, cùng cất cao bài ca truyền thống của mái trường.`,
+    isFeatured: true,
+    isRecent: false,
+    likesCount: 42,
+    createdAt: '2026-09-25T19:00:00.000Z'
+  },
+  {
+    id: 'act-4',
+    title: 'Hành Trình Về Nguồn & Trải Nghiệm Sinh Thái Rừng Vàng Biển Bạc',
+    category: 'extracurricular',
+    categoryLabel: 'Ngoại khóa & Trải nghiệm',
+    imageUrl: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=1000&q=80'
+    ],
+    date: '2026-09-22',
+    author: 'Phòng Truyền Thông',
+    description: 'Chuyến tham quan thực tế rèn luyện kỹ năng sinh tồn, nâng cao ý thức bảo vệ môi trường và gắn kết tình bạn giữa các thành viên trong lớp.',
+    content: `Hơn 300 học sinh các khối lớp đã có một chuyến đi thực tế bổ ích tại Khu bảo tồn sinh thái và di tích lịch sử địa phương.
+
+Chuyến hành trình không chỉ giúp các em trau dồi kiến thức môn Lịch sử và Địa lý thông qua việc dâng hương tưởng niệm các anh hùng liệt sĩ, mà còn mang đến trải nghiệm học tập môn Sinh học ngoài trời vô cùng thú vị. Dưới sự hướng dẫn của các nhà nghiên cứu, học sinh đã quan sát thảm thực vật bản địa, đo đạc chỉ số môi trường nước và thu thập mẫu lá cây cho bài tập nghiên cứu khoa học.
+
+Các hoạt động kỹ năng sinh tồn như dựng lều trại, sơ cấp cứu dã ngoại và nấu ăn tập thể đã giúp học sinh thêm tự lập, gắn kết tình bạn và thấu hiểu hơn về tinh thần tương thân tương ái.`,
+    isFeatured: false,
+    isRecent: true,
+    likesCount: 15,
+    createdAt: '2026-09-22T07:30:00.000Z'
+  },
+  {
+    id: 'act-5',
+    title: 'Lễ Khai Giảng Năm Học Mới Rực Rỡ Sắc Cờ Hoa',
+    category: 'events',
+    categoryLabel: 'Lễ hội & Sự kiện',
+    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=1000&q=80'
+    ],
+    date: '2026-09-05',
+    author: 'Ban Giám Hiệu',
+    description: 'Tiếng trống khai trường rộn rã chính thức mở ra một năm học mới đầy hứng khởi, quyết tâm gặt hái nhiều thành tích xuất sắc.',
+    content: `Sáng ngày 05/09, trong sắc cờ hoa rực rỡ và ánh nắng mùa thu, toàn thể cán bộ, giáo viên, nhân viên cùng hơn 1.200 học sinh Trường Phổ Thông Duy Tân đã long trọng tổ chức Lễ Khai giảng năm học mới.
+
+Buổi lễ diễn ra trang trọng với nghi thức đón học sinh đầu cấp, lễ chào cờ thiêng liêng và thư chúc mừng năm học mới của Chủ tịch nước. Thầy Hiệu trưởng nhà trường đã phát biểu khai giảng, nhấn mạnh phương châm giáo dục toàn diện: "Tri thức vững vàng - Kỹ năng hội nhập - Đạo đức sáng trong".
+
+Tiếng trống khai trường giòn giã vang lên báo hiệu một chặng đường học tập và rèn luyện mới bắt đầu. Đại diện hội cha mẹ học sinh và các tổ chức đối tác cũng đã trao tặng nhiều suất học bổng khuyến học cho các học sinh vượt khó vươn lên đạt thành tích học tập xuất sắc.`,
+    isFeatured: true,
+    isRecent: false,
+    likesCount: 68,
+    createdAt: '2026-09-05T08:00:00.000Z'
+  }
 ];
 
 export const initialClasses: SchoolClass[] = [

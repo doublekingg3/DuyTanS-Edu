@@ -14,11 +14,11 @@ export default function Login({
   classes: SchoolClass[],
   students: Student[],
   users: UserAccount[],
-  onLogin: (role: 'admin' | 'teacher' | 'subject_teacher' | 'parent' | 'staff', parentStudentId?: string, loggedInUserId?: string) => void,
+  onLogin: (role: 'admin' | 'teacher' | 'subject_teacher' | 'parent' | 'staff' | 'media', parentStudentId?: string, loggedInUserId?: string) => void,
   onBack?: () => void,
   settings?: AppSettings
 }) {
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'teacher' | 'parent' | 'staff'>('teacher');
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'teacher' | 'parent' | 'staff' | 'media'>('teacher');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [studentCode, setStudentCode] = useState('');
@@ -92,8 +92,8 @@ export default function Login({
       }
     };
 
-    if (selectedRole === 'teacher' || selectedRole === 'admin' || selectedRole === 'staff') {
-      const user = users.find(u => u.username === username && u.password === password && ['admin', 'teacher', 'staff'].includes(u.role));
+    if (selectedRole === 'teacher' || selectedRole === 'admin' || selectedRole === 'staff' || selectedRole === 'media') {
+      const user = users.find(u => u.username === username && u.password === password && ['admin', 'teacher', 'staff', 'media'].includes(u.role));
       if (user) {
         persistCredentials();
         onLogin(user.role, undefined, user.id);
@@ -212,7 +212,7 @@ export default function Login({
               </div>
             )}
             
-            {(selectedRole === 'admin' || selectedRole === 'teacher' || selectedRole === 'staff') && (
+            {(selectedRole === 'admin' || selectedRole === 'teacher' || selectedRole === 'staff' || selectedRole === 'media') && (
               <>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Tài khoản</label>

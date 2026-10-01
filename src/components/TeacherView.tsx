@@ -16,7 +16,8 @@ import {
   Database,
   Sparkles,
   Cloud,
-  Pin
+  Pin,
+  Newspaper
 } from 'lucide-react';
 import TeacherStudents from './TeacherStudents';
 import TeacherAttendance from './TeacherAttendance';
@@ -27,6 +28,8 @@ import AdminDashboard from './AdminDashboard';
 import TeacherDashboard from './TeacherDashboard';
 import TeacherWeeklyPlan from './TeacherWeeklyPlan';
 import TeacherLunchMenu from './TeacherLunchMenu';
+import MediaNewsManagement from './MediaNewsManagement';
+import { SchoolActivityNews } from '../data';
 import { getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
 import { canUserEdit } from '../lib/permissions';
 
@@ -51,6 +54,10 @@ interface TeacherViewProps {
   onDeleteStudent: (studentId: string) => void;
   onUpdateGrade: (studentId: string, field: string, value: string | number) => void;
   onUpdateMultipleGrades: (updates: { studentId: string, field: string, newValue: string | number | any }[]) => void;
+  activities?: SchoolActivityNews[];
+  onAddActivity?: (activity: Omit<SchoolActivityNews, 'id'>) => Promise<void> | void;
+  onUpdateActivity?: (id: string, updates: Partial<SchoolActivityNews>) => Promise<void> | void;
+  onDeleteActivity?: (id: string) => Promise<void> | void;
 }
 
 export default function TeacherView({ 
@@ -73,9 +80,13 @@ export default function TeacherView({
   onEditStudent,
   onDeleteStudent,
   onUpdateGrade,
-  onUpdateMultipleGrades
+  onUpdateMultipleGrades,
+  activities = [],
+  onAddActivity,
+  onUpdateActivity,
+  onDeleteActivity
 }: TeacherViewProps) {
-  const [activeMenu, setActiveMenu] = useState('overview');
+  const [activeMenu, setActiveMenu] = useState(role === 'media' ? 'news' : 'overview');
   const [internalYearId, setInternalYearId] = useState(
     schoolYears && schoolYears.length > 0 ? schoolYears[0].id : ''
   );
@@ -150,58 +161,77 @@ export default function TeacherView({
 
   // Sidebar Menu Items styled identically to Hình 1.jpg
   const menuItems = [
-    { 
-      id: "overview", 
-      icon: LayoutDashboard, 
-      label: "Tổng quan" 
-    },
-    ...(role !== 'staff' && role !== 'subject_teacher' ? [{ 
-      id: "schedule", 
-      icon: Clock, 
-      label: "Thời khóa biểu" 
-    }] : []),
-    ...(role !== 'staff' ? [{ 
-      id: "students", 
-      icon: Users, 
-      label: "Danh sách lớp",
-      badge: `${filteredStudents.length} HS`,
-      badgeType: 'count' as const,
-      collapsedBadge: filteredStudents.length.toString(),
-    }] : []),
-    ...(role !== 'staff' && role !== 'subject_teacher' ? [{ 
-      id: "weekly_plan", 
-      icon: ClipboardList, 
-      label: "Kế hoạch tuần",
-      badge: `Tuần ${currentWeekNumber}`,
-      badgeType: 'yellow' as const,
-      collapsedBadge: `T${currentWeekNumber}`,
-    }] : []),
-    ...(role !== 'subject_teacher' ? [{ 
-      id: "lunch_menu", 
-      icon: Utensils, 
-      label: "Thực đơn ăn trưa",
-      badge: "Bán trú",
-      badgeType: 'teal' as const,
-      collapsedBadge: "BT",
-    }] : []),
-    ...(role !== 'staff' ? [{ 
-      id: "attendance", 
-      icon: UserCheck, 
-      label: "Điểm danh" 
-    }] : []),
-    ...(role === 'admin' ? [
-      { id: "admin_classes", icon: Building2, label: "Quản lý Lớp học" },
-      { id: "admin_school_years", icon: CalendarIcon, label: "Quản lý Năm học" },
-      { id: "admin_accounts", icon: Shield, label: "Quản lý người dùng" },
-      { id: "admin_settings", icon: Settings, label: "Cấu hình hệ thống" }
-    ] : [])
+    ...(role === 'media' ? [
+      { 
+        id: "news", 
+        icon: Newspaper, 
+        label: "Tin tức hoạt động",
+        badge: "Truyền thông",
+        badgeType: 'teal' as const,
+        collapsedBadge: "TT"
+      }
+    ] : [
+      { 
+        id: "overview", 
+        icon: LayoutDashboard, 
+        label: "Tổng quan" 
+      },
+      ...(role === 'admin' ? [{ 
+        id: "news", 
+        icon: Newspaper, 
+        label: "Tin tức hoạt động",
+        badge: "Truyền thông",
+        badgeType: 'teal' as const,
+        collapsedBadge: "TT"
+      }] : []),
+      ...(role !== 'staff' && role !== 'subject_teacher' ? [{ 
+        id: "schedule", 
+        icon: Clock, 
+        label: "Thời khóa biểu" 
+      }] : []),
+      ...(role !== 'staff' ? [{ 
+        id: "students", 
+        icon: Users, 
+        label: "Danh sách lớp",
+        badge: `${filteredStudents.length} HS`,
+        badgeType: 'count' as const,
+        collapsedBadge: filteredStudents.length.toString(),
+      }] : []),
+      ...(role !== 'staff' && role !== 'subject_teacher' ? [{ 
+        id: "weekly_plan", 
+        icon: ClipboardList, 
+        label: "Kế hoạch tuần",
+        badge: `Tuần ${currentWeekNumber}`,
+        badgeType: 'yellow' as const,
+        collapsedBadge: `T${currentWeekNumber}`,
+      }] : []),
+      ...(role !== 'subject_teacher' ? [{ 
+        id: "lunch_menu", 
+        icon: Utensils, 
+        label: "Thực đơn ăn trưa",
+        badge: "Bán trú",
+        badgeType: 'teal' as const,
+        collapsedBadge: "BT",
+      }] : []),
+      ...(role !== 'staff' ? [{ 
+        id: "attendance", 
+        icon: UserCheck, 
+        label: "Điểm danh" 
+      }] : []),
+      ...(role === 'admin' ? [
+        { id: "admin_classes", icon: Building2, label: "Quản lý Lớp học" },
+        { id: "admin_school_years", icon: CalendarIcon, label: "Quản lý Năm học" },
+        { id: "admin_accounts", icon: Shield, label: "Quản lý người dùng" },
+        { id: "admin_settings", icon: Settings, label: "Cấu hình hệ thống" }
+      ] : [])
+    ])
   ];
 
   const roleBadgeLabel = role === 'admin' 
     ? 'Ban Giám Hiệu' 
-    : (role === 'teacher' ? 'Giáo viên' : (role === 'staff' ? 'Giáo vụ' : 'Chủ nhiệm'));
+    : (role === 'teacher' ? 'Giáo viên' : (role === 'staff' ? 'Giáo vụ' : (role === 'media' ? 'Truyền Thông' : 'Chủ nhiệm')));
 
-  const shortRoleLabel = role === 'admin' ? 'BGH' : 'GV';
+  const shortRoleLabel = role === 'admin' ? 'BGH' : (role === 'media' ? 'TT' : (role === 'staff' ? 'GVụ' : 'GV'));
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-68px)] overflow-hidden bg-[#f0fdfa]/30 relative">
@@ -369,6 +399,7 @@ export default function TeacherView({
               <h2 className="text-xs font-bold text-slate-800 tracking-tight truncate flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"></span>
                 <span className="truncate">
+                  {activeMenu === 'news' && 'Tin tức hoạt động nhà trường'}
                   {activeMenu === 'overview' && 'Tổng quan hệ thống'}
                   {activeMenu === 'schedule' && 'Thời khóa biểu lớp'}
                   {activeMenu === 'attendance' && 'Điểm danh học sinh'}
@@ -429,6 +460,7 @@ export default function TeacherView({
           <div className="hidden sm:flex justify-between items-center gap-3">
             <div className="flex items-center gap-3">
               <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">
+                {activeMenu === 'news' && 'Tin tức & Hoạt động Nhà Trường'}
                 {activeMenu === 'overview' && 'Tổng quan hệ thống'}
                 {activeMenu === 'schedule' && 'Thời khóa biểu lớp'}
                 {activeMenu === 'attendance' && 'Điểm danh học sinh'}
@@ -487,6 +519,17 @@ export default function TeacherView({
 
         {/* View Body */}
         <div className="flex-1 overflow-y-auto bg-[#f0fdfa]/30">
+          {activeMenu === 'news' && (role === 'admin' || role === 'media') && (
+            <MediaNewsManagement 
+              activities={activities || []}
+              onAddActivity={onAddActivity || (() => {})}
+              onUpdateActivity={onUpdateActivity || (() => {})}
+              onDeleteActivity={onDeleteActivity || (() => {})}
+              currentUser={user}
+              role={role}
+            />
+          )}
+
           {activeMenu === 'overview' && (role === 'admin' || role === 'staff') && (
             <AdminDashboard 
               classes={classes || []} 
@@ -498,6 +541,12 @@ export default function TeacherView({
                 if (cId) handleClassChange(cId);
                 setActiveMenu('attendance');
               }}
+              activities={activities}
+              onAddActivity={onAddActivity}
+              onUpdateActivity={onUpdateActivity}
+              onDeleteActivity={onDeleteActivity}
+              canEditNews={role === 'admin'}
+              currentUser={user}
             />
           )}
 
@@ -513,6 +562,7 @@ export default function TeacherView({
                 if (cId) handleClassChange(cId);
                 setActiveMenu('attendance');
               }}
+              activities={activities}
             />
           )}
 

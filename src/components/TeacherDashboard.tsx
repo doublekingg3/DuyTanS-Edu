@@ -20,9 +20,10 @@ import {
   Edit2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Student, SchoolClass, sortClasses } from '../data';
+import { Student, SchoolClass, sortClasses, SchoolActivityNews } from '../data';
 import AbsentLateDetailTable from './AbsentLateDetailTable';
 import AttendanceRateTable from './AttendanceRateTable';
+import SchoolNewsGallery from './SchoolNewsGallery';
 
 interface TeacherDashboardProps {
   classId: string;
@@ -32,6 +33,7 @@ interface TeacherDashboardProps {
   classes?: SchoolClass[];
   onSelectClass?: (classId: string) => void;
   onNavigateToAttendance?: (classId?: string) => void;
+  activities?: SchoolActivityNews[];
 }
 
 interface ClassRow {
@@ -53,7 +55,8 @@ export default function TeacherDashboard({
   allStudents = [],
   classes = [],
   onSelectClass,
-  onNavigateToAttendance
+  onNavigateToAttendance,
+  activities = []
 }: TeacherDashboardProps) {
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [sortField, setSortField] = useState<'name' | 'total' | 'present' | 'absent' | 'late' | 'rate'>('name');
@@ -194,6 +197,9 @@ export default function TeacherDashboard({
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto bg-[#f0fdfa]/40 min-h-full">
+      {/* Bộ Menu Ảnh & Phóng Sự Hoạt Động Tiêu Biểu Nhà Trường */}
+      <SchoolNewsGallery activities={activities} />
+
       {/* Top Banner */}
       <div className="bg-white rounded-[20px] p-5 sm:p-6 border border-teal-100 shadow-sm shadow-teal-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
