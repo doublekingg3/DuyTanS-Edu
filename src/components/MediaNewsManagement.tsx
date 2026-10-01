@@ -46,6 +46,8 @@ export default function MediaNewsManagement({
 }: MediaNewsManagementProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [triggerUpload, setTriggerUpload] = useState(false);
+  const [selectedArticleForView, setSelectedArticleForView] = useState<SchoolActivityNews | null>(null);
 
   const canEdit = role === 'admin' || role === 'media';
 
@@ -83,7 +85,7 @@ export default function MediaNewsManagement({
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-xl sm:text-2xl font-bold font-display text-slate-800 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold font-sans text-slate-800 tracking-tight">
                 Quản Lý Tin Tức & Hoạt Động Nhà Trường
               </h1>
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
@@ -100,16 +102,29 @@ export default function MediaNewsManagement({
           </div>
         </div>
 
-        {/* User Badge */}
-        <div className="flex items-center gap-3 shrink-0 self-start md:self-auto bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
-          <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">
-            {role === 'media' ? 'TT' : 'BGH'}
-          </div>
-          <div className="text-left text-xs">
-            <span className="block font-bold text-slate-800">{currentUser?.fullName || 'Phòng Truyền Thông'}</span>
-            <span className="text-slate-400 text-[11px]">
-              {role === 'media' ? 'Quyền Biên tập & Đăng tin' : 'Quyền Quản trị viên'}
-            </span>
+        {/* User Badge & Action */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0 self-start md:self-auto">
+          {canEdit && (
+            <button
+              onClick={() => setTriggerUpload(true)}
+              className="bg-teal-gradient hover:opacity-95 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-xl shadow-xs flex items-center gap-2 transition-transform active:scale-95 cursor-pointer"
+              title="Đăng bài viết mới"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Đăng bài viết</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+            <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">
+              {role === 'media' ? 'TT' : 'BGH'}
+            </div>
+            <div className="text-left text-xs">
+              <span className="block font-bold text-slate-800">{currentUser?.fullName || 'Phòng Truyền Thông'}</span>
+              <span className="text-slate-400 text-[11px]">
+                {role === 'media' ? 'Quyền Biên tập & Đăng tin' : 'Quyền Quản trị viên'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -161,6 +176,10 @@ export default function MediaNewsManagement({
         onDeleteActivity={onDeleteActivity}
         canEdit={canEdit}
         currentUser={currentUser}
+        triggerUploadModal={triggerUpload}
+        onResetTriggerUpload={() => setTriggerUpload(false)}
+        externalArticleToView={selectedArticleForView}
+        onCloseExternalArticle={() => setSelectedArticleForView(null)}
       />
 
       {/* Management Data Table */}
@@ -177,6 +196,17 @@ export default function MediaNewsManagement({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {canEdit && (
+              <button
+                onClick={() => setTriggerUpload(true)}
+                className="bg-[#0f766e] hover:bg-teal-800 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                title="Đăng bài viết mới"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Đăng bài viết</span>
+              </button>
+            )}
+
             {/* Search Box */}
             <div className="relative">
               <input
@@ -225,11 +255,15 @@ export default function MediaNewsManagement({
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
               {filteredList.length > 0 ? (
                 filteredList.map((act, index) => (
-                  <tr key={act.id} className="hover:bg-teal-50/40 transition-colors">
+                  <tr 
+                    key={act.id} 
+                    onClick={() => setSelectedArticleForView(act)}
+                    className="hover:bg-teal-50/50 transition-colors cursor-pointer group"
+                  >
                     <td className="px-3 sm:px-4 py-3 text-center text-slate-400 font-bold">{index + 1}</td>
                     
                     <td className="px-3 sm:px-4 py-2.5">
-                      <div className="w-16 h-11 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-900">
+                      <div className="w-16 h-11 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-900 shadow-2xs group-hover:scale-105 transition-transform">
                         <img 
                           src={act.imageUrl} 
                           alt={act.title} 
@@ -239,7 +273,7 @@ export default function MediaNewsManagement({
                     </td>
 
                     <td className="px-3 sm:px-4 py-3">
-                      <div className="font-bold text-slate-800 line-clamp-1 max-w-sm sm:max-w-md hover:text-teal-700 transition-colors">
+                      <div className="font-bold text-slate-800 line-clamp-1 max-w-sm sm:max-w-md group-hover:text-teal-700 transition-colors">
                         {act.title}
                       </div>
                       <div className="text-[11px] text-slate-400 line-clamp-1">{act.description}</div>
@@ -283,8 +317,16 @@ export default function MediaNewsManagement({
                       )}
                     </td>
 
-                    <td className="px-3 py-3 text-center whitespace-nowrap">
+                    <td className="px-3 py-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={() => setSelectedArticleForView(act)}
+                          className="p-1.5 text-teal-600 hover:text-teal-800 hover:bg-teal-50 rounded-lg transition-colors cursor-pointer"
+                          title="Xem bài viết & album ảnh chi tiết"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                        </button>
+
                         {canEdit && (
                           <button
                             onClick={() => {

@@ -744,6 +744,7 @@ export default function App() {
                 classes={classes} 
                 schoolYears={schoolYears} 
                 onEditStudent={handleEditStudent}
+                activities={activities}
               />
             </div>
           </div>

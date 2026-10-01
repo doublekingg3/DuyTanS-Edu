@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Student, getSubjectName, Grades, computeMonthlyGamificationData, SchoolClass, SchoolYear } from '../data';
+import { Student, getSubjectName, Grades, computeMonthlyGamificationData, SchoolClass, SchoolYear, SchoolActivityNews } from '../data';
 import { 
   Bell, 
   BookOpen, 
@@ -35,11 +35,13 @@ import {
   ClipboardList,
   Info,
   MoreHorizontal,
-  ChevronRight
+  ChevronRight,
+  Newspaper
 } from 'lucide-react';
 import ParentSchedule from './ParentSchedule';
 import ParentLunchMenu from './ParentLunchMenu';
 import ParentWeeklyPlan from './ParentWeeklyPlan';
+import SchoolNewsGallery from './SchoolNewsGallery';
 import { useAlert } from '../contexts/AlertContext';
 import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -51,6 +53,7 @@ interface ParentViewProps {
   classes: SchoolClass[];
   schoolYears: SchoolYear[];
   onEditStudent?: (student: Student) => void;
+  activities?: SchoolActivityNews[];
 }
 
 export default function ParentView({ 
@@ -58,10 +61,11 @@ export default function ParentView({
   allStudents, 
   classes, 
   schoolYears,
-  onEditStudent 
+  onEditStudent,
+  activities = []
 }: ParentViewProps) {
   const { showAlert } = useAlert();
-  const [activeTab, setActiveTab] = useState<'profile' | 'weekly_plan' | 'attendance' | 'schedule' | 'lunch_menu'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'weekly_plan' | 'attendance' | 'schedule' | 'lunch_menu' | 'news'>('profile');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -304,6 +308,13 @@ export default function ParentView({
           </div>
         </div>
 
+        {/* Bộ Phóng Sự & Tin Tức Hoạt Động Dành Cho Phụ Huynh & Học Sinh */}
+        {activeTab !== 'news' && (
+          <div className="w-full">
+            <SchoolNewsGallery activities={activities || []} />
+          </div>
+        )}
+
         {/* Desktop Navigation Tabs (Hidden on Mobile) */}
         <div className="hidden md:flex gap-1.5 sm:gap-3 border-b border-slate-200 overflow-x-auto hide-scrollbar pb-px -mx-1 px-1">
           <button 
@@ -311,6 +322,17 @@ export default function ParentView({
             onClick={() => setActiveTab('profile')}
           >
             <User className="w-4 h-4 text-[#0f766e]" /> Hồ sơ con em
+          </button>
+
+          <button 
+            className={`whitespace-nowrap flex-shrink-0 py-2.5 sm:py-3 px-3 sm:px-4 font-medium text-xs sm:text-sm transition-all relative flex items-center gap-1.5 sm:gap-2 rounded-t-xl ${activeTab === 'news' ? 'text-[#0f766e] font-bold bg-teal-50/70 border-b-2 border-[#0f766e]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'}`}
+            onClick={() => setActiveTab('news')}
+          >
+            <Newspaper className="w-4 h-4 text-[#0f766e]" /> 
+            <span>Tin tức & Phong trào</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-800">
+              {activities?.length || 0} bài
+            </span>
           </button>
 
           <button 
@@ -738,6 +760,28 @@ export default function ParentView({
           </div>
         )}
 
+        {/* Tab News & Activities for Student and Parents */}
+        {activeTab === 'news' && (
+          <div className="space-y-4 max-w-5xl mx-auto">
+            <div className="bg-gradient-to-r from-teal-50 via-white to-emerald-50 p-4 sm:p-5 rounded-2xl border border-teal-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold shrink-0">
+                  <Newspaper className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">
+                    Bản Tin & Phong Trào Hoạt Động Duy Tân
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Cập nhật tin tức học tập, văn thể mỹ, trải nghiệm ngoại khóa dành cho Phụ Huynh & Học Sinh
+                  </p>
+                </div>
+              </div>
+            </div>
+            <SchoolNewsGallery activities={activities || []} />
+          </div>
+        )}
+
         {/* Tab Attendance */}
         {activeTab === 'attendance' && (
           <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
@@ -957,6 +1001,30 @@ export default function ParentView({
             </div>
 
             <div className="space-y-2.5 pt-1">
+              {/* Tin tức & Hoạt động phong trào */}
+              <button
+                onClick={() => {
+                  setActiveTab('news');
+                  setShowMoreMenu(false);
+                }}
+                className={`w-full p-3.5 rounded-2xl flex items-center justify-between transition-all border ${
+                  activeTab === 'news' 
+                    ? 'bg-[#f0fdfa] border-[#5eead4] text-[#0f766e]' 
+                    : 'bg-slate-50/70 border-slate-100 hover:bg-slate-100/80 text-slate-700'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center shrink-0">
+                    <Newspaper className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm text-slate-800">Tin tức & Phong trào</div>
+                    <div className="text-xs text-slate-500">Phóng sự ảnh, hoạt động nổi bật của học sinh</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
               {/* Thực đơn ăn trưa */}
               <button
                 onClick={() => {

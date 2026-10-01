@@ -43,6 +43,10 @@ interface SchoolNewsGalleryProps {
   currentUser?: UserAccount | null;
   className?: string;
   onSelectArticleExternal?: (act: SchoolActivityNews) => void;
+  externalArticleToView?: SchoolActivityNews | null;
+  onCloseExternalArticle?: () => void;
+  triggerUploadModal?: boolean;
+  onResetTriggerUpload?: () => void;
 }
 
 const CATEGORIES = [
@@ -100,7 +104,11 @@ export default function SchoolNewsGallery({
   onDeleteActivity,
   canEdit = false,
   currentUser,
-  className = ""
+  className = "",
+  externalArticleToView = null,
+  onCloseExternalArticle,
+  triggerUploadModal = false,
+  onResetTriggerUpload
 }: SchoolNewsGalleryProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'carousel' | 'grid'>('carousel');
@@ -116,6 +124,38 @@ export default function SchoolNewsGallery({
   // Modal phóng to ảnh album chi tiết trong bài viết (Lightbox)
   const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState<number | null>(null);
   const [copiedLinkToast, setCopiedLinkToast] = useState(false);
+
+  // Synchronize external article view trigger
+  useEffect(() => {
+    if (externalArticleToView) {
+      setSelectedArticle(externalArticleToView);
+      setLightboxPhotoIndex(null);
+    }
+  }, [externalArticleToView]);
+
+  // Synchronize external upload trigger
+  useEffect(() => {
+    if (triggerUploadModal) {
+      setIsUploadModalOpen(true);
+      setEditingActivity(null);
+      setFormTitle('');
+      setFormCategory('stem');
+      setFormDate(new Date().toISOString().split('T')[0]);
+      setFormAuthor(currentUser?.fullName || 'Phòng Truyền Thông');
+      setFormDescription('');
+      setFormContent('');
+      setFormImageUrl('');
+      setFormGalleryImages([]);
+      setAlbumUrlInput('');
+      setFormIsFeatured(true);
+      onResetTriggerUpload?.();
+    }
+  }, [triggerUploadModal, currentUser, onResetTriggerUpload]);
+
+  const handleCloseArticle = () => {
+    setSelectedArticle(null);
+    onCloseExternalArticle?.();
+  };
 
   // Form states cho Đăng / Chỉnh sửa bài viết
   const [formTitle, setFormTitle] = useState('');
@@ -378,15 +418,15 @@ export default function SchoolNewsGallery({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold font-display text-slate-800 tracking-tight">
+              <h2 className="text-base sm:text-lg font-bold font-sans text-slate-800 tracking-tight">
                 Hoạt Động & Sự Kiện Tiêu Biểu Nhà Trường
               </h2>
-              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
+              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-sans">
                 <Sparkles className="w-3 h-3 text-teal-600" />
                 {filteredActivities.length} bài đăng
               </span>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 font-sans font-normal mt-0.5">
               Nhấp vào bài viết hoặc banner để xem đầy đủ nội dung phóng sự và album hình ảnh
             </p>
           </div>
@@ -618,7 +658,7 @@ export default function SchoolNewsGallery({
 
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                 <div className="max-w-3xl">
-                  <h3 className="text-lg sm:text-2xl font-extrabold font-display tracking-tight text-white mb-1.5 drop-shadow-md line-clamp-1 group-hover/title:text-teal-200 transition-colors">
+                  <h3 className="text-lg sm:text-2xl font-extrabold font-sans tracking-tight text-white mb-1.5 drop-shadow-md line-clamp-1 group-hover/title:text-teal-200 transition-colors">
                     {currentActivity?.title}
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-200 font-medium line-clamp-2 drop-shadow">
@@ -802,7 +842,7 @@ export default function SchoolNewsGallery({
       {selectedArticle && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-in fade-in"
-          onClick={() => setSelectedArticle(null)}
+          onClick={handleCloseArticle}
         >
           <div 
             className="bg-white rounded-[28px] border border-slate-100 shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-hidden flex flex-col select-text"
@@ -871,7 +911,7 @@ export default function SchoolNewsGallery({
 
                 {/* Close Button */}
                 <button
-                  onClick={() => setSelectedArticle(null)}
+                  onClick={handleCloseArticle}
                   className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer ml-1"
                   title="Đóng bài viết"
                 >
@@ -899,7 +939,7 @@ export default function SchoolNewsGallery({
                   </span>
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl font-extrabold font-display text-slate-900 tracking-tight leading-snug">
+                <h1 className="text-2xl sm:text-3xl font-extrabold font-sans text-slate-900 tracking-tight leading-snug">
                   {selectedArticle.title}
                 </h1>
               </div>
@@ -959,7 +999,7 @@ export default function SchoolNewsGallery({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Images className="w-5 h-5 text-teal-600" />
-                    <h3 className="font-bold text-base sm:text-lg text-slate-800 font-display">
+                    <h3 className="font-bold text-base sm:text-lg text-slate-800 font-sans">
                       Album hình ảnh hoạt động ({currentArticlePhotos.length} ảnh)
                     </h3>
                   </div>

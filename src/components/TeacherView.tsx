@@ -176,14 +176,6 @@ export default function TeacherView({
         icon: LayoutDashboard, 
         label: "Tổng quan" 
       },
-      ...(role === 'admin' ? [{ 
-        id: "news", 
-        icon: Newspaper, 
-        label: "Tin tức hoạt động",
-        badge: "Truyền thông",
-        badgeType: 'teal' as const,
-        collapsedBadge: "TT"
-      }] : []),
       ...(role !== 'staff' && role !== 'subject_teacher' ? [{ 
         id: "schedule", 
         icon: Clock, 
@@ -218,6 +210,15 @@ export default function TeacherView({
         icon: UserCheck, 
         label: "Điểm danh" 
       }] : []),
+      // Tin tức hoạt động được đưa xuống phía dưới, bên trên chữ "Quản lý Lớp học"
+      { 
+        id: "news", 
+        icon: Newspaper, 
+        label: "Tin tức hoạt động",
+        badge: role === 'admin' ? "Truyền thông" : undefined,
+        badgeType: 'teal' as const,
+        collapsedBadge: "TT"
+      },
       ...(role === 'admin' ? [
         { id: "admin_classes", icon: Building2, label: "Quản lý Lớp học" },
         { id: "admin_school_years", icon: CalendarIcon, label: "Quản lý Năm học" },
@@ -519,7 +520,7 @@ export default function TeacherView({
 
         {/* View Body */}
         <div className="flex-1 overflow-y-auto bg-[#f0fdfa]/30">
-          {activeMenu === 'news' && (role === 'admin' || role === 'media') && (
+          {activeMenu === 'news' && (
             <MediaNewsManagement 
               activities={activities || []}
               onAddActivity={onAddActivity || (() => {})}
