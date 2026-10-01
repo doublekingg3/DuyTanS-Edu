@@ -34,8 +34,12 @@ export function canUserEdit(
   role: string | undefined,
   module: PermissionModule
 ): boolean {
-  // 1. Admin (Tổng thể BGH) has full privileges
+  // 1. Admin (Tổng thể BGH)
   if (role === 'admin' || user?.role === 'admin') {
+    // Nếu tài khoản BGH được thiết lập chế độ "Khóa chỉnh sửa" (Chỉ xem full & Xuất dữ liệu)
+    if (user?.adminPermissionType === 'readonly' || user?.permissions?.lockEdit) {
+      return false;
+    }
     return true;
   }
 

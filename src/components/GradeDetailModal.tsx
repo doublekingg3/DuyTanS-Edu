@@ -9,9 +9,10 @@ interface GradeDetailModalProps {
   subjectName: string;
   initialData?: SubjectDetail;
   onSave: (data: SubjectDetail) => void;
+  readOnly?: boolean;
 }
 
-export default function GradeDetailModal({ isOpen, onClose, studentName, subjectName, initialData, onSave }: GradeDetailModalProps) {
+export default function GradeDetailModal({ isOpen, onClose, studentName, subjectName, initialData, onSave, readOnly }: GradeDetailModalProps) {
   const [tx, setTx] = useState<string[]>(['', '', '', '', '', '']);
   const [gk, setGk] = useState<string>('');
   const [ck, setCk] = useState<string>('');
@@ -192,14 +193,16 @@ export default function GradeDetailModal({ isOpen, onClose, studentName, subject
             onClick={onClose}
             className="px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-lg hover:bg-slate-50 transition-colors"
           >
-            Hủy
+            {readOnly ? 'Đóng' : 'Hủy'}
           </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-indigo-600 text-white flex items-center gap-2 text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-          >
-            <Save className="w-4 h-4" /> Lưu điểm
-          </button>
+          {!readOnly && (
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-indigo-600 text-white flex items-center gap-2 text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm cursor-pointer"
+            >
+              <Save className="w-4 h-4" /> Lưu điểm
+            </button>
+          )}
         </div>
       </div>
     </div>

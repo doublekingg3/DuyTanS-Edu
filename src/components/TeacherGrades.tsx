@@ -5,7 +5,7 @@ import { SubjectDetail } from "../data";
 import { Download, FileSpreadsheet, Upload, Calendar, Clock, BookOpen, Medal, Calculator, AlertCircle, AlertTriangle, AlertOctagon, Star, Settings2 } from 'lucide-react';
 import { useAlert } from "../contexts/AlertContext";
 
-const EditableCell = ({ value, onSave }: { value: string | number, onSave: (val: string) => void }) => {
+const EditableCell = ({ value, onSave, disabled }: { value: string | number, onSave: (val: string) => void, disabled?: boolean }) => {
   const [editValue, setEditValue] = useState(String(value));
   const [isFocused, setIsFocused] = useState(false);
 
@@ -14,6 +14,14 @@ const EditableCell = ({ value, onSave }: { value: string | number, onSave: (val:
       setEditValue(String(value));
     }
   }, [value, isFocused]);
+
+  if (disabled) {
+    return (
+      <span className="w-full inline-block text-center py-1 font-semibold text-slate-700 text-xs sm:text-sm">
+        {value !== undefined && value !== null && value !== '' ? String(value) : '-'}
+      </span>
+    );
+  }
 
   const handleBlur = () => {
     setIsFocused(false);
@@ -95,12 +103,14 @@ export default function TeacherGrades({
   students,
   className,
   onUpdateGrade,
-  onUpdateMultipleGrades
+  onUpdateMultipleGrades,
+  canEdit = true
 }: { 
   students: Student[],
   className?: string,
   onUpdateGrade: (studentId: string, field: string, value: string | number | any) => void,
-  onUpdateMultipleGrades: (updates: { studentId: string, field: string, newValue: string | number | any | any }[]) => void
+  onUpdateMultipleGrades: (updates: { studentId: string, field: string, newValue: string | number | any | any }[]) => void,
+  canEdit?: boolean
 }) {
   const { showAlert } = useAlert();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -572,12 +582,14 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
             onChange={handleImportExcel} 
             className="hidden" 
           />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 border border-slate-200 bg-white text-slate-600 text-sm font-bold rounded-lg hover:bg-slate-50 flex items-center gap-2 transition-colors"
-          >
-            <Upload className="w-4 h-4" /> Nhập từ Excel
-          </button>
+          {canEdit && (
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2 border border-slate-200 bg-white text-slate-600 text-sm font-bold rounded-lg hover:bg-slate-50 flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <Upload className="w-4 h-4" /> Nhập từ Excel
+            </button>
+          )}
 <div className="relative">
             <button 
               onClick={() => setShowExportMenu(!showExportMenu)}
@@ -789,13 +801,13 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
                     {isGamification ? (
                       periodType === 'week' ? (
                         <>
-                          <td className="px-2 py-2 text-center font-medium text-slate-600"><EditableCell value={gData.study} onSave={(val) => onUpdateGrade(student.id, `${dataPath}.study`, val)} /></td>
-                          <td className="px-2 py-2 text-center font-medium text-slate-600"><EditableCell value={gData.achievement} onSave={(val) => onUpdateGrade(student.id, `${dataPath}.achievement`, val)} /></td>
-                          <td className="px-2 py-2 text-center font-medium text-slate-600"><EditableCell value={gData.reward} onSave={(val) => onUpdateGrade(student.id, `${dataPath}.reward`, val)} /></td>
+                          <td className="px-2 py-2 text-center font-medium text-slate-600"><EditableCell value={gData.study} disabled={!canEdit} onSave={(val) => onUpdateGrade(student.id, `${dataPath}.study`, val)} /></td>
+                          <td className="px-2 py-2 text-center font-medium text-slate-600"><EditableCell value={gData.achievement} disabled={!canEdit} onSave={(val) => onUpdateGrade(student.id, `${dataPath}.achievement`, val)} /></td>
+                          <td className="px-2 py-2 text-center font-medium text-slate-600"><EditableCell value={gData.reward} disabled={!canEdit} onSave={(val) => onUpdateGrade(student.id, `${dataPath}.reward`, val)} /></td>
                           <td className="px-2 py-2 text-center">
-                            <GamificationCell data={gData} onUpdate={(field, val) => onUpdateGrade(student.id, `${dataPath}.${field}`, val)} />
+                            <GamificationCell data={gData} onUpdate={(field, val) => canEdit && onUpdateGrade(student.id, `${dataPath}.${field}`, val)} />
                           </td>
-                          <td className="px-2 py-2 text-center font-medium text-slate-600"><EditableCell value={gData.comment} onSave={(val) => onUpdateGrade(student.id, `${dataPath}.comment`, val)} /></td>
+                          <td className="px-2 py-2 text-center font-medium text-slate-600"><EditableCell value={gData.comment} disabled={!canEdit} onSave={(val) => onUpdateGrade(student.id, `${dataPath}.comment`, val)} /></td>
                         </>
                       ) : (
                         <>
@@ -836,17 +848,18 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
                             ) : (
                               <EditableCell 
                                 value={student.displayGrades[key]} 
+                                disabled={!canEdit}
                                 onSave={(val) => onUpdateGrade(student.id, `yearGrades.${key}`, val)} 
                               />
                             )}
                           </td>
                         ))}
                         
-                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30 border-l border-indigo-50"><EditableCell value={student.academicPerformance || ''} onSave={(val) => onUpdateGrade(student.id, 'academicPerformance', val)} /></td>
-                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30"><EditableCell value={student.conduct || ''} onSave={(val) => onUpdateGrade(student.id, 'conduct', val)} /></td>
-                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30"><EditableCell value={student.cp} onSave={(val) => onUpdateGrade(student.id, 'cp', val)} /></td>
-                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30"><EditableCell value={student.kp} onSave={(val) => onUpdateGrade(student.id, 'kp', val)} /></td>
-                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30"><EditableCell value={student.award || ''} onSave={(val) => onUpdateGrade(student.id, 'award', val)} /></td>
+                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30 border-l border-indigo-50"><EditableCell value={student.academicPerformance || ''} disabled={!canEdit} onSave={(val) => onUpdateGrade(student.id, 'academicPerformance', val)} /></td>
+                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30"><EditableCell value={student.conduct || ''} disabled={!canEdit} onSave={(val) => onUpdateGrade(student.id, 'conduct', val)} /></td>
+                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30"><EditableCell value={student.cp} disabled={!canEdit} onSave={(val) => onUpdateGrade(student.id, 'cp', val)} /></td>
+                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30"><EditableCell value={student.kp} disabled={!canEdit} onSave={(val) => onUpdateGrade(student.id, 'kp', val)} /></td>
+                        <td className="px-1 py-1 text-center font-medium text-indigo-700 bg-indigo-50/30"><EditableCell value={student.award || ''} disabled={!canEdit} onSave={(val) => onUpdateGrade(student.id, 'award', val)} /></td>
                         
                         <td className="px-4 py-3 text-center bg-indigo-50/30 border-l border-indigo-50">
                           <span className="text-indigo-700 font-bold text-base">{student.calculatedAvg}</span>
@@ -905,6 +918,7 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
       {detailModalOpen && detailModalData && (
         <GradeDetailModal
           isOpen={detailModalOpen}
+          readOnly={!canEdit}
           onClose={() => {
             setDetailModalOpen(false);
             setDetailModalData(null);

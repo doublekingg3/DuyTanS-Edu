@@ -28,6 +28,7 @@ import TeacherDashboard from './TeacherDashboard';
 import TeacherWeeklyPlan from './TeacherWeeklyPlan';
 import TeacherLunchMenu from './TeacherLunchMenu';
 import { getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
+import { canUserEdit } from '../lib/permissions';
 
 interface TeacherViewProps {
   role?: string;
@@ -521,6 +522,7 @@ export default function TeacherView({
               user={user}
               classes={classes}
               students={filteredStudents}
+              allStudents={students}
               classId={selectedClassId}
               className={allowedClasses.find(c => c.id === selectedClassId)?.name || ''}
               onEditStudent={onEditStudent}
@@ -560,6 +562,7 @@ export default function TeacherView({
               className={allowedClasses.find(c => c.id === selectedClassId)?.name} 
               onUpdateGrade={onUpdateGrade} 
               onUpdateMultipleGrades={onUpdateMultipleGrades} 
+              canEdit={canUserEdit(user, role, 'grades')}
             />
           )}
 
@@ -594,6 +597,7 @@ export default function TeacherView({
                   schoolYears={schoolYears || []} 
                   settings={settings} 
                   onUpdateSettings={onUpdateSettings}
+                  currentUser={user}
                   externalActiveTab={
                     activeMenu === 'admin_classes' ? 'classes' :
                     activeMenu === 'admin_school_years' ? 'school_years' :

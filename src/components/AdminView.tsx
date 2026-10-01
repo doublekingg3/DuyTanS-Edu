@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { SchoolClass, Student, UserAccount, UserPermissions, SchoolYear, AppSettings, defaultSettings, sortClasses, getUserTeacherType } from '../data';
-import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw, Settings, CheckCircle, X, BookOpen, Check, FileSpreadsheet, Copy, CheckCheck, LayoutList, Grid } from 'lucide-react';
+import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw, Settings, CheckCircle, X, BookOpen, Check, FileSpreadsheet, Copy, CheckCheck, LayoutList, Grid, Lock, Unlock, ShieldCheck, Eye, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
 import { db, activeFirebaseProject } from '../lib/firebase';
@@ -19,7 +19,8 @@ export default function AdminView({
   settings, 
   onUpdateSettings,
   externalActiveTab, 
-  onTabChange 
+  onTabChange,
+  currentUser
 }: { 
   classes: SchoolClass[], 
   students: Student[], 
@@ -28,7 +29,8 @@ export default function AdminView({
   settings?: AppSettings, 
   onUpdateSettings?: (newSettings: AppSettings) => Promise<void> | void,
   externalActiveTab?: string, 
-  onTabChange?: (tab: string) => void 
+  onTabChange?: (tab: string) => void,
+  currentUser?: UserAccount
 }) {
   const { showAlert, showConfirm } = useAlert();
 
@@ -273,12 +275,17 @@ export default function AdminView({
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [userAssignmentYear, setUserAssignmentYear] = useState('');
+  const isReadOnlyAdmin = Boolean(
+    currentUser?.role === 'admin' && (currentUser?.adminPermissionType === 'readonly' || currentUser?.permissions?.lockEdit)
+  );
+
   const [userFormData, setUserFormData] = useState<{
     username: string;
     password: string;
     fullName: string;
     role: 'admin' | 'teacher' | 'subject_teacher' | 'staff';
     teacherType: 'gvcn' | 'gvbm';
+    adminPermissionType: 'full' | 'readonly';
     isHomeroom: boolean;
     isSubject: boolean;
     subjects: string[];
@@ -291,18 +298,25 @@ export default function AdminView({
     fullName: '',
     role: 'teacher' as 'admin' | 'teacher' | 'staff',
     teacherType: 'gvcn',
+    adminPermissionType: 'full',
     isHomeroom: true,
     isSubject: false,
     subjects: [],
     homeroomClasses: [],
     subjectClasses: [],
     permissions: {
+      lockEdit: false,
       schedule: 'edit',
       students: 'edit',
       grades: 'edit',
       weeklyPlan: 'edit',
       lunchMenu: 'view',
-      attendance: 'edit'
+      attendance: 'edit',
+      reports: 'edit',
+      classes: 'edit',
+      schoolYears: 'edit',
+      accounts: 'edit',
+      systemConfig: 'edit'
     }
   });
 
@@ -529,6 +543,10 @@ export default function AdminView({
 
 
   const handleSaveClass = async () => {
+    if (isReadOnlyAdmin) {
+      showAlert('Tài khoản BGH đang ở chế độ Giám sát (Khóa chỉnh sửa dữ liệu). Không thể thêm hoặc sửa lớp học.', 'error');
+      return;
+    }
     if (!formData.name || !formData.homeroomTeacher) {
       showAlert('Vui lòng nhập tên lớp và giáo viên chủ nhiệm.', 'error');
       return;
@@ -549,6 +567,10 @@ export default function AdminView({
   };
 
   const handleDeleteClass = async (classId: string) => {
+    if (isReadOnlyAdmin) {
+      showAlert('Tài khoản BGH đang ở chế độ Giám sát (Khóa chỉnh sửa dữ liệu). Không thể xóa lớp học.', 'error');
+      return;
+    }
     const hasStudents = students.some(s => s.classId === classId && !s.isDeleted);
     if (hasStudents) {
       showAlert('Không thể xóa lớp học này vì đang có học sinh. Vui lòng chuyển học sinh sang lớp khác trước.', 'error');
@@ -566,6 +588,10 @@ export default function AdminView({
   };
 
   const handleDeleteSelectedClasses = async () => {
+    if (isReadOnlyAdmin) {
+      showAlert('Tài khoản BGH đang ở chế độ Giám sát (Khóa chỉnh sửa dữ liệu). Không thể xóa lớp học.', 'error');
+      return;
+    }
     if (selectedClassIds.length === 0) return;
     
     // Check if any selected class has students
@@ -592,6 +618,10 @@ export default function AdminView({
   };
 
   const handleSaveYear = async () => {
+    if (isReadOnlyAdmin) {
+      showAlert('Tài khoản BGH đang ở chế độ Giám sát (Khóa chỉnh sửa dữ liệu). Không thể thêm hoặc sửa năm học.', 'error');
+      return;
+    }
     if (!yearFormData.name) {
       showAlert('Vui lòng nhập tên năm học.', 'error');
       return;
@@ -763,7 +793,24 @@ export default function AdminView({
       userData.teacherType = effectiveTeacherType;
     }
 
-    if (effectiveRole !== 'admin') {
+    if (effectiveRole === 'admin') {
+      userData.adminPermissionType = userFormData.adminPermissionType;
+      const isReadOnly = userFormData.adminPermissionType === 'readonly';
+      userData.permissions = {
+        lockEdit: isReadOnly,
+        schedule: isReadOnly ? 'view' : 'edit',
+        students: isReadOnly ? 'view' : 'edit',
+        grades: isReadOnly ? 'view' : 'edit',
+        weeklyPlan: isReadOnly ? 'view' : 'edit',
+        lunchMenu: isReadOnly ? 'view' : 'edit',
+        attendance: isReadOnly ? 'view' : 'edit',
+        reports: isReadOnly ? 'view' : 'edit',
+        classes: isReadOnly ? 'view' : 'edit',
+        schoolYears: isReadOnly ? 'view' : 'edit',
+        accounts: isReadOnly ? 'view' : 'edit',
+        systemConfig: isReadOnly ? 'view' : 'edit'
+      };
+    } else {
       const finalPermissions = { ...userFormData.permissions };
       if (effectiveTeacherType === 'gvbm') {
         finalPermissions.students = 'view';
@@ -789,18 +836,25 @@ export default function AdminView({
         fullName: '', 
         role: 'teacher' as any, 
         teacherType: 'gvcn',
+        adminPermissionType: 'full',
         isHomeroom: true, 
         isSubject: false, 
         subjects: [], 
         homeroomClasses: [], 
         subjectClasses: [],
         permissions: {
+          lockEdit: false,
           schedule: 'edit',
           students: 'edit',
           grades: 'edit',
           weeklyPlan: 'edit',
           lunchMenu: 'view',
-          attendance: 'edit'
+          attendance: 'edit',
+          reports: 'edit',
+          classes: 'edit',
+          schoolYears: 'edit',
+          accounts: 'edit',
+          systemConfig: 'edit'
         }
       });
     } catch (error) {
@@ -871,24 +925,32 @@ export default function AdminView({
     const teacherType = getUserTeacherType(u);
     const homeroomClasses = u.homeroomClasses || [];
     const subjectClasses = (u.subjectClasses || []).filter(cId => !homeroomClasses.includes(cId));
+    const isBGHReadOnly = u.adminPermissionType === 'readonly' || Boolean(u.permissions?.lockEdit);
     setUserFormData({ 
       username: u.username, 
       password: '', 
       fullName: u.fullName, 
       role: (u.role === 'subject_teacher' ? 'teacher' : u.role) as any, 
       teacherType: teacherType,
+      adminPermissionType: isBGHReadOnly ? 'readonly' : 'full',
       isHomeroom: teacherType === 'gvcn', 
       isSubject: teacherType === 'gvbm' || !!subjectClasses.length, 
       subjects: u.subjects || [], 
       homeroomClasses: homeroomClasses, 
       subjectClasses: subjectClasses,
       permissions: {
-        schedule: u.permissions?.schedule || (u.role === 'staff' || teacherType === 'gvbm' ? 'view' : 'edit'),
-        students: u.permissions?.students || (u.role === 'staff' || teacherType === 'gvbm' ? 'view' : 'edit'),
-        grades: u.permissions?.grades || (u.role === 'staff' || teacherType === 'gvbm' ? 'view' : 'edit'),
-        weeklyPlan: u.permissions?.weeklyPlan || (u.role === 'staff' || teacherType === 'gvbm' ? 'view' : 'edit'),
+        lockEdit: isBGHReadOnly,
+        schedule: u.permissions?.schedule || (u.role === 'staff' || teacherType === 'gvbm' || isBGHReadOnly ? 'view' : 'edit'),
+        students: u.permissions?.students || (u.role === 'staff' || teacherType === 'gvbm' || isBGHReadOnly ? 'view' : 'edit'),
+        grades: u.permissions?.grades || (u.role === 'staff' || teacherType === 'gvbm' || isBGHReadOnly ? 'view' : 'edit'),
+        weeklyPlan: u.permissions?.weeklyPlan || (u.role === 'staff' || teacherType === 'gvbm' || isBGHReadOnly ? 'view' : 'edit'),
         lunchMenu: u.role === 'staff' ? (u.permissions?.lunchMenu || 'edit') : 'view',
-        attendance: u.permissions?.attendance || 'edit'
+        attendance: u.permissions?.attendance || (isBGHReadOnly ? 'view' : 'edit'),
+        reports: u.permissions?.reports || (isBGHReadOnly ? 'view' : 'edit'),
+        classes: u.permissions?.classes || (isBGHReadOnly ? 'view' : 'edit'),
+        schoolYears: u.permissions?.schoolYears || (isBGHReadOnly ? 'view' : 'edit'),
+        accounts: u.permissions?.accounts || (isBGHReadOnly ? 'view' : 'edit'),
+        systemConfig: u.permissions?.systemConfig || (isBGHReadOnly ? 'view' : 'edit')
       }
     });
     setIsAddUserModalOpen(true);
@@ -970,18 +1032,25 @@ export default function AdminView({
       fullName: '', 
       role: 'teacher' as any, 
       teacherType: 'gvcn',
+      adminPermissionType: 'full',
       isHomeroom: true, 
       isSubject: false, 
       subjects: [], 
       homeroomClasses: [], 
       subjectClasses: [],
       permissions: {
+        lockEdit: false,
         schedule: 'edit',
         students: 'edit',
         grades: 'edit',
         weeklyPlan: 'edit',
         lunchMenu: 'view',
-        attendance: 'edit'
+        attendance: 'edit',
+        reports: 'edit',
+        classes: 'edit',
+        schoolYears: 'edit',
+        accounts: 'edit',
+        systemConfig: 'edit'
       }
     });
     setIsAddUserModalOpen(true);
@@ -998,6 +1067,28 @@ export default function AdminView({
     <div className="h-full bg-[#f0fdfa]/30 p-4 md:p-6 lg:p-8 overflow-y-auto">
       <div className="max-w-6xl mx-auto space-y-6">
         
+        {/* Banner Chế độ Giám sát dành cho tài khoản BGH đang đăng nhập nếu bị khóa chỉnh sửa */}
+        {isReadOnlyAdmin && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-amber-900">
+                  Tài khoản Ban Giám Hiệu: Chế độ Giám sát & Tra cứu (Khóa chỉnh sửa)
+                </h3>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Bạn có quyền xem toàn bộ full dữ liệu hệ thống và xuất báo cáo (Excel, Word, PDF). Quyền chỉnh sửa, thêm mới hoặc xóa dữ liệu đã được khóa an toàn theo phân quyền BGH.
+                </p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-200/80 text-amber-900 border border-amber-300 shrink-0">
+              <Eye className="w-3.5 h-3.5" /> Chỉ xem & Xuất dữ liệu
+            </span>
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-teal-100 pb-2">
           <button 
@@ -1474,9 +1565,20 @@ export default function AdminView({
                           </td>
                           <td className="px-6 py-4 border-b border-slate-50 whitespace-nowrap text-center">
                             {u.role === 'admin' ? (
-                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full font-semibold text-xs whitespace-nowrap bg-purple-50 text-purple-700 border border-purple-200">
-                                Ban Giám Hiệu
-                              </span>
+                              <div className="inline-flex flex-col items-center gap-1">
+                                <span className="inline-flex items-center justify-center px-3 py-1 rounded-full font-bold text-xs whitespace-nowrap bg-purple-50 text-purple-700 border border-purple-200">
+                                  Ban Giám Hiệu
+                                </span>
+                                {(u.adminPermissionType === 'readonly' || u.permissions?.lockEdit) ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                    <Lock className="w-2.5 h-2.5 text-amber-600" /> Khóa sửa (Chỉ xem & Xuất)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" /> Toàn quyền
+                                  </span>
+                                )}
+                              </div>
                             ) : u.role === 'staff' ? (
                               <span className="inline-flex items-center justify-center px-3 py-1 rounded-full font-semibold text-xs whitespace-nowrap bg-amber-50 text-amber-700 border border-amber-200">
                                 Giáo vụ
@@ -2748,6 +2850,202 @@ export default function AdminView({
                       <p className="text-xs text-slate-500 mt-1 pl-6 leading-relaxed">
                         Chỉ xem thông tin các lớp học cần xem. <strong>Được quyền điểm danh các lớp</strong> giảng dạy; không được sửa/xóa hồ sơ học sinh.
                       </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* PHÂN QUYỀN VÀ QUY TẮC DÀNH CHO VAI TRÒ BAN GIÁM HIỆU (BGH) */}
+              {userFormData.role === 'admin' && (
+                <div className="col-span-1 border-t border-purple-100 pt-4 mt-2">
+                  <div className="bg-gradient-to-br from-purple-50/70 via-indigo-50/40 to-slate-50 border border-purple-200/90 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-100 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                            <Shield className="w-4 h-4" />
+                          </div>
+                          <h4 className="font-bold text-slate-800 text-sm sm:text-base">
+                            Quy tắc & Phân quyền Ban Giám Hiệu (BGH)
+                          </h4>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1 pl-10">
+                          Tùy chọn chế độ quản trị: <strong>Toàn quyền</strong> hoặc <strong>Giám sát tra cứu (Khóa chỉnh sửa)</strong>.
+                        </p>
+                      </div>
+
+                      {/* Status badge */}
+                      <span className={`self-start sm:self-auto text-xs font-bold px-3 py-1 rounded-full border shadow-2xs ${
+                        userFormData.adminPermissionType === 'readonly'
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                      }`}>
+                        {userFormData.adminPermissionType === 'readonly' 
+                          ? '🔒 Chế độ: Khóa chỉnh sửa (Chỉ xem & Xuất)' 
+                          : '⚡ Chế độ: Toàn quyền Quản trị'}
+                      </span>
+                    </div>
+
+                    {/* 2 Lựa chọn chế độ BGH */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      
+                      {/* Option 1: Toàn quyền */}
+                      <div
+                        onClick={() => {
+                          setUserFormData(prev => ({
+                            ...prev,
+                            adminPermissionType: 'full',
+                            permissions: {
+                              ...prev.permissions,
+                              lockEdit: false,
+                              schedule: 'edit',
+                              students: 'edit',
+                              grades: 'edit',
+                              weeklyPlan: 'edit',
+                              lunchMenu: 'edit',
+                              attendance: 'edit',
+                              reports: 'edit',
+                              classes: 'edit',
+                              schoolYears: 'edit',
+                              accounts: 'edit',
+                              systemConfig: 'edit'
+                            }
+                          }));
+                        }}
+                        className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                          userFormData.adminPermissionType !== 'readonly'
+                            ? 'border-emerald-600 bg-white shadow-xs ring-2 ring-emerald-500/20'
+                            : 'border-slate-200 bg-white/70 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="bghMode"
+                              checked={userFormData.adminPermissionType !== 'readonly'}
+                              onChange={() => {}}
+                              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span className="font-bold text-sm text-slate-800">1. Toàn quyền Quản trị & Sửa đổi</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            Mặc định
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 pl-6 leading-relaxed">
+                          Toàn quyền xem, thêm mới, sửa đổi, xóa, phê duyệt và cập nhật dữ liệu của toàn bộ các phân hệ trong hệ thống.
+                        </p>
+                      </div>
+
+                      {/* Option 2: Khóa chỉnh sửa (Chế độ giám sát) */}
+                      <div
+                        onClick={() => {
+                          setUserFormData(prev => ({
+                            ...prev,
+                            adminPermissionType: 'readonly',
+                            permissions: {
+                              ...prev.permissions,
+                              lockEdit: true,
+                              schedule: 'view',
+                              students: 'view',
+                              grades: 'view',
+                              weeklyPlan: 'view',
+                              lunchMenu: 'view',
+                              attendance: 'view',
+                              reports: 'view',
+                              classes: 'view',
+                              schoolYears: 'view',
+                              accounts: 'view',
+                              systemConfig: 'view'
+                            }
+                          }));
+                        }}
+                        className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                          userFormData.adminPermissionType === 'readonly'
+                            ? 'border-amber-600 bg-white shadow-xs ring-2 ring-amber-500/20'
+                            : 'border-slate-200 bg-white/70 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="bghMode"
+                              checked={userFormData.adminPermissionType === 'readonly'}
+                              onChange={() => {}}
+                              className="w-4 h-4 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                            />
+                            <span className="font-bold text-sm text-slate-800">2. Khóa chỉnh sửa (Chỉ xem & Xuất)</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Khóa tác động
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 pl-6 leading-relaxed">
+                          <strong>Vẫn xem được toàn bộ full đầy đủ</strong> dữ liệu các lớp, học sinh, điểm danh, nề nếp, sổ điểm, kế hoạch, thực đơn, báo cáo; <strong>vẫn xuất được đầy đủ dữ liệu (Excel, Word, PDF)</strong>; nhưng <strong>khóa toàn bộ quyền chỉnh sửa</strong>, không tác động gì được đến dữ liệu.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bảng chi tiết phân hệ dành cho BGH */}
+                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                      <div className="bg-slate-100/90 px-3.5 py-2.5 border-b border-slate-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Eye className="w-4 h-4 text-purple-600" />
+                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Bảng kiểm soát quyền hạn phân hệ BGH
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {userFormData.adminPermissionType === 'readonly'
+                            ? 'Đang áp dụng: Khóa chỉnh sửa trên toàn bộ phân hệ'
+                            : 'Đang áp dụng: Mở toàn quyền trên toàn bộ phân hệ'}
+                        </span>
+                      </div>
+
+                      <div className="divide-y divide-slate-100 text-xs">
+                        {[
+                          { name: '1. Bảng điều khiển & Giám sát nề nếp', desc: 'Thống kê tổng quan, tỉ lệ chuyên cần, danh sách vắng/trễ' },
+                          { name: '2. Danh sách học sinh & Hồ sơ học tập', desc: 'Hồ sơ học sinh toàn trường, mã định danh, thông tin phụ huynh' },
+                          { name: '3. Sổ điểm, Đánh giá & Học bạ số', desc: 'Điểm số tất cả các môn, nhận xét định kỳ, xếp loại' },
+                          { name: '4. Kế hoạch tuần & Phê duyệt học vụ', desc: 'Kế hoạch dạy học các khối lớp, duyệt kế hoạch' },
+                          { name: '5. Thực đơn bán trú & Dinh dưỡng', desc: 'Lịch thực đơn tuần học sinh bán trú, phê duyệt món' },
+                          { name: '6. Sổ Điểm danh chuyên cần', desc: 'Ghi nhận hiện diện, vắng có/không phép, đi trễ, về sớm' },
+                          { name: '7. Báo cáo & Thống kê học vụ', desc: 'Báo cáo tổng hợp chuyên cần, học lực, nề nếp' },
+                          { name: '8. Quản lý Lớp học & Năm học', desc: 'Danh mục các khối lớp, năm học, phân công giáo viên' },
+                          { name: '9. Quản lý Tài khoản & Phân quyền', desc: 'Danh sách tài khoản BGH, Giáo viên, Giáo vụ, mã PH' }
+                        ].map((item, idx) => (
+                          <div key={idx} className="px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50/80 transition-colors">
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-800 text-xs block">{item.name}</span>
+                              <span className="text-[11px] text-slate-500">{item.desc}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {/* Xem & Xuất dữ liệu: Luôn BẬT */}
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                                <Check className="w-3 h-3 text-teal-600" />
+                                <span>Xem Full & Xuất dữ liệu</span>
+                              </span>
+
+                              {/* Thao tác & Sửa đổi */}
+                              {userFormData.adminPermissionType === 'readonly' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                  <Lock className="w-3 h-3 text-rose-600" />
+                                  <span>Khóa chỉnh sửa</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                  <span>Toàn quyền sửa đổi</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>

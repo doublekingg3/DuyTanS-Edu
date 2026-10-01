@@ -521,24 +521,10 @@ export default function App() {
             <h1 className="text-[11px] sm:text-xs md:text-sm font-black tracking-wider text-[#0054a6] uppercase font-display truncate max-w-[140px] sm:max-w-xs md:max-w-none">
               {settings?.appName || "Trường Phổ Thông Duy Tân"}
             </h1>
-            <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
+            <div className="mt-0.5">
               <span className="text-xs sm:text-sm md:text-base font-extrabold text-[#b91c1c] tracking-tight whitespace-nowrap">
                 DuyTan Student360
               </span>
-              {schoolYears && schoolYears.length > 0 && (
-                <div className="relative inline-flex items-center shrink-0">
-                  <select
-                    value={selectedYearId}
-                    onChange={(e) => handleYearChange(e.target.value)}
-                    className="appearance-none bg-[#ccfbf1]/80 hover:bg-[#ccfbf1] border border-[#5eead4] text-[#0f766e] text-[10px] sm:text-xs font-bold rounded-full py-0.5 pl-2 sm:pl-2.5 pr-5 sm:pr-6 cursor-pointer outline-none transition-colors"
-                  >
-                    {schoolYears.map(y => (
-                      <option key={y.id} value={y.id}>{y.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#0f766e] absolute right-1 sm:right-1.5 pointer-events-none" />
-                </div>
-              )}
             </div>
           </div>
         </div>

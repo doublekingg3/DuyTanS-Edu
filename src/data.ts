@@ -70,6 +70,8 @@ export interface Notification {
 }
 
 export interface UserPermissions {
+  // Chế độ BGH: Khóa toàn bộ quyền chỉnh sửa dữ liệu (Chỉ xem full & Xuất dữ liệu)
+  lockEdit?: boolean;
   // Lịch học & Thời khóa biểu
   schedule?: 'view' | 'edit';
   // Danh sách học sinh & Hồ sơ lớp
@@ -82,6 +84,16 @@ export interface UserPermissions {
   lunchMenu?: 'view' | 'edit';
   // Điểm danh chuyên cần
   attendance?: 'view' | 'edit';
+  // Báo cáo & Thống kê
+  reports?: 'view' | 'edit';
+  // Quản lý lớp học
+  classes?: 'view' | 'edit';
+  // Quản lý năm học
+  schoolYears?: 'view' | 'edit';
+  // Quản lý tài khoản & phân quyền
+  accounts?: 'view' | 'edit';
+  // Cài đặt hệ thống
+  systemConfig?: 'view' | 'edit';
 }
 
 export interface UserAccount {
@@ -91,6 +103,7 @@ export interface UserAccount {
   password?: string;
   role: 'admin' | 'teacher' | 'subject_teacher' | 'staff';
   teacherType?: 'gvcn' | 'gvbm';
+  adminPermissionType?: 'full' | 'readonly'; // 'full': Toàn quyền, 'readonly': Khóa chỉnh sửa (Chỉ xem full & Xuất dữ liệu)
   fullName: string;
   homeroomClasses?: string[];
   subjectClasses?: string[];

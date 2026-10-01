@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Users, UserX, Clock, TrendingUp, Calendar, BarChart2, BookOpen, CheckCircle, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, Edit2, AlertCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { Users, UserX, Clock, Calendar, BookOpen, CheckCircle, Check, AlertCircle } from 'lucide-react';
 import { Student, SchoolClass, sortClasses } from '../data';
 import AbsentLateDetailTable from './AbsentLateDetailTable';
+import AttendanceRateTable from './AttendanceRateTable';
 
 interface AdminDashboardProps {
   classes: SchoolClass[];
@@ -22,8 +22,6 @@ export default function AdminDashboard({
   onNavigateToAttendance
 }: AdminDashboardProps) {
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
-  const [sortField, setSortField] = useState<'name' | 'homeroomTeacher' | 'total' | 'present' | 'absent' | 'late' | 'rate'>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
   // Lấy danh sách lớp thuộc năm học đang chọn, lọc bỏ lớp đã xóa và sắp xếp chuẩn theo quản lý lớp học
@@ -163,57 +161,6 @@ export default function AdminDashboard({
       presentPercent 
     };
   }, [classStats, currentStudents, currentClasses, selectedDate, selectedGrade]);
-
-  // Filtered classes based on selectedGrade tab
-  const filteredClassStats = useMemo(() => {
-    if (selectedGrade === 'all') return classStats;
-    return classStats.filter(c => {
-      const match = (c.name || '').match(/^(\d+)/);
-      return match ? match[1] === selectedGrade : c.name.startsWith(selectedGrade);
-    });
-  }, [classStats, selectedGrade]);
-
-  // Sắp xếp danh sách chi tiết: mặc định theo chuẩn quản lý lớp học (sortClasses), hoặc theo cột người dùng chọn
-  const sortedClassStats = useMemo(() => {
-    const list = [...filteredClassStats];
-    if (sortField === 'name') {
-      const sorted = sortClasses(list);
-      return sortDirection === 'asc' ? sorted : sorted.reverse();
-    }
-    return list.sort((a, b) => {
-      const valA = a[sortField];
-      const valB = b[sortField];
-      if (typeof valA === 'string' && typeof valB === 'string') {
-        const cmp = valA.localeCompare(valB, 'vi', { numeric: true });
-        return sortDirection === 'asc' ? cmp : -cmp;
-      }
-      const numA = typeof valA === 'number' ? valA : 0;
-      const numB = typeof valB === 'number' ? valB : 0;
-      return sortDirection === 'asc' ? numA - numB : numB - numA;
-    });
-  }, [filteredClassStats, sortField, sortDirection]);
-
-  const handleSort = (field: typeof sortField) => {
-    if (sortField === field) {
-      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDirection(field === 'name' ? 'asc' : 'desc');
-    }
-  };
-
-  const totalAbsentInFilter = useMemo(() => {
-    return sortedClassStats.reduce((acc, c) => acc + c.absent, 0);
-  }, [sortedClassStats]);
-
-  // Weekly data
-  const weeklyData = [
-    { week: 'Tuần 1', present: 98, absent: 1, late: 1 },
-    { week: 'Tuần 2', present: 96, absent: 2, late: 2 },
-    { week: 'Tuần 3', present: 99, absent: 1, late: 0 },
-    { week: 'Tuần 4', present: 97, absent: 2, late: 1 },
-    { week: 'Tuần 5 (Hiện tại)', present: todayStats.presentPercent, absent: 100 - todayStats.presentPercent, late: 0 }
-  ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto bg-[#f0fdfa]/40 min-h-full">
@@ -371,308 +318,6 @@ export default function AdminDashboard({
         </div>
       )}
 
-      {/* Two Column Layout: Table & Chart */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Bảng thống kê chi tiết từng lớp (7 cols) */}
-        <div className="xl:col-span-7 bg-white rounded-[20px] border border-teal-100 shadow-sm shadow-teal-500/5 overflow-hidden flex flex-col">
-          <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 shrink-0 bg-slate-50/50">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-teal-600" />
-              <h3 className="text-sm sm:text-base font-bold text-slate-800 uppercase tracking-wide">
-                BẢNG THỐNG KÊ CHI TIẾT TỪNG LỚP
-              </h3>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
-                {sortedClassStats.length} lớp
-              </span>
-            </div>
-            <span className="text-xs text-slate-400 italic">
-              Cuộn dọc để xem thêm • Nhấp "Điểm danh" để chuyển đến lớp
-            </span>
-          </div>
-
-          <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
-            <table className="w-full text-left text-xs sm:text-sm border-collapse">
-              <thead className="bg-[#0f766e] text-white uppercase text-[10px] sm:text-[11px] font-bold tracking-wider shadow-xs select-none sticky top-0 z-10">
-                <tr>
-                  <th 
-                    onClick={() => handleSort('name')}
-                    className="px-3 sm:px-4 py-3 sm:py-3.5 text-white whitespace-nowrap cursor-pointer hover:bg-teal-800 transition-colors"
-                    title="Nhấp để sắp xếp theo lớp"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span>LỚP</span>
-                      {sortField === 'name' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-teal-200" /> : <ArrowDown className="w-3.5 h-3.5 text-teal-200" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 text-teal-300/60" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    onClick={() => handleSort('homeroomTeacher')}
-                    className="hidden md:table-cell px-4 py-3.5 text-white whitespace-nowrap cursor-pointer hover:bg-teal-800 transition-colors"
-                    title="Nhấp để sắp xếp theo GVCN"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span>GVCN</span>
-                      {sortField === 'homeroomTeacher' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-teal-200" /> : <ArrowDown className="w-3.5 h-3.5 text-teal-200" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 text-teal-300/60" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    onClick={() => handleSort('total')}
-                    className="px-2 sm:px-3 py-3 sm:py-3.5 text-center text-white whitespace-nowrap cursor-pointer hover:bg-teal-800 transition-colors"
-                    title="Nhấp để sắp xếp theo sĩ số"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>SĨ SỐ</span>
-                      {sortField === 'total' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-teal-200" /> : <ArrowDown className="w-3.5 h-3.5 text-teal-200" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 text-teal-300/60" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    onClick={() => handleSort('present')}
-                    className="px-2 sm:px-3 py-3 sm:py-3.5 text-center text-white whitespace-nowrap cursor-pointer hover:bg-teal-800 transition-colors"
-                    title="Nhấp để sắp xếp theo số lượng có mặt"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>CÓ MẶT</span>
-                      {sortField === 'present' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-teal-200" /> : <ArrowDown className="w-3.5 h-3.5 text-teal-200" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 text-teal-300/60" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    onClick={() => handleSort('absent')}
-                    className="hidden sm:table-cell px-3 py-3.5 text-center text-white whitespace-nowrap cursor-pointer hover:bg-teal-800 transition-colors"
-                    title="Nhấp để sắp xếp theo số lượng vắng"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>VẮNG</span>
-                      {sortField === 'absent' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-teal-200" /> : <ArrowDown className="w-3.5 h-3.5 text-teal-200" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 text-teal-300/60" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    onClick={() => handleSort('late')}
-                    className="hidden lg:table-cell px-3 py-3.5 text-center text-white whitespace-nowrap cursor-pointer hover:bg-teal-800 transition-colors"
-                    title="Nhấp để sắp xếp theo số lượng đi trễ"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>ĐI TRỄ</span>
-                      {sortField === 'late' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-teal-200" /> : <ArrowDown className="w-3.5 h-3.5 text-teal-200" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 text-teal-300/60" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    onClick={() => handleSort('rate')}
-                    className="hidden sm:table-cell px-3 py-3.5 text-center text-white whitespace-nowrap cursor-pointer hover:bg-teal-800 transition-colors"
-                    title="Nhấp để sắp xếp theo tỷ lệ chuyên cần"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>CHUYÊN CẦN</span>
-                      {sortField === 'rate' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-teal-200" /> : <ArrowDown className="w-3.5 h-3.5 text-teal-200" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 text-teal-300/60" />
-                      )}
-                    </div>
-                  </th>
-                  <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 text-center text-white whitespace-nowrap">THAO TÁC</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {sortedClassStats.length > 0 ? (
-                  sortedClassStats.map(c => {
-                    const isSelected = selectedClassId === c.id;
-                    return (
-                      <tr 
-                        key={c.id} 
-                        className={`hover:bg-[#f0fdfa]/40 transition-colors ${
-                          isSelected ? 'bg-teal-50/30' : ''
-                        }`}
-                      >
-                        <td className="px-3 sm:px-4 py-2.5 sm:py-3.5">
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className="font-bold text-slate-800 text-xs sm:text-sm">{c.name}</span>
-                            {isSelected && (
-                              <span className="bg-teal-gradient text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full shadow-xs shrink-0">
-                                Đang chọn
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="hidden md:table-cell px-4 py-3.5 text-xs text-slate-600 font-medium">
-                          {c.homeroomTeacher}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2.5 sm:py-3.5 text-center text-slate-800 font-semibold text-xs sm:text-sm">
-                          {c.total}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2.5 sm:py-3.5 text-center text-xs sm:text-sm">
-                          {c.isAttendanceDone ? (
-                            <span className="text-teal-700 font-bold">{c.present}</span>
-                          ) : (
-                            <span className="text-slate-400 font-normal">0</span>
-                          )}
-                        </td>
-                        <td className="hidden sm:table-cell px-3 py-3.5 text-center">
-                          {c.isAttendanceDone ? (
-                            c.absent > 0 ? (
-                              <span className="inline-block px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100">
-                                {c.absent}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                                <CheckCircle className="w-3.5 h-3.5 text-teal-500" />
-                                Không
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-slate-400 text-xs">-</span>
-                          )}
-                        </td>
-                        <td className="hidden lg:table-cell px-3 py-3.5 text-center text-slate-400">
-                          {c.isAttendanceDone ? (
-                            c.late > 0 ? (
-                              <span className="text-amber-600 font-bold">{c.late}</span>
-                            ) : (
-                              '0'
-                            )
-                          ) : (
-                            <span className="text-slate-400 text-xs">-</span>
-                          )}
-                        </td>
-                        <td className="hidden sm:table-cell px-3 py-3.5 text-center">
-                          {c.isAttendanceDone ? (
-                            <span className="font-bold text-slate-800">{c.rate}%</span>
-                          ) : (
-                            <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                              Chưa ĐD
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-2.5 sm:px-4 py-2.5 sm:py-3.5 text-center whitespace-nowrap">
-                          {c.isAttendanceDone ? (
-                            <div className="inline-flex items-center justify-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-                                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Đã điểm danh</span>
-                              </span>
-                              <button
-                                onClick={() => {
-                                  onSelectClass?.(c.id);
-                                  onNavigateToAttendance?.(c.id);
-                                }}
-                                className="p-1 text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors cursor-pointer"
-                                title="Xem lại hoặc chỉnh sửa điểm danh lớp này"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                onSelectClass?.(c.id);
-                                onNavigateToAttendance?.(c.id);
-                              }}
-                              className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-teal-500 text-white bg-teal-600 hover:bg-teal-700 font-bold text-xs transition-colors shadow-xs cursor-pointer"
-                            >
-                              <span>Điểm danh</span>
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-8 text-center text-slate-400">
-                      Không có lớp nào thuộc khối đang chọn.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Right Column: Biểu đồ so sánh các lớp (5 cols) */}
-        <div className="xl:col-span-5 bg-white rounded-[20px] border border-teal-100 shadow-sm shadow-teal-500/5 p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-teal-600" />
-                <h3 className="text-sm sm:text-base font-bold text-slate-800 uppercase tracking-wide">
-                  BIỂU ĐỒ SO SÁNH CÁC LỚP
-                </h3>
-              </div>
-              <span className="text-xs text-slate-400">Có mặt vs Vắng mặt</span>
-            </div>
-
-            <div className="h-[280px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={sortedClassStats} 
-                  margin={{ top: 15, right: 10, left: -20, bottom: 10 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E6FFFA" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#64748B', fontSize: 11 }} 
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#64748B', fontSize: 11 }} 
-                    allowDecimals={false}
-                  />
-                  <RechartsTooltip 
-                    cursor={{ fill: '#f0fdfa' }}
-                    contentStyle={{ 
-                      borderRadius: '16px', 
-                      border: '1px solid #ccfbf1', 
-                      boxShadow: '0 4px 12px rgba(13,148,136,0.1)' 
-                    }}
-                  />
-                  <Legend 
-                    iconType="circle" 
-                    wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} 
-                  />
-                  <Bar dataKey="present" name="Có mặt" fill="#0d9488" radius={[4, 4, 0, 0]} barSize={18} />
-                  <Bar dataKey="absent" name="Vắng mặt" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={18} />
-                  <Bar dataKey="late" name="Đi trễ" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={18} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>
-              Khối đang lọc: <strong className="text-teal-700 font-semibold">{selectedGrade === 'all' ? 'Toàn trường' : `Khối ${selectedGrade}`}</strong>
-            </span>
-            <span>
-              Tổng vắng: <strong className="text-rose-600 font-semibold">{totalAbsentInFilter} HS</strong>
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Detail Table of Absent & Late Students for Selected Date */}
       <AbsentLateDetailTable
         students={currentStudents}
@@ -687,36 +332,15 @@ export default function AdminDashboard({
         description="Thống kê chi tiết các trường hợp vắng có phép, vắng không phép và đi trễ trên toàn trường kèm SĐT liên hệ phụ huynh"
       />
 
-      {/* Trend Analysis Section (Đưa xuống dưới cùng theo yêu cầu) */}
-      <div className="bg-white rounded-[20px] border border-teal-100 shadow-sm shadow-teal-500/5 p-5 sm:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-teal-600" />
-            <h3 className="text-sm sm:text-base font-bold text-slate-800 tracking-tight">
-              Biểu đồ xu hướng chuyên cần (5 Tuần gần nhất)
-            </h3>
-          </div>
-        </div>
-        <div className="h-[200px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorTeal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0d9488" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#0d9488" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E6FFFA" />
-              <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 11 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 11 }} domain={[80, 100]} />
-              <RechartsTooltip 
-                contentStyle={{ borderRadius: '16px', border: '1px solid #ccfbf1', boxShadow: '0 4px 12px rgba(13,148,136,0.1)' }}
-              />
-              <Area type="monotone" dataKey="present" name="Tỷ lệ có mặt (%)" stroke="#0d9488" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTeal)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      {/* BẢNG THỐNG KÊ & ĐỐI CHIẾU TỈ LỆ CHUYÊN CẦN (THEO NGÀY, TUẦN, THÁNG) */}
+      <AttendanceRateTable
+        mode="admin"
+        classes={currentClasses}
+        students={currentStudents}
+        schoolYearName={schoolYearId}
+        onSelectClass={onSelectClass}
+        onNavigateToAttendance={onNavigateToAttendance}
+      />
     </div>
   );
 }
