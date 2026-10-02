@@ -8,6 +8,7 @@ export interface AppSettings {
   loginBackground: string;
   appName: string;
   disablePortal?: boolean;
+  specialSubjects?: string;
 }
 
 export const defaultSettings: AppSettings = {
@@ -18,7 +19,8 @@ export const defaultSettings: AppSettings = {
   loginLogo: "",
   loginBackground: "",
   appName: "Trường Phổ Thông Duy Tân",
-  disablePortal: false
+  disablePortal: false,
+  specialSubjects: "Math, Tiếng Anh"
 };
 
 export interface GamificationData {
@@ -625,7 +627,28 @@ export const computeMonthlyGamificationData = (student: Student, month: number):
   return monthlyData;
 };
 
-export const getSubjectName = (key: keyof Grades) => {
+export const getSubjectName = (key: keyof Grades, isEn: boolean = false) => {
+  if (isEn) {
+    const enNames: Record<keyof Grades, string> = {
+      math: 'Mathematics',
+      physics: 'Physics',
+      chemistry: 'Chemistry',
+      biology: 'Biology',
+      it: 'Informatics',
+      technology: 'Technology',
+      localEdu: 'Local Education',
+      literature: 'Literature',
+      history: 'History',
+      geography: 'Geography',
+      civicEdu: 'Civic & Legal Edu',
+      foreignLanguage: 'Foreign Language',
+      pe: 'Physical Education',
+      defense: 'Defense & Security',
+      japanese: 'Japanese',
+      experiential: 'Experiential Activities'
+    };
+    return enNames[key] || key;
+  }
   const names: Record<keyof Grades, string> = {
     math: 'Toán',
     physics: 'Vật lí',
@@ -644,7 +667,7 @@ export const getSubjectName = (key: keyof Grades) => {
     japanese: 'Tiếng Nhật',
     experiential: 'HĐTN, HN'
   };
-  return names[key];
+  return names[key] || key;
 };
 
 

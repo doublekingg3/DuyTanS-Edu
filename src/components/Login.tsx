@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, BookOpen, UserCircle, GraduationCap, Lock, User, ArrowLeft, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
 import { SchoolClass, Student, UserAccount, AppSettings } from '../data';
 import SchoolLogo from './SchoolLogo';
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function Login({ 
   classes, 
@@ -166,7 +167,10 @@ export default function Login({
 
       <div className="w-full max-w-lg relative z-10 mx-auto lg:mx-0 lg:ml-auto lg:mr-[100px]">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-        <div className="bg-indigo-600 p-8 text-center text-white">
+        <div className="bg-indigo-600 p-8 text-center text-white relative">
+          <div className="absolute top-4 right-4 z-10">
+            <LanguageSwitcher />
+          </div>
           {settings?.loginLogo ? (
             <img src={settings.loginLogo} alt="Logo" className="w-24 h-24 rounded-full object-cover mx-auto mb-4 drop-shadow-md border-4 border-white/20" />
           ) : (

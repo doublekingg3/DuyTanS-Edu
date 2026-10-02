@@ -52,7 +52,7 @@ const translations: Record<Language, Record<string, string>> = {
     today: 'Hôm nay',
     week: 'Tuần',
     posts: 'bài',
-    studentCode: 'Mã',
+    studentCodeShort: 'Mã',
     studentYear: 'Học sinh niên khóa',
     academicYear: 'Năm học',
 
@@ -165,7 +165,182 @@ const translations: Record<Language, Record<string, string>> = {
     resetPasswordSuccess: 'Đã đặt lại mật khẩu thành công!',
     resetAllClassPasswords: 'Reset tất cả về 12345678',
     resetAllClassConfirm: 'Bạn có chắc chắn muốn đặt lại mật khẩu cho tất cả học sinh đang chọn về mặc định 12345678 không?',
-    resetAllSuccess: 'Đã đặt lại mật khẩu thành công cho'
+    resetAllSuccess: 'Đã đặt lại mật khẩu thành công cho',
+
+    // Student Profile (ParentView)
+    personalInfoTitle: 'Thông tin hồ sơ học sinh',
+    personalInfoSubtitle: 'Phụ huynh có thể kiểm tra và cập nhật thông tin con em mình bên dưới',
+    editInfoBtn: 'Chỉnh sửa thông tin',
+    editInfoTitle: 'Chỉnh sửa thông tin học sinh',
+    editInfoSubtitle: 'Thông tin sẽ được cập nhật trực tiếp vào hệ thống',
+    personalNotice: 'Quý phụ huynh có thể rà soát và chỉnh sửa thông tin nhân thân (Họ tên, ngày sinh, nơi sinh, địa chỉ, số điện thoại, CCCD/Định danh). Sau khi bấm Lưu thay đổi, dữ liệu sẽ được cập nhật trực tiếp lên hệ thống trường học.',
+    sectionPersonalInfo: 'Thông tin nhân thân',
+    sectionAddressContact: 'Nơi ở & Liên hệ',
+    sectionAcademicIdentity: 'Học vụ & Định danh',
+    fullName: 'Họ và Tên',
+    gender: 'Giới tính',
+    male: 'Nam',
+    female: 'Nữ',
+    dob: 'Ngày sinh',
+    pob: 'Nơi sinh',
+    ethnicity: 'Dân tộc',
+    nationality: 'Quốc tịch',
+    religion: 'Tôn giáo',
+    currentAddress: 'Chỗ ở hiện nay',
+    parentPhone: 'Số điện thoại phụ huynh',
+    parentName: 'Họ tên phụ huynh / Giám hộ',
+    studentCode: 'Mã học sinh',
+    classStt: 'STT trong lớp',
+    enrolledClass: 'Lớp đang theo học',
+    citizenId: 'Số CCCD / Định danh',
+    notUpdated: 'Chưa cập nhật',
+    saveChanges: 'Lưu thay đổi',
+    cancelChanges: 'Hủy bỏ',
+    saving: 'Đang lưu...',
+
+    // Attendance (Parent & Teacher)
+    totalDays: 'Tổng số ngày',
+    present: 'Có mặt',
+    absent: 'Vắng mặt',
+    lateOrLeaveEarly: 'Đi trễ / Xin về',
+    attendanceHistoryTitle: 'Lịch sử điểm danh & Hoạt động của học sinh',
+    noAttendanceData: 'Chưa có dữ liệu điểm danh.',
+    reason: 'Lý do',
+    excusedAbsent: 'Có phép',
+    unexcusedAbsent: 'Không phép',
+    leaveEarly: 'Xin về sớm',
+    late: 'Đi trễ',
+    attendanceTitle: 'Điểm danh',
+    todayLabel: 'Hôm nay',
+    previousDay: 'Ngày hôm trước',
+    nextDay: 'Ngày tiếp theo',
+    allPresentBtn: 'Tất cả có mặt',
+    exportExcelBtn: 'Xuất Excel',
+    unmarked: 'Chưa điểm danh',
+    searchStudentPlaceholder: 'Tìm học sinh theo tên, mã...',
+    colStt: 'STT',
+    colStudent: 'Học sinh',
+    colCode: 'Mã HS',
+    colStatus: 'Trạng thái',
+    colReasonNote: 'Lý do / Ghi chú',
+    colActions: 'Thao tác',
+    saveReason: 'Lưu lý do',
+    enrollmentCount: 'Sĩ số',
+    attendanceRateShort: 'Tỉ lệ',
+    homeroomShort: 'GVCN',
+    subjectTeacherShort: 'GV Bộ môn',
+    dailyAttendanceManage: 'Quản lý chuyên cần • Chạm nhanh để điểm danh trực tiếp',
+
+    // Timetable & Schedule
+    noScheduleTitle: 'Chưa có thời khoá biểu',
+    noScheduleSubtitle: 'Nhà trường hoặc giáo viên chưa cập nhật thời khoá biểu cho lớp.',
+    periodAndTime: 'TIẾT / THỜI GIAN',
+    morningSession: 'BUỔI SÁNG',
+    afternoonSession: 'BUỔI CHIỀU',
+    lunchBreak: 'NGHỈ TRƯA',
+    morningBreakText: 'Ra chơi & Thư giãn giữa các tiết học sáng (20 phút)',
+    afternoonBreakText: 'Ra chơi & Thư giãn giữa các tiết học chiều (20 phút)',
+    period: 'Tiết',
+    dayMon: 'Thứ 2',
+    dayTue: 'Thứ 3',
+    dayWed: 'Thứ 4',
+    dayThu: 'Thứ 5',
+    dayFri: 'Thứ 6',
+    daySat: 'Thứ 7',
+    daySun: 'Chủ nhật',
+
+    // Boarding Lunch Menu
+    lunchMenuTitle: 'Thực đơn Bán trú Dinh dưỡng',
+    lunchMenuSubtitle: 'Theo dõi khẩu phần ăn & thực đơn từng ngày trong tuần của học sinh',
+    weekLabel: 'Tuần',
+    noDishesListed: 'Chưa có món ăn cập nhật cho ngày này',
+    dessert: 'Tráng miệng',
+
+    // Weekly Plan
+    weeklyPlanTitle: 'Kế hoạch công tác & Tuần học',
+    weeklyPlanSubtitle: 'Theo dõi nhiệm vụ, lịch học và nội dung trọng tâm từng tuần',
+    dutyTeamLabel: 'Đội trực tuần / Phụ trách',
+    keyTasksLabel: 'Nội dung công việc trọng tâm trong tuần',
+    noTasksListed: 'Chưa có nội dung công việc nào được lưu cho tuần này.',
+    selectWeek: 'Chọn Tuần',
+    viewingWeek: 'Đang xem',
+    weekList: 'Danh sách Tuần',
+    approvedStatus: 'Đã duyệt',
+    draftStatus: 'Bản nháp',
+    emptyStatus: 'Chưa cập nhật',
+
+    // Parent Lunch Menu
+    dailyLunchNutrition: 'Dinh dưỡng hàng ngày của học sinh tại trường',
+    downloadPdf: 'Tải về (.pdf)',
+    selectMenuWeek: 'Chọn tuần',
+    approvedOfficial: 'Đã duyệt chính thức',
+    updatingMenu: 'Đang cập nhật',
+    timePeriod: 'Thời gian',
+    from: 'từ',
+    to: 'đến',
+
+    // Schedule badges
+    morningBreakLabel: '4 Tiết học • Ra chơi 9:05 - 9:25',
+    afternoonBreakLabel: '4 Tiết học • Ra chơi 14:48 - 15:08',
+    morningRecessText: 'Ra chơi: 9:05 - 9:25 (20 phút)',
+    afternoonRecessText: 'Ra chơi: 14:48 - 15:08 (20 phút)',
+    regularClassBadge: 'Chính khóa',
+
+    // News & Categories
+    catAll: 'Tất cả',
+    catStem: 'Học tập & STEM',
+    catSports: 'Thể dục thể thao',
+    catArts: 'Văn nghệ & Hội trại',
+    catExtracurricular: 'Ngoại khóa & Trải nghiệm',
+    catEvents: 'Lễ hội & Sự kiện',
+    newsSectionTitle: 'Bản Tin & Phong Trào Hoạt Động Duy Tân',
+    newsSectionSubtitle: 'Cập nhật tin tức học tập, văn thể mỹ, trải nghiệm ngoại khóa dành cho Phụ Huynh & Học Sinh',
+    readArticle: 'Đọc bài viết',
+    viewAlbum: 'Xem album ảnh',
+    share: 'Chia sẻ',
+    like: 'Thích',
+    liked: 'Đã thích',
+    copiedLink: 'Đã sao chép liên kết bài viết!',
+    articleDetails: 'Xem bài viết chi tiết',
+    postedOn: 'Đăng ngày',
+    authorBy: 'Tác giả',
+    photosCount: 'ảnh',
+    postsCount: 'bài đăng',
+
+    // Login screen
+    loginWelcome: 'CỔNG THÔNG TIN ĐIỆN TỬ',
+    loginSubtitle: 'Hệ thống quản lý học sinh và sổ liên lạc điện tử DuyTan Student360',
+    loginParentTab: 'Phụ huynh',
+    loginTeacherTab: 'Giáo viên',
+    loginAdminTab: 'Ban Giám Hiệu',
+    loginStaffTab: 'Giáo vụ',
+    loginMediaTab: 'Truyền thông',
+    studentIdField: 'Mã định danh học sinh',
+    studentIdHint: 'Nhập mã học sinh (VD: DT001 hoặc 672-001) in trên thẻ HS hoặc do GVCN cấp',
+    usernameField: 'Tên đăng nhập / Email',
+    passwordField: 'Mật khẩu',
+    rememberMeCheckbox: 'Ghi nhớ đăng nhập trên thiết bị này',
+    loginButton: 'Đăng nhập vào hệ thống',
+    backToPortalBtn: 'Quay lại Trang Chủ Portal',
+    clearSavedCreds: 'Xóa thông tin đã lưu',
+    parentLoginNotice: 'Quý phụ huynh đăng nhập bằng Mã định danh học sinh (Ví dụ: DT001) và Mật khẩu (Mặc định: 12345678).',
+    loginErrorStudentCodeEmpty: 'Vui lòng nhập mã học sinh.',
+    loginErrorInvalidStudent: 'Không tìm thấy học sinh với mã này trên hệ thống.',
+    loginErrorIncorrectPassword: 'Mật khẩu không chính xác. Mật khẩu mặc định là 12345678.',
+    loginErrorCredentialsEmpty: 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.',
+    loginErrorInvalidTeacher: 'Tài khoản hoặc mật khẩu không chính xác.',
+
+    // Change Password Modal
+    changePasswordHeader: 'Đổi Mật Khẩu Tài Khoản',
+    changePasswordDesc: 'Cập nhật mật khẩu bảo mật mới cho tài khoản',
+    currentPassword: 'Mật khẩu hiện tại',
+    newPassword: 'Mật khẩu mới',
+    confirmNewPassword: 'Xác nhận mật khẩu mới',
+    confirmPasswordMismatch: 'Mật khẩu mới không khớp.',
+    passwordLengthNotice: 'Mật khẩu mới phải có ít nhất 8 ký tự.',
+    oldPasswordMismatch: 'Mật khẩu cũ không chính xác.',
+    changePasswordSuccessMsg: 'Đổi mật khẩu thành công!',
+    studentPasswordChangedSuccess: 'Đổi mật khẩu tài khoản học sinh thành công!'
   },
   en: {
     // Top Bar & App Header
@@ -207,7 +382,7 @@ const translations: Record<Language, Record<string, string>> = {
     today: 'Today',
     week: 'Week',
     posts: 'posts',
-    studentCode: 'Code',
+    studentCodeShort: 'Code',
     studentYear: 'Academic Year',
     academicYear: 'School Year',
 
@@ -320,9 +495,310 @@ const translations: Record<Language, Record<string, string>> = {
     resetPasswordSuccess: 'Password reset successfully!',
     resetAllClassPasswords: 'Reset all to 12345678',
     resetAllClassConfirm: 'Are you sure you want to reset password for all selected students to default 12345678?',
-    resetAllSuccess: 'Successfully reset passwords for'
+    resetAllSuccess: 'Successfully reset passwords for',
+
+    // Student Profile (ParentView)
+    personalInfoTitle: 'Student Profile Information',
+    personalInfoSubtitle: 'Parents can verify and update their child\'s information below',
+    editInfoBtn: 'Edit Information',
+    editInfoTitle: 'Edit Student Information',
+    editInfoSubtitle: 'Information will be directly updated in the system',
+    personalNotice: 'Parents can review and edit personal info (Full name, DOB, POB, address, phone, Citizen ID). After clicking Save Changes, data is updated directly in the school system.',
+    sectionPersonalInfo: 'Personal Information',
+    sectionAddressContact: 'Address & Contact',
+    sectionAcademicIdentity: 'Academic & Identity',
+    fullName: 'Full Name',
+    gender: 'Gender',
+    male: 'Male',
+    female: 'Female',
+    dob: 'Date of Birth',
+    pob: 'Place of Birth',
+    ethnicity: 'Ethnicity',
+    nationality: 'Nationality',
+    religion: 'Religion',
+    currentAddress: 'Current Address',
+    parentPhone: 'Parent Phone Number',
+    parentName: 'Parent / Guardian Name',
+    studentCode: 'Student ID',
+    classStt: 'Class Roll No.',
+    enrolledClass: 'Enrolled Class',
+    citizenId: 'Citizen ID / National ID',
+    notUpdated: 'Not updated',
+    saveChanges: 'Save Changes',
+    cancelChanges: 'Cancel',
+    saving: 'Saving...',
+
+    // Attendance (Parent & Teacher)
+    totalDays: 'Total Days',
+    present: 'Present',
+    absent: 'Absent',
+    lateOrLeaveEarly: 'Late / Early Dismissal',
+    attendanceHistoryTitle: 'Student Attendance History & Records',
+    noAttendanceData: 'No attendance records available yet.',
+    reason: 'Reason',
+    excusedAbsent: 'Excused',
+    unexcusedAbsent: 'Unexcused',
+    leaveEarly: 'Left Early',
+    late: 'Late',
+    attendanceTitle: 'Attendance',
+    todayLabel: 'Today',
+    previousDay: 'Previous Day',
+    nextDay: 'Next Day',
+    allPresentBtn: 'Mark All Present',
+    exportExcelBtn: 'Export Excel',
+    unmarked: 'Unmarked',
+    searchStudentPlaceholder: 'Search student by name, ID...',
+    colStt: 'No.',
+    colStudent: 'Student',
+    colCode: 'Student ID',
+    colStatus: 'Status',
+    colReasonNote: 'Reason / Note',
+    colActions: 'Actions',
+    saveReason: 'Save Reason',
+    enrollmentCount: 'Enrollment',
+    attendanceRateShort: 'Rate',
+    homeroomShort: 'Homeroom',
+    subjectTeacherShort: 'Subject Tch',
+    dailyAttendanceManage: 'Daily Attendance • Quick tap to record attendance',
+
+    // Timetable & Schedule
+    noScheduleTitle: 'No Timetable Available',
+    noScheduleSubtitle: 'The school or teacher has not published the timetable for this class yet.',
+    periodAndTime: 'PERIOD / TIME',
+    morningSession: 'MORNING',
+    afternoonSession: 'AFTERNOON',
+    lunchBreak: 'LUNCH BREAK',
+    morningBreakText: 'Morning recess & break between classes (20 mins)',
+    afternoonBreakText: 'Afternoon recess & break between classes (20 mins)',
+    period: 'Period',
+    dayMon: 'Mon',
+    dayTue: 'Tue',
+    dayWed: 'Wed',
+    dayThu: 'Thu',
+    dayFri: 'Fri',
+    daySat: 'Sat',
+    daySun: 'Sun',
+
+    // Boarding Lunch Menu
+    lunchMenuTitle: 'Nutritional Boarding Lunch Menu',
+    lunchMenuSubtitle: 'Track daily meals & nutritional menus for students throughout the week',
+    weekLabel: 'Week',
+    noDishesListed: 'No dishes updated for this day',
+    dessert: 'Dessert',
+
+    // Weekly Plan
+    weeklyPlanTitle: 'Weekly Academic Plan & Tasks',
+    weeklyPlanSubtitle: 'Track assignments, schedule and key focus tasks each week',
+    dutyTeamLabel: 'On-Duty Team / In-Charge',
+    keyTasksLabel: 'Key Focus Tasks of the Week',
+    noTasksListed: 'No focus tasks recorded for this week yet.',
+    selectWeek: 'Select Week',
+    viewingWeek: 'Viewing',
+    weekList: 'School Weeks',
+    approvedStatus: 'Approved',
+    draftStatus: 'Draft',
+    emptyStatus: 'Pending',
+
+    // Parent Lunch Menu
+    dailyLunchNutrition: 'Daily nutritional meal plan for boarding students',
+    downloadPdf: 'Download (.pdf)',
+    selectMenuWeek: 'Select Week',
+    approvedOfficial: 'Officially Approved',
+    updatingMenu: 'Updating',
+    timePeriod: 'Duration',
+    from: 'from',
+    to: 'to',
+
+    // Schedule badges
+    morningBreakLabel: '4 Periods • Recess 9:05 - 9:25',
+    afternoonBreakLabel: '4 Periods • Recess 14:48 - 15:08',
+    morningRecessText: 'Recess: 9:05 - 9:25 (20 mins)',
+    afternoonRecessText: 'Recess: 14:48 - 15:08 (20 mins)',
+    regularClassBadge: 'Regular',
+
+    // News & Categories
+    catAll: 'All',
+    catStem: 'Academics & STEM',
+    catSports: 'Sports & Athletics',
+    catArts: 'Arts & Cultural',
+    catExtracurricular: 'Extracurricular & Tours',
+    catEvents: 'Events & Ceremonies',
+    newsSectionTitle: 'Duy Tan School News & Activities',
+    newsSectionSubtitle: 'Latest updates on academic achievements, extracurriculars, arts and campus life',
+    readArticle: 'Read Article',
+    viewAlbum: 'View Album',
+    share: 'Share',
+    like: 'Like',
+    liked: 'Liked',
+    copiedLink: 'Article link copied to clipboard!',
+    articleDetails: 'Article Details',
+    postedOn: 'Published on',
+    authorBy: 'Author',
+    photosCount: 'photos',
+    postsCount: 'posts',
+
+    // Login screen
+    loginWelcome: 'ELECTRONIC SCHOOL PORTAL',
+    loginSubtitle: 'DuyTan Student360 Student Management & Electronic Contact Book',
+    loginParentTab: 'Parent',
+    loginTeacherTab: 'Teacher',
+    loginAdminTab: 'School Board',
+    loginStaffTab: 'Staff',
+    loginMediaTab: 'Media',
+    studentIdField: 'Student Identification ID',
+    studentIdHint: 'Enter student code (e.g. DT001 or 672-001) from student ID card or homeroom teacher',
+    usernameField: 'Username / Email',
+    passwordField: 'Password',
+    rememberMeCheckbox: 'Remember sign-in on this device',
+    loginButton: 'Sign In to System',
+    backToPortalBtn: 'Back to Portal Homepage',
+    clearSavedCreds: 'Clear saved credentials',
+    parentLoginNotice: 'Parents sign in using Student ID (e.g. DT001) and Password (Default: 12345678).',
+    loginErrorStudentCodeEmpty: 'Please enter student ID.',
+    loginErrorInvalidStudent: 'Student ID not found in system.',
+    loginErrorIncorrectPassword: 'Password is incorrect. Default password is 12345678.',
+    loginErrorCredentialsEmpty: 'Please enter both username and password.',
+    loginErrorInvalidTeacher: 'Invalid username or password.',
+
+    // Change Password Modal
+    changePasswordHeader: 'Change Account Password',
+    changePasswordDesc: 'Update a new secure password for your account',
+    currentPassword: 'Current Password',
+    newPassword: 'New Password',
+    confirmNewPassword: 'Confirm New Password',
+    confirmPasswordMismatch: 'New passwords do not match.',
+    passwordLengthNotice: 'New password must be at least 8 characters long.',
+    oldPasswordMismatch: 'Current password is incorrect.',
+    changePasswordSuccessMsg: 'Password changed successfully!',
+    studentPasswordChangedSuccess: 'Student account password updated successfully!'
   }
 };
+
+export function translateCategory(catId: string, isEn: boolean): string {
+  if (!isEn) {
+    const viMap: Record<string, string> = {
+      'all': 'Tất cả',
+      'stem': 'Học tập & STEM',
+      'sports': 'Thể dục thể thao',
+      'arts': 'Văn nghệ & Hội trại',
+      'extracurricular': 'Ngoại khóa & Trải nghiệm',
+      'events': 'Lễ hội & Sự kiện'
+    };
+    return viMap[catId] || catId;
+  }
+  const enMap: Record<string, string> = {
+    'all': 'All',
+    'stem': 'Academics & STEM',
+    'sports': 'Sports & Athletics',
+    'arts': 'Arts & Cultural',
+    'extracurricular': 'Extracurricular & Tours',
+    'events': 'Events & Ceremonies'
+  };
+  return enMap[catId] || catId;
+}
+
+export function translateDish(dish: string, isEn: boolean): string {
+  if (!isEn || !dish) return dish;
+  const map: Record<string, string> = {
+    'Cơm trắng, Thịt kho trứng': 'Steamed rice, Braised pork with eggs',
+    'Canh bí đỏ thịt bằm': 'Pumpkin soup with minced pork',
+    'Tráng miệng: Dưa hấu': 'Dessert: Watermelon',
+    'Bún bò xào': 'Stir-fried beef noodles',
+    'Canh cải ngọt tôm': 'Bok choy soup with shrimp',
+    'Tráng miệng: Chuối': 'Dessert: Banana',
+    'Cơm trắng, Gà ram sả ớt': 'Steamed rice, Lemongrass chili braised chicken',
+    'Canh chua cá lóc': 'Sweet and sour snakehead fish soup',
+    'Tráng miệng: Thanh long': 'Dessert: Dragon fruit',
+    'Phở gà': 'Chicken Pho noodle soup',
+    'Tráng miệng: Sữa chua': 'Dessert: Yogurt',
+    'Cơm chiên Dương Châu': 'Yangzhou fried rice',
+    'Canh súp rau củ': 'Vegetable soup',
+    'Tráng miệng: Bánh flan': 'Dessert: Caramel flan',
+    'Cơm dinh dưỡng': 'Nutritious lunch portion'
+  };
+  return map[dish] || dish;
+}
+
+export function translateSubject(subject: string, isEn: boolean): string {
+  if (!isEn || !subject) return subject;
+  const s = subject.trim();
+  const map: Record<string, string> = {
+    'Toán': 'Mathematics',
+    'Toán học': 'Mathematics',
+    'Vật lí': 'Physics',
+    'Vật lý': 'Physics',
+    'Hóa học': 'Chemistry',
+    'Hóa': 'Chemistry',
+    'Sinh học': 'Biology',
+    'Sinh': 'Biology',
+    'Tin học': 'Informatics',
+    'Tin': 'Informatics',
+    'Công nghệ': 'Technology',
+    'GD địa phương': 'Local Education',
+    'Giáo dục địa phương': 'Local Education',
+    'Ngữ Văn': 'Literature',
+    'Ngữ văn': 'Literature',
+    'Văn': 'Literature',
+    'Lịch sử': 'History',
+    'Sử': 'History',
+    'Địa lý': 'Geography',
+    'Địa lí': 'Geography',
+    'Địa': 'Geography',
+    'GDKT & PL': 'Civic & Legal Edu',
+    'GDCD': 'Civic Education',
+    'Ngoại ngữ': 'Foreign Language',
+    'Tiếng Anh': 'English',
+    'Anh': 'English',
+    'Tiếng Nhật': 'Japanese',
+    'GD thể chất': 'Physical Education',
+    'Thể dục': 'Physical Education',
+    'GDQP AN': 'Defense & Security',
+    'GDQP-AN': 'Defense & Security',
+    'GDQP': 'Defense & Security',
+    'HĐTN, HN': 'Experiential Activities',
+    'HĐTN': 'Experiential Activities',
+    'Chào cờ': 'Flag Saluting',
+    'SHL': 'Class Meeting',
+    'Sinh hoạt lớp': 'Class Meeting',
+    'Nghỉ': 'Off',
+    'Nghỉ trưa': 'Lunch Break'
+  };
+  return map[s] || s;
+}
+
+export function translateDay(day: string, isEn: boolean): string {
+  if (!isEn || !day) return day;
+  const map: Record<string, string> = {
+    'Thứ 2': 'Monday',
+    'Thứ 3': 'Tuesday',
+    'Thứ 4': 'Wednesday',
+    'Thứ 5': 'Thursday',
+    'Thứ 6': 'Friday',
+    'Thứ 7': 'Saturday',
+    'Chủ nhật': 'Sunday'
+  };
+  return map[day] || day;
+}
+
+export function translateStatus(status: string, isEn: boolean): string {
+  if (!isEn || !status) return status;
+  const map: Record<string, string> = {
+    'present': 'Present',
+    'absent': 'Absent',
+    'late': 'Late',
+    'leave_early': 'Left Early',
+    'Có mặt': 'Present',
+    'Vắng mặt': 'Absent',
+    'Vắng': 'Absent',
+    'Đi trễ': 'Late',
+    'Về sớm': 'Left Early',
+    'Xin về sớm': 'Left Early',
+    'Có phép': 'Excused',
+    'Không phép': 'Unexcused',
+    'Chưa điểm danh': 'Unmarked'
+  };
+  return map[status] || status;
+}
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 

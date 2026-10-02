@@ -8,6 +8,7 @@ import Portal from './components/Portal';
 import SchoolLogo from './components/SchoolLogo';
 import { GraduationCap, Calendar, Users, UserCircle, Shield, Loader2, LogOut, ArrowLeft, KeyRound, Bell, ChevronDown, Globe } from 'lucide-react';
 import ChangePasswordModal from './components/ChangePasswordModal';
+import LanguageSwitcher from './components/LanguageSwitcher';
 import { useLanguage } from './contexts/LanguageContext';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from './lib/firebase';
@@ -615,38 +616,8 @@ export default function App() {
 
         {/* Right: Language Switcher & User Profile Dropdown */}
         <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
-          {/* Language Switcher (Replaces Notification Bell) */}
-          <div 
-            className="flex items-center p-0.5 rounded-xl bg-teal-50/90 border border-teal-200/80 shadow-2xs shrink-0" 
-            title={t('switchLanguage')}
-          >
-            <button
-              type="button"
-              onClick={() => setLanguage('vi')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
-                language === 'vi'
-                  ? 'bg-white text-teal-900 shadow-xs ring-1 ring-teal-200/50'
-                  : 'text-slate-500 hover:text-teal-700'
-              }`}
-              title="Tiếng Việt"
-            >
-              <span className="text-xs leading-none">🇻🇳</span>
-              <span className="text-[11px] font-black tracking-wide">VN</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setLanguage('en')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
-                language === 'en'
-                  ? 'bg-white text-teal-900 shadow-xs ring-1 ring-teal-200/50'
-                  : 'text-slate-500 hover:text-teal-700'
-              }`}
-              title="English"
-            >
-              <span className="text-xs leading-none">🇬🇧</span>
-              <span className="text-[11px] font-black tracking-wide">EN</span>
-            </button>
-          </div>
+          {/* Language Switcher */}
+          <LanguageSwitcher />
 
           {/* User Menu Button */}
           <div className="relative shrink-0" ref={userMenuRef}>

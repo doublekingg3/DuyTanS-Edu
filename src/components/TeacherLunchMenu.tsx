@@ -1,12 +1,43 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { useAlert } from '../contexts/AlertContext';
-import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Download, Save, Plus, Trash2, Upload, X, RotateCcw, Eye, Shield } from 'lucide-react';
+import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Download, Save, Plus, Trash2, Upload, X, RotateCcw, Eye, Shield, Camera, Image as ImageIcon } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { generateSchoolWeeks, getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
 import { canUserEdit } from '../lib/permissions';
 import { UserAccount } from '../data';
+
+const compressImage = (file: File, maxWidth = 1024, quality = 0.8): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(img.src);
+        }
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
 
 // Helper function to format various Excel date formats (Date, serial number, DD/MM/YYYY, YYYY-MM-DD)
 const formatExcelDate = (val: any): string => {
@@ -64,7 +95,50 @@ export default function TeacherLunchMenu({
   const [selectedWeek, setSelectedWeek] = useState(() => realtimeCurrentWeek);
   const { showAlert, showConfirm } = useAlert();
   const [loading, setLoading] = useState(true);
-  const [menus, setMenus] = useState<{day: string, dishes: string[]}[]>([]);
+  const [menus, setMenus] = useState<{day: string, dishes: string[], imageUrl?: string}[]>([]);
+  const [previewImage, setPreviewImage] = useState<{ title: string; imageUrl: string; dishes?: string[] } | null>(null);
+
+  const handleDayImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetDay: string) => {
+    if (!canEdit) {
+      showAlert('Bạn chỉ có quyền xem thực đơn, không có quyền thay đổi.', 'error');
+      return;
+    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const dataUrl = await compressImage(file, 1024, 0.8);
+      const newMenus = menus.map(m => {
+        if (m.day === targetDay) {
+          return { ...m, imageUrl: dataUrl };
+        }
+        return m;
+      });
+      setMenus(newMenus);
+      await saveToFirebase(selectedWeek, { menus: newMenus });
+      showAlert(`Đã tải lên hình ảnh món ăn thực tế cho ${targetDay}`, 'success');
+    } catch (err) {
+      console.error(err);
+      showAlert('Lỗi khi tải ảnh lên. Vui lòng thử lại.', 'error');
+    }
+    e.target.value = '';
+  };
+
+  const handleRemoveDayImage = async (targetDay: string) => {
+    if (!canEdit) return;
+    const confirmed = await showConfirm(`Bạn có chắc chắn muốn xóa hình ảnh món ăn của ${targetDay}?`);
+    if (!confirmed) return;
+    const newMenus = menus.map(m => {
+      if (m.day === targetDay) {
+        const { imageUrl, ...rest } = m;
+        return rest;
+      }
+      return m;
+    });
+    setMenus(newMenus);
+    await saveToFirebase(selectedWeek, { menus: newMenus });
+    showAlert(`Đã xóa hình ảnh món ăn ${targetDay}`, 'info');
+  };
 
   useEffect(() => {
     // We use a global document for lunch menus for the whole school
@@ -550,8 +624,57 @@ export default function TeacherLunchMenu({
                 const dayMenu = menus.find(m => m.day === day) || { day, dishes: ['', ''] };
                 const dayIdx = menus.findIndex(m => m.day === day);
                 return (
-                  <div key={idx} className="flex flex-col sm:flex-row items-start gap-4 p-4 border border-slate-200 rounded-xl bg-white hover:border-amber-300 transition-colors">
-                    <div className="w-24 h-10 mt-1 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold shrink-0 border border-amber-100">{day}</div>
+                  <div key={idx} className="flex flex-col sm:flex-row items-start gap-4 p-4 border border-slate-200 rounded-2xl bg-white hover:border-amber-300 transition-colors shadow-2xs">
+                    <div className="flex flex-col items-center gap-2 shrink-0 w-full sm:w-28">
+                      <div className="w-full h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center font-bold text-sm border border-amber-200/80 shadow-2xs">
+                        {day}
+                      </div>
+
+                      {/* Single Image Upload Button */}
+                      {canEdit && (
+                        <label className="w-full px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-300/80 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-2xs">
+                          <Camera className="w-3.5 h-3.5 text-amber-600" />
+                          <span>{dayMenu.imageUrl ? 'Đổi hình ảnh' : 'Upload hình ảnh'}</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => handleDayImageUpload(e, day)} 
+                          />
+                        </label>
+                      )}
+
+                      {/* Image Thumbnail Preview */}
+                      {dayMenu.imageUrl && (
+                        <div className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm shrink-0">
+                          <img 
+                            src={dayMenu.imageUrl} 
+                            alt={`Món ăn ${day}`} 
+                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" 
+                            onClick={() => setPreviewImage({ title: `Hình ảnh món ăn thực tế - ${day} (Tuần ${selectedWeek})`, imageUrl: dayMenu.imageUrl!, dishes: dayMenu.dishes })}
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => setPreviewImage({ title: `Hình ảnh món ăn thực tế - ${day} (Tuần ${selectedWeek})`, imageUrl: dayMenu.imageUrl!, dishes: dayMenu.dishes })}
+                            className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+                            title="Xem ảnh phóng to"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          {canEdit && (
+                            <button 
+                              type="button"
+                              onClick={() => handleRemoveDayImage(day)}
+                              className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition-colors shadow-xs"
+                              title="Xóa ảnh món ăn"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex-1 w-full space-y-2">
                        {canEdit ? (
                          <>
@@ -563,8 +686,10 @@ export default function TeacherLunchMenu({
                                   value={dish}
                                   onChange={(e) => {
                                     const newMenus = [...menus];
-                                    newMenus[dayIdx].dishes[dishIdx] = e.target.value;
-                                    setMenus(newMenus);
+                                    if (newMenus[dayIdx]) {
+                                      newMenus[dayIdx].dishes[dishIdx] = e.target.value;
+                                      setMenus(newMenus);
+                                    }
                                   }}
                                   onBlur={() => saveToFirebase(selectedWeek, { menus })}
                                   className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-medium text-slate-700"
@@ -572,9 +697,11 @@ export default function TeacherLunchMenu({
                                 <button 
                                   onClick={() => {
                                     const newMenus = [...menus];
-                                    newMenus[dayIdx].dishes.splice(dishIdx, 1);
-                                    setMenus(newMenus);
-                                    saveToFirebase(selectedWeek, { menus: newMenus });
+                                    if (newMenus[dayIdx]) {
+                                      newMenus[dayIdx].dishes.splice(dishIdx, 1);
+                                      setMenus(newMenus);
+                                      saveToFirebase(selectedWeek, { menus: newMenus });
+                                    }
                                   }}
                                   className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
                                 >
@@ -585,9 +712,11 @@ export default function TeacherLunchMenu({
                            <button 
                              onClick={() => {
                                const newMenus = [...menus];
-                               newMenus[dayIdx].dishes.push('');
-                               setMenus(newMenus);
-                               saveToFirebase(selectedWeek, { menus: newMenus });
+                               if (newMenus[dayIdx]) {
+                                 newMenus[dayIdx].dishes.push('');
+                                 setMenus(newMenus);
+                                 saveToFirebase(selectedWeek, { menus: newMenus });
+                               }
                              }}
                              className="text-sm font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2 py-1.5 rounded-md transition-colors flex items-center gap-1"
                            >
@@ -621,6 +750,47 @@ export default function TeacherLunchMenu({
           </div>
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn" onClick={() => setPreviewImage(null)}>
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+              <h3 className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Utensils className="w-5 h-5 text-amber-500" />
+                <span>{previewImage.title}</span>
+              </h3>
+              <button 
+                onClick={() => setPreviewImage(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto flex flex-col items-center justify-center p-2 bg-slate-50 rounded-2xl border border-slate-100 mb-3">
+              <img 
+                src={previewImage.imageUrl} 
+                alt={previewImage.title} 
+                className="max-h-[60vh] w-auto object-contain rounded-2xl shadow-md border border-slate-200"
+              />
+            </div>
+
+            {previewImage.dishes && previewImage.dishes.filter(d => d.trim()).length > 0 && (
+              <div className="bg-amber-50/80 p-3 rounded-2xl border border-amber-200/80">
+                <p className="text-xs font-bold text-amber-900 mb-1">Thực đơn chi tiết:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {previewImage.dishes.filter(d => d.trim()).map((dish, dIdx) => (
+                    <span key={dIdx} className="px-2.5 py-0.5 bg-white text-amber-900 text-xs font-medium rounded-lg border border-amber-200 shadow-2xs">
+                      {dish}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

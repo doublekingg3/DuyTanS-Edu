@@ -3,11 +3,26 @@ import { ClassSchedule, SchedulePeriod } from '../data';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Calendar, Sun, Sunset, Coffee } from 'lucide-react';
-import { normalizePeriodTime } from '../lib/scheduleConstants';
+import { normalizePeriodTime, checkIsSpecialSubject } from '../lib/scheduleConstants';
+import { useLanguage, translateSubject } from '../contexts/LanguageContext';
 
 export default function ParentSchedule({ classId }: { classId: string }) {
+  const { t, isEn } = useLanguage();
   const [schedule, setSchedule] = useState<ClassSchedule | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [specialSubjects, setSpecialSubjects] = useState<string>('Math, Tiếng Anh');
+
+  useEffect(() => {
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.specialSubjects !== undefined) {
+          setSpecialSubjects(data.specialSubjects || '');
+        }
+      }
+    }, (err) => console.error(err));
+    return () => unsubSettings();
+  }, []);
 
   useEffect(() => {
     if (!classId) { setIsLoading(false); return; }
@@ -44,20 +59,31 @@ export default function ParentSchedule({ classId }: { classId: string }) {
         <div className="w-16 h-16 bg-[#ccfbf1] rounded-full flex items-center justify-center mb-4 border border-[#5eead4]">
           <Calendar className="w-8 h-8 text-[#0f766e]" />
         </div>
-        <h3 className="text-xl font-bold font-display text-slate-800 mb-2">Chưa có thời khoá biểu</h3>
-        <p className="text-slate-500 text-sm">Nhà trường hoặc giáo viên chưa cập nhật thời khoá biểu cho lớp.</p>
+        <h3 className="text-xl font-bold font-display text-slate-800 mb-2">{t('noScheduleTitle')}</h3>
+        <p className="text-slate-500 text-sm">{t('noScheduleSubtitle')}</p>
       </div>
     );
   }
 
   const days = [
-    { key: 't2', label: 'Thứ 2' },
-    { key: 't3', label: 'Thứ 3' },
-    { key: 't4', label: 'Thứ 4' },
-    { key: 't5', label: 'Thứ 5' },
-    { key: 't6', label: 'Thứ 6' },
-    { key: 't7', label: 'Thứ 7' },
+    { key: 't2', label: isEn ? 'Mon' : 'Thứ 2', fullLabel: isEn ? 'Monday' : 'Thứ 2' },
+    { key: 't3', label: isEn ? 'Tue' : 'Thứ 3', fullLabel: isEn ? 'Tuesday' : 'Thứ 3' },
+    { key: 't4', label: isEn ? 'Wed' : 'Thứ 4', fullLabel: isEn ? 'Wednesday' : 'Thứ 4' },
+    { key: 't5', label: isEn ? 'Thu' : 'Thứ 5', fullLabel: isEn ? 'Thursday' : 'Thứ 5' },
+    { key: 't6', label: isEn ? 'Fri' : 'Thứ 6', fullLabel: isEn ? 'Friday' : 'Thứ 6' },
+    { key: 't7', label: isEn ? 'Sat' : 'Thứ 7', fullLabel: isEn ? 'Saturday' : 'Thứ 7' },
   ];
+
+  const formatPeriodName = (name: string) => {
+    if (!isEn) return name;
+    if (name.startsWith('Tiết ')) {
+      return name.replace('Tiết ', 'Period ');
+    }
+    if (name.includes('Ra chơi')) {
+      return 'Recess';
+    }
+    return name;
+  };
 
   // Group into morning & afternoon
   const morningList: { period: SchedulePeriod; originalIdx: number; norm: ReturnType<typeof normalizePeriodTime> }[] = [];
@@ -81,7 +107,7 @@ export default function ParentSchedule({ classId }: { classId: string }) {
             <thead className="bg-[#0f766e] text-white font-semibold">
               <tr>
                 <th className="px-4 py-3.5 text-white font-semibold w-52 whitespace-nowrap border-r border-teal-600/40 text-center">
-                  TIẾT / THỜI GIAN
+                  {t('periodAndTime')}
                 </th>
                 {days.map(day => (
                   <th key={day.key} className="px-4 py-3.5 text-white font-semibold text-center border-r border-teal-600/40 last:border-0 min-w-[120px]">
@@ -100,14 +126,14 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                         <Sun className="w-3.5 h-3.5" />
                       </div>
                       <span className="font-bold text-teal-900 text-xs sm:text-sm tracking-wide uppercase">
-                        BUỔI SÁNG
+                        {t('morningSession')}
                       </span>
                       <span className="text-teal-700 text-xs font-semibold">
                         (7:30 - 11:00)
                       </span>
                     </div>
                     <span className="text-[11px] font-bold text-teal-700 bg-white px-2.5 py-0.5 rounded-full border border-teal-200">
-                      4 Tiết học • Ra chơi 9:05 - 9:25
+                      {isEn ? '4 Periods • Recess 9:05 - 9:25' : '4 Tiết học • Ra chơi 9:05 - 9:25'}
                     </span>
                   </div>
                 </td>
@@ -122,13 +148,13 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                         <div className="flex items-center gap-2">
                           <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
                           <div>
-                            <div className="font-bold text-amber-900">{norm.name}</div>
+                            <div className="font-bold text-amber-900">{formatPeriodName(norm.name)}</div>
                             <div className="font-mono text-[11px] text-amber-700 font-semibold">{norm.timeRange}</div>
                           </div>
                         </div>
                       </td>
                       <td colSpan={6} className="px-4 py-2 text-center text-xs font-semibold text-amber-800 italic">
-                        ☕ Ra chơi & Thư giãn giữa các tiết học sáng (20 phút)
+                        ☕ {t('morningBreakText')}
                       </td>
                     </tr>
                   );
@@ -138,7 +164,7 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                   <tr key={`morning-${originalIdx}`} className="hover:bg-teal-50/40 transition-colors border-b border-teal-100/60">
                     <td className="px-4 py-3 border-r border-teal-100 bg-teal-50/20">
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-800 text-xs sm:text-sm">{norm.name}</span>
+                        <span className="font-bold text-slate-800 text-xs sm:text-sm">{formatPeriodName(norm.name)}</span>
                         <span className="inline-block mt-1 px-2 py-0.5 bg-white border border-teal-200 text-teal-900 text-[11px] font-mono font-bold rounded-md shadow-2xs w-fit">
                           {norm.timeRange}
                         </span>
@@ -146,14 +172,18 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                     </td>
                     {days.map(day => {
                       const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
+                      const translatedCell = translateSubject(cellVal, isEn);
+                      const isSpecial = checkIsSpecialSubject(cellVal, specialSubjects);
                       return (
                         <td key={day.key} className="px-2 sm:px-2.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
                           <div className={`w-full h-[38px] px-2 py-1.5 rounded-lg text-xs sm:text-sm font-bold border transition-colors flex items-center justify-center ${
-                            cellVal
-                              ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
-                              : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
+                            isSpecial
+                              ? 'bg-rose-500 text-white border-rose-600 font-black shadow-sm'
+                              : cellVal
+                                ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
+                                : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
                           }`}>
-                            <span className="truncate">{cellVal || '-'}</span>
+                            <span className="truncate">{translatedCell || '-'}</span>
                           </div>
                         </td>
                       );
@@ -166,9 +196,9 @@ export default function ParentSchedule({ classId }: { classId: string }) {
               <tr className="bg-[#0f766e] text-white shadow-xs border-y-2 border-teal-800 select-none">
                 <td colSpan={7} className="px-4 py-2.5 text-center">
                   <div className="flex items-center justify-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-300 animate-pulse shrink-0"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-300 shrink-0"></span>
                     <span className="font-extrabold text-sm sm:text-base tracking-wider uppercase text-white">
-                      NGHỈ TRƯA 11:00 - 13:15
+                      {t('lunchBreak')} 11:00 - 13:15
                     </span>
                   </div>
                 </td>
@@ -183,14 +213,14 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                         <Sunset className="w-3.5 h-3.5" />
                       </div>
                       <span className="font-bold text-teal-900 text-xs sm:text-sm tracking-wide uppercase">
-                        BUỔI CHIỀU
+                        {t('afternoonSession')}
                       </span>
                       <span className="text-teal-700 text-xs font-semibold">
                         (13:15 - 16:40)
                       </span>
                     </div>
                     <span className="text-[11px] font-bold text-teal-700 bg-white px-2.5 py-0.5 rounded-full border border-teal-200">
-                      4 Tiết học • Ra chơi 14:48 - 15:08
+                      {isEn ? '4 Periods • Recess 14:48 - 15:08' : '4 Tiết học • Ra chơi 14:48 - 15:08'}
                     </span>
                   </div>
                 </td>
@@ -205,13 +235,13 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                         <div className="flex items-center gap-2">
                           <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
                           <div>
-                            <div className="font-bold text-amber-900">{norm.name}</div>
+                            <div className="font-bold text-amber-900">{formatPeriodName(norm.name)}</div>
                             <div className="font-mono text-[11px] text-amber-700 font-semibold">{norm.timeRange}</div>
                           </div>
                         </div>
                       </td>
                       <td colSpan={6} className="px-4 py-2 text-center text-xs font-semibold text-amber-800 italic">
-                        ☕ Ra chơi & Thư giãn giữa các tiết học chiều (20 phút)
+                        ☕ {t('afternoonBreakText')}
                       </td>
                     </tr>
                   );
@@ -221,7 +251,7 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                   <tr key={`afternoon-${originalIdx}`} className="hover:bg-teal-50/40 transition-colors border-b border-teal-100/60">
                     <td className="px-4 py-3 border-r border-teal-100 bg-teal-50/20">
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-800 text-xs sm:text-sm">{norm.name}</span>
+                        <span className="font-bold text-slate-800 text-xs sm:text-sm">{formatPeriodName(norm.name)}</span>
                         <span className="inline-block mt-1 px-2 py-0.5 bg-white border border-teal-200 text-teal-900 text-[11px] font-mono font-bold rounded-md shadow-2xs w-fit">
                           {norm.timeRange}
                         </span>
@@ -229,14 +259,18 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                     </td>
                     {days.map(day => {
                       const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
+                      const translatedCell = translateSubject(cellVal, isEn);
+                      const isSpecial = checkIsSpecialSubject(cellVal, specialSubjects);
                       return (
                         <td key={day.key} className="px-2 sm:px-2.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
                           <div className={`w-full h-[38px] px-2 py-1.5 rounded-lg text-xs sm:text-sm font-bold border transition-colors flex items-center justify-center ${
-                            cellVal
-                              ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
-                              : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
+                            isSpecial
+                              ? 'bg-rose-500 text-white border-rose-600 font-black shadow-sm'
+                              : cellVal
+                                ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
+                                : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
                           }`}>
-                            <span className="truncate">{cellVal || '-'}</span>
+                            <span className="truncate">{translatedCell || '-'}</span>
                           </div>
                         </td>
                       );
@@ -261,8 +295,8 @@ export default function ParentSchedule({ classId }: { classId: string }) {
           return (
             <div key={day.key} className="bg-white rounded-2xl shadow-sm border border-teal-100 overflow-hidden">
               <div className="bg-[#0f766e] px-4 py-3 flex items-center justify-between text-white">
-                <h3 className="font-bold font-display text-base text-white">{day.label}</h3>
-                <span className="text-xs text-teal-100">Thời khóa biểu</span>
+                <h3 className="font-bold font-display text-base text-white">{day.fullLabel}</h3>
+                <span className="text-xs text-teal-100">{t('schedule')}</span>
               </div>
               
               <div className="p-3 space-y-3">
@@ -271,7 +305,7 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                     <div className="flex items-center gap-1.5 mb-2 px-1">
                       <Sun className="w-4 h-4 text-amber-500" />
                       <h4 className="font-bold text-teal-900 text-xs uppercase tracking-wider">
-                        Buổi Sáng (7:30 - 11:00)
+                        {t('morningSession')} (7:30 - 11:00)
                       </h4>
                     </div>
                     <div className="space-y-2 bg-slate-50/60 rounded-xl p-2 border border-teal-100/60">
@@ -280,21 +314,27 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                           return (
                             <div key={norm.id} className="p-2.5 bg-amber-50 rounded-lg text-amber-800 flex items-center gap-2 text-sm font-bold border border-amber-200">
                               <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
-                              <span>Ra chơi: 9:05 - 9:25 (20 phút)</span>
+                              <span>{isEn ? 'Recess: 9:05 - 9:25 (20 mins)' : 'Ra chơi: 9:05 - 9:25 (20 phút)'}</span>
                             </div>
                           );
                         }
                         const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
                         if (!cellVal) return null;
+                        const translatedCell = translateSubject(cellVal, isEn);
+                        const isSpecial = checkIsSpecialSubject(cellVal, specialSubjects);
 
                         return (
                           <div key={originalIdx} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3 border border-teal-100 shadow-2xs">
                             <div className="flex flex-col">
-                              <span className="font-bold text-slate-800 text-[14px]">{norm.name}</span>
+                              <span className="font-bold text-slate-800 text-[14px]">{formatPeriodName(norm.name)}</span>
                               <span className="text-[14px] font-mono font-bold text-teal-700">{norm.timeRange}</span>
                             </div>
-                            <div className="w-40 sm:w-48 h-[38px] bg-[#ccfbf1] px-2.5 py-1.5 rounded-lg border border-[#5eead4] text-teal-950 text-[14px] font-bold shadow-2xs flex items-center justify-center">
-                              <span className="truncate">{cellVal}</span>
+                            <div className={`w-40 sm:w-48 h-[38px] px-2.5 py-1.5 rounded-lg border text-[14px] font-bold shadow-2xs flex items-center justify-center ${
+                              isSpecial
+                                ? 'bg-rose-500 text-white border-rose-600 font-extrabold'
+                                : 'bg-[#ccfbf1] border-[#5eead4] text-teal-950'
+                            }`}>
+                              <span className="truncate">{translatedCell}</span>
                             </div>
                           </div>
                         );
@@ -305,8 +345,8 @@ export default function ParentSchedule({ classId }: { classId: string }) {
 
                 {/* Sáng - Chiều Divider on Mobile */}
                 <div className="bg-[#0f766e] text-white p-2.5 rounded-xl text-center text-[14px] font-extrabold tracking-wide flex items-center justify-center gap-2 shadow-2xs">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-300 animate-pulse shrink-0"></span>
-                  <span>NGHỈ TRƯA 11:00 - 13:15</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-300 shrink-0"></span>
+                  <span>{t('lunchBreak')} 11:00 - 13:15</span>
                 </div>
 
                 {afternoonDay.length > 0 && (
@@ -314,7 +354,7 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                     <div className="flex items-center gap-1.5 mb-2 px-1">
                       <Sunset className="w-4 h-4 text-blue-500" />
                       <h4 className="font-bold text-teal-900 text-xs uppercase tracking-wider">
-                        Buổi Chiều (13:15 - 16:40)
+                        {t('afternoonSession')} (13:15 - 16:40)
                       </h4>
                     </div>
                     <div className="space-y-2 bg-slate-50/60 rounded-xl p-2 border border-teal-100/60">
@@ -323,21 +363,27 @@ export default function ParentSchedule({ classId }: { classId: string }) {
                           return (
                             <div key={norm.id} className="p-2.5 bg-amber-50 rounded-lg text-amber-800 flex items-center gap-2 text-sm font-bold border border-amber-200">
                               <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
-                              <span>Ra chơi: 14:48 - 15:08 (20 phút)</span>
+                              <span>{isEn ? 'Recess: 14:48 - 15:08 (20 mins)' : 'Ra chơi: 14:48 - 15:08 (20 phút)'}</span>
                             </div>
                           );
                         }
                         const cellVal = String(period[day.key as keyof SchedulePeriod] || '').trim();
                         if (!cellVal) return null;
+                        const translatedCell = translateSubject(cellVal, isEn);
+                        const isSpecial = checkIsSpecialSubject(cellVal, specialSubjects);
 
                         return (
                           <div key={originalIdx} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3 border border-teal-100 shadow-2xs">
                             <div className="flex flex-col">
-                              <span className="font-bold text-slate-800 text-[14px]">{norm.name}</span>
+                              <span className="font-bold text-slate-800 text-[14px]">{formatPeriodName(norm.name)}</span>
                               <span className="text-[14px] font-mono font-bold text-teal-700">{norm.timeRange}</span>
                             </div>
-                            <div className="w-40 sm:w-48 h-[38px] bg-[#ccfbf1] px-2.5 py-1.5 rounded-lg border border-[#5eead4] text-teal-950 text-[14px] font-bold shadow-2xs flex items-center justify-center">
-                              <span className="truncate">{cellVal}</span>
+                            <div className={`w-40 sm:w-48 h-[38px] px-2.5 py-1.5 rounded-lg border text-[14px] font-bold shadow-2xs flex items-center justify-center ${
+                              isSpecial
+                                ? 'bg-rose-500 text-white border-rose-600 font-extrabold'
+                                : 'bg-[#ccfbf1] border-[#5eead4] text-teal-950'
+                            }`}>
+                              <span className="truncate">{translatedCell}</span>
                             </div>
                           </div>
                         );

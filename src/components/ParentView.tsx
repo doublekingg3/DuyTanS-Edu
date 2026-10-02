@@ -57,11 +57,12 @@ import {
   Award
 } from 'lucide-react';
 import ParentSchedule from './ParentSchedule';
+import { checkIsSpecialSubject } from '../lib/scheduleConstants';
 import ParentLunchMenu from './ParentLunchMenu';
 import ParentWeeklyPlan from './ParentWeeklyPlan';
 import SchoolNewsGallery from './SchoolNewsGallery';
 import { useAlert } from '../contexts/AlertContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useLanguage, translateSubject, translateDay, translateStatus, translateDish } from '../contexts/LanguageContext';
 import { db } from '../lib/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getCurrentSchoolWeek, generateSchoolWeeks } from '../lib/schoolWeekUtils';
@@ -100,6 +101,19 @@ export default function ParentView({
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [specialSubjects, setSpecialSubjects] = useState<string>('Math, Tiếng Anh');
+
+  useEffect(() => {
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.specialSubjects !== undefined) {
+          setSpecialSubjects(data.specialSubjects || '');
+        }
+      }
+    }, (err) => console.error(err));
+    return () => unsubSettings();
+  }, []);
 
   // Form state for student profile editing by parent
   const [editFormData, setEditFormData] = useState({
@@ -732,29 +746,42 @@ export default function ParentView({
                     {/* Danh sách tiết học hôm nay */}
                     {todayPeriods.length > 0 ? (
                       <div className="space-y-2">
-                        {todayPeriods.map((period, idx) => (
-                          <div 
-                            key={idx}
-                            className="flex items-center justify-between p-2.5 sm:p-3 bg-slate-50 hover:bg-blue-50/50 rounded-xl border border-slate-100 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-800 text-xs font-bold flex items-center justify-center shrink-0">
-                                {idx + 1}
-                              </span>
-                              <div>
-                                <p className="text-xs sm:text-sm font-bold text-slate-800">
-                                  {period.subject}
-                                </p>
-                                <p className="text-[11px] text-slate-400 font-medium">
-                                  {period.time}
-                                </p>
+                        {todayPeriods.map((period, idx) => {
+                          const isSpecial = checkIsSpecialSubject(period.subject, specialSubjects);
+                          return (
+                            <div 
+                              key={idx}
+                              className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-colors ${
+                                isSpecial
+                                  ? 'bg-rose-50 border-rose-200 text-rose-950 font-bold'
+                                  : 'bg-slate-50 hover:bg-blue-50/50 border-slate-100'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 ${
+                                  isSpecial ? 'bg-rose-500 text-white shadow-xs' : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {idx + 1}
+                                </span>
+                                <div>
+                                  <p className={`text-xs sm:text-sm font-bold ${isSpecial ? 'text-rose-900 font-extrabold' : 'text-slate-800'}`}>
+                                    {period.subject}
+                                  </p>
+                                  <p className={`text-[11px] font-medium ${isSpecial ? 'text-rose-600' : 'text-slate-400'}`}>
+                                    {period.time}
+                                  </p>
+                                </div>
                               </div>
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg shadow-2xs ${
+                                isSpecial 
+                                  ? 'bg-rose-500 text-white border border-rose-600'
+                                  : 'bg-white text-slate-600 border border-slate-200'
+                              }`}>
+                                {isSpecial ? (isEn ? 'Special' : 'Môn đặc thù') : (isEn ? 'Regular' : 'Chính khóa')}
+                              </span>
                             </div>
-                            <span className="text-[11px] font-semibold px-2 py-0.5 bg-white text-slate-600 border border-slate-200 rounded-lg shadow-2xs">
-                              {isEn ? 'Regular' : 'Chính khóa'}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="p-6 text-center bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
@@ -972,25 +999,24 @@ export default function ParentView({
           {activeTab === 'profile' && (
             <div className="space-y-6 animate-in fade-in duration-200">
               {!isEditingProfile ? (
-                /* View Mode */
                 <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                   <div className="p-5 sm:p-6 bg-gradient-to-r from-teal-50/80 to-teal-100/30 border-b border-teal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h3 className="font-bold font-display text-slate-800 text-base sm:text-lg flex items-center gap-2">
                         <IdCard className="w-5 h-5 text-[#0f766e]" />
-                        Thông tin hồ sơ học sinh
+                        {t('personalInfoTitle')}
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                        Phụ huynh có thể kiểm tra và cập nhật thông tin con em mình bên dưới
+                        {t('personalInfoSubtitle')}
                       </p>
                     </div>
 
                     <button
                       onClick={handleStartEditing}
-                      className="self-start sm:self-auto px-4 py-2 bg-[#0f766e] hover:bg-teal-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm"
+                      className="self-start sm:self-auto px-4 py-2 bg-[#0f766e] hover:bg-teal-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
                     >
                       <Edit className="w-4 h-4" />
-                      <span>Chỉnh sửa thông tin</span>
+                      <span>{t('editInfoBtn')}</span>
                     </button>
                   </div>
 
@@ -999,55 +1025,55 @@ export default function ParentView({
                     <div className="p-3.5 sm:p-4 bg-[#f0fdfa] border border-[#5eead4] rounded-xl flex items-start gap-3">
                       <Info className="w-5 h-5 text-[#0f766e] shrink-0 mt-0.5" />
                       <p className="text-xs sm:text-sm text-teal-950 leading-relaxed">
-                        Quý phụ huynh có thể rà soát và chỉnh sửa thông tin nhân thân (Họ tên, ngày sinh, nơi sinh, địa chỉ, số điện thoại, CCCD/Định danh). Sau khi bấm <strong>Lưu thay đổi</strong>, dữ liệu sẽ được cập nhật trực tiếp lên hệ thống trường học.
+                        {t('personalNotice')}
                       </p>
                     </div>
 
                     {/* Section 1: Thông tin nhân thân */}
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-display mb-3 flex items-center gap-2">
-                        <User className="w-3.5 h-3.5 text-[#0f766e]" /> Thông tin nhân thân
+                        <User className="w-3.5 h-3.5 text-[#0f766e]" /> {t('sectionPersonalInfo')}
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Họ và Tên</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('fullName')}</span>
                           <span className="font-bold text-slate-800 text-sm font-display">
                             {student.fullName}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Giới tính</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('gender')}</span>
                           <span className="font-medium text-slate-800 text-sm">
-                            {student.gender}
+                            {student.gender === 'Nam' ? (isEn ? 'Male' : 'Nam') : (isEn ? 'Female' : 'Nữ')}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Ngày sinh</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('dob')}</span>
                           <span className="font-medium text-slate-800 text-sm">
-                            {student.dob || 'Chưa cập nhật'}
+                            {student.dob || t('notUpdated')}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Dân tộc</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('ethnicity')}</span>
                           <span className="font-medium text-slate-800 text-sm">
                             {student.ethnicity || 'Kinh'}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Quốc tịch</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('nationality')}</span>
                           <span className="font-medium text-slate-800 text-sm">
                             {student.nationality || 'Việt Nam'}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Tôn giáo</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('religion')}</span>
                           <span className="font-medium text-slate-800 text-sm">
-                            {student.religion || 'Không'}
+                            {student.religion || (isEn ? 'None' : 'Không')}
                           </span>
                         </div>
                       </div>
@@ -1056,34 +1082,34 @@ export default function ParentView({
                     {/* Section 2: Nơi ở & Liên hệ */}
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-display mb-3 flex items-center gap-2">
-                        <MapPin className="w-3.5 h-3.5 text-[#0f766e]" /> Nơi ở & Liên hệ
+                        <MapPin className="w-3.5 h-3.5 text-[#0f766e]" /> {t('sectionAddressContact')}
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Nơi sinh</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('pob')}</span>
                           <span className="font-medium text-slate-800 text-sm">
-                            {student.pob || 'Chưa cập nhật'}
+                            {student.pob || t('notUpdated')}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 sm:col-span-2">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Chỗ ở hiện nay</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('currentAddress')}</span>
                           <span className="font-medium text-slate-800 text-sm">
-                            {student.currentAddress || 'Chưa cập nhật'}
+                            {student.currentAddress || t('notUpdated')}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Số điện thoại phụ huynh</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('parentPhone')}</span>
                           <span className="font-semibold text-slate-800 text-sm">
-                            {student.phone || student.parentPhone || 'Chưa cập nhật'}
+                            {student.phone || student.parentPhone || t('notUpdated')}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 sm:col-span-2">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Họ tên phụ huynh / Giám hộ</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('parentName')}</span>
                           <span className="font-medium text-slate-800 text-sm">
-                            {student.parentName || 'Chưa cập nhật'}
+                            {student.parentName || t('notUpdated')}
                           </span>
                         </div>
                       </div>
@@ -1092,34 +1118,34 @@ export default function ParentView({
                     {/* Section 3: Học vụ & Định danh */}
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-display mb-3 flex items-center gap-2">
-                        <CreditCard className="w-3.5 h-3.5 text-[#0f766e]" /> Học vụ & Định danh
+                        <CreditCard className="w-3.5 h-3.5 text-[#0f766e]" /> {t('sectionAcademicIdentity')}
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Mã học sinh</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('studentCode')}</span>
                           <span className="font-mono font-bold text-[#0f766e] bg-[#ccfbf1]/80 px-2 py-0.5 rounded text-xs">
-                            {student.code || 'Chưa có'}
+                            {student.code || (isEn ? 'None' : 'Chưa có')}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">STT trong lớp</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('classStt')}</span>
                           <span className="font-semibold text-slate-800 text-sm">
                             {student.stt || 1}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Lớp đang theo học</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('enrolledClass')}</span>
                           <span className="font-semibold text-[#0f766e] text-sm">
-                            Lớp {currentClass?.name || student.classId} {schoolYearName ? `(${schoolYearName})` : ''}
+                            {isEn ? 'Class' : 'Lớp'} {currentClass?.name || student.classId} {schoolYearName ? `(${schoolYearName})` : ''}
                           </span>
                         </div>
 
                         <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="text-[11px] font-medium text-slate-500 block mb-1">Số CCCD / Định danh</span>
+                          <span className="text-[11px] font-medium text-slate-500 block mb-1">{t('citizenId')}</span>
                           <span className="font-mono font-medium text-slate-800 text-sm">
-                            {student.citizenId || 'Chưa cập nhật'}
+                            {student.citizenId || t('notUpdated')}
                           </span>
                         </div>
                       </div>
@@ -1127,17 +1153,16 @@ export default function ParentView({
                   </div>
                 </div>
               ) : (
-                /* Edit Mode */
                 <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                   <div className="p-5 sm:p-6 bg-gradient-to-r from-teal-50 to-teal-100/60 border-b border-teal-200/80 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <Edit className="w-5 h-5 text-[#0f766e]" />
                       <div>
                         <h3 className="font-bold font-display text-slate-800 text-base sm:text-lg">
-                          Chỉnh sửa thông tin học sinh
+                          {t('editInfoTitle')}
                         </h3>
                         <p className="text-xs text-slate-500">
-                          Thông tin sẽ được cập nhật trực tiếp vào hệ thống
+                          {t('editInfoSubtitle')}
                         </p>
                       </div>
                     </div>
@@ -1152,23 +1177,25 @@ export default function ParentView({
                   <form onSubmit={handleSaveProfile} className="p-5 sm:p-6 space-y-5 sm:space-y-6">
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
                       <div>
-                        <span className="text-slate-400">Mã học sinh:</span>{' '}
+                        <span className="text-slate-400">{t('studentCode')}:</span>{' '}
                         <span className="font-mono font-bold text-teal-800">{student.code}</span>
                       </div>
                       <span>•</span>
                       <div>
-                        <span className="text-slate-400">Lớp:</span>{' '}
+                        <span className="text-slate-400">{t('class')}:</span>{' '}
                         <span className="font-bold text-teal-800">{currentClass?.name || student.classId}</span>
                       </div>
                       <span>•</span>
-                      <span className="text-slate-500 italic">Mã số và Lớp do nhà trường phân công cố định</span>
+                      <span className="text-slate-500 italic">
+                        {isEn ? 'Student ID & Class assigned by school administration' : 'Mã số và Lớp do nhà trường phân công cố định'}
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4">
                       {/* Họ và tên */}
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Họ và Tên học sinh <span className="text-rose-500">*</span>
+                          {t('fullName')} <span className="text-rose-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -1176,43 +1203,43 @@ export default function ParentView({
                           value={editFormData.fullName}
                           onChange={e => setEditFormData({ ...editFormData, fullName: e.target.value })}
                           className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e]"
-                          placeholder="Nhập họ và tên đầy đủ"
+                          placeholder={isEn ? 'Enter full name' : 'Nhập họ và tên đầy đủ'}
                         />
                       </div>
 
                       {/* Giới tính */}
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Giới tính
+                          {t('gender')}
                         </label>
                         <select
                           value={editFormData.gender}
                           onChange={e => setEditFormData({ ...editFormData, gender: e.target.value as 'Nam' | 'Nữ' })}
                           className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e]"
                         >
-                          <option value="Nam">Nam</option>
-                          <option value="Nữ">Nữ</option>
+                          <option value="Nam">{isEn ? 'Male' : 'Nam'}</option>
+                          <option value="Nữ">{isEn ? 'Female' : 'Nữ'}</option>
                         </select>
                       </div>
 
                       {/* Ngày sinh */}
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Ngày sinh
+                          {t('dob')}
                         </label>
                         <input
                           type="text"
                           value={editFormData.dob}
                           onChange={e => setEditFormData({ ...editFormData, dob: e.target.value })}
                           className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e]"
-                          placeholder="DD/MM/YYYY (VD: 20/04/2015)"
+                          placeholder={isEn ? 'YYYY-MM-DD or DD/MM/YYYY' : 'DD/MM/YYYY (VD: 20/04/2015)'}
                         />
                       </div>
 
                       {/* Dân tộc */}
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Dân tộc
+                          {t('ethnicity')}
                         </label>
                         <input
                           type="text"
@@ -1226,7 +1253,7 @@ export default function ParentView({
                       {/* Quốc tịch */}
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Quốc tịch
+                          {t('nationality')}
                         </label>
                         <input
                           type="text"
@@ -1240,7 +1267,7 @@ export default function ParentView({
                       {/* Tôn giáo */}
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Tôn giáo
+                          {t('religion')}
                         </label>
                         <input
                           type="text"
@@ -1254,35 +1281,35 @@ export default function ParentView({
                       {/* Nơi sinh */}
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Nơi sinh
+                          {t('pob')}
                         </label>
                         <input
                           type="text"
                           value={editFormData.pob}
                           onChange={e => setEditFormData({ ...editFormData, pob: e.target.value })}
                           className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e]"
-                          placeholder="VD: Tỉnh Đắk Lắk"
+                          placeholder={isEn ? 'Place of birth' : 'VD: Tỉnh Đắk Lắk'}
                         />
                       </div>
 
                       {/* Chỗ ở hiện nay */}
                       <div className="sm:col-span-3">
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Chỗ ở hiện nay
+                          {t('currentAddress')}
                         </label>
                         <input
                           type="text"
                           value={editFormData.currentAddress}
                           onChange={e => setEditFormData({ ...editFormData, currentAddress: e.target.value })}
                           className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e]"
-                          placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố..."
+                          placeholder={isEn ? 'Street, ward, district, city/province...' : 'Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố...'}
                         />
                       </div>
 
                       {/* Số điện thoại */}
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Số điện thoại phụ huynh
+                          {t('parentPhone')}
                         </label>
                         <input
                           type="tel"
@@ -1296,28 +1323,28 @@ export default function ParentView({
                       {/* Số định danh cá nhân / CCCD */}
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Số định danh cá nhân (CCCD)
+                          {t('citizenId')}
                         </label>
                         <input
                           type="text"
                           value={editFormData.citizenId}
                           onChange={e => setEditFormData({ ...editFormData, citizenId: e.target.value })}
                           className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e]"
-                          placeholder="12 chữ số CCCD / định danh"
+                          placeholder={isEn ? '12-digit Citizen ID' : '12 chữ số CCCD / định danh'}
                         />
                       </div>
 
                       {/* Họ tên phụ huynh */}
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Họ tên phụ huynh / Giám hộ
+                          {t('parentName')}
                         </label>
                         <input
                           type="text"
                           value={editFormData.parentName}
                           onChange={e => setEditFormData({ ...editFormData, parentName: e.target.value })}
                           className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e]"
-                          placeholder="Họ và tên cha / mẹ"
+                          placeholder={isEn ? 'Father / Mother full name' : 'Họ và tên cha / mẹ'}
                         />
                       </div>
                     </div>
@@ -1330,7 +1357,7 @@ export default function ParentView({
                         disabled={isSaving}
                         className="px-4 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-sm font-medium transition-colors text-center cursor-pointer"
                       >
-                        Hủy bỏ
+                        {t('cancelChanges')}
                       </button>
 
                       <button
@@ -1341,12 +1368,12 @@ export default function ParentView({
                         {isSaving ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Đang lưu...</span>
+                            <span>{t('saving')}</span>
                           </>
                         ) : (
                           <>
                             <Save className="w-4 h-4" />
-                            <span>Lưu thay đổi</span>
+                            <span>{t('saveChanges')}</span>
                           </>
                         )}
                       </button>
@@ -1398,19 +1425,19 @@ export default function ParentView({
               {/* Quick Stats on Mobile & Desktop */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                  <span className="text-xs font-medium text-slate-500 block mb-1">Tổng số ngày</span>
+                  <span className="text-xs font-medium text-slate-500 block mb-1">{t('totalDays')}</span>
                   <span className="text-2xl font-bold font-display text-slate-800">{attendanceStats.total}</span>
                 </div>
                 <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-100 shadow-2xs">
-                  <span className="text-xs font-medium text-emerald-700 block mb-1">Có mặt</span>
+                  <span className="text-xs font-medium text-emerald-700 block mb-1">{t('present')}</span>
                   <span className="text-2xl font-bold font-display text-emerald-700">{attendanceStats.present}</span>
                 </div>
                 <div className="p-4 bg-rose-50/70 rounded-2xl border border-rose-100 shadow-2xs">
-                  <span className="text-xs font-medium text-rose-700 block mb-1">Vắng mặt</span>
+                  <span className="text-xs font-medium text-rose-700 block mb-1">{t('absent')}</span>
                   <span className="text-2xl font-bold font-display text-rose-700">{attendanceStats.absent}</span>
                 </div>
                 <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-100 shadow-2xs">
-                  <span className="text-xs font-medium text-amber-700 block mb-1">Đi trễ / Xin về</span>
+                  <span className="text-xs font-medium text-amber-700 block mb-1">{t('lateOrLeaveEarly')}</span>
                   <span className="text-2xl font-bold font-display text-amber-700">{attendanceStats.late + attendanceStats.leaveEarly}</span>
                 </div>
               </div>
@@ -1419,12 +1446,12 @@ export default function ParentView({
                 <div className="p-5 bg-gradient-to-r from-teal-50/70 to-teal-100/30 border-b border-teal-100">
                   <h3 className="font-bold font-display text-slate-800 flex items-center gap-2 text-base sm:text-lg">
                     <CalendarCheck className="w-5 h-5 text-[#0f766e]" />
-                    Lịch sử điểm danh & Hoạt động của học sinh
+                    {t('attendanceHistoryTitle')}
                   </h3>
                 </div>
                 <div className="p-4 sm:p-6">
                   {!currentViewStudent.attendanceRecords || Object.keys(currentViewStudent.attendanceRecords).length === 0 ? (
-                    <div className="text-center text-slate-500 py-12">Chưa có dữ liệu điểm danh.</div>
+                    <div className="text-center text-slate-500 py-12">{t('noAttendanceData')}</div>
                   ) : (
                     <div className="space-y-3">
                       {Object.entries(currentViewStudent.attendanceRecords)
@@ -1433,16 +1460,18 @@ export default function ParentView({
                           <div key={date} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 rounded-2xl border border-slate-100 gap-3">
                             <div className="flex items-center gap-3.5">
                               <div className="w-12 h-12 bg-white rounded-xl shadow-2xs border border-slate-200 flex flex-col items-center justify-center shrink-0">
-                                <span className="text-[10px] font-medium text-slate-500 uppercase">{new Date(date).toLocaleDateString('vi-VN', { month: 'short' })}</span>
+                                <span className="text-[10px] font-medium text-slate-500 uppercase">
+                                  {new Date(date).toLocaleDateString(isEn ? 'en-US' : 'vi-VN', { month: 'short' })}
+                                </span>
                                 <span className="text-base font-bold text-[#0f766e] leading-none">{new Date(date).getDate()}</span>
                               </div>
                               <div>
                                 <div className="font-semibold text-slate-800 text-sm">
-                                  {new Date(date).toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                  {new Date(date).toLocaleDateString(isEn ? 'en-US' : 'vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                 </div>
                                 {record.reason && (
                                   <div className="text-xs text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-100 italic mt-1 inline-block">
-                                    <span className="font-medium not-italic text-slate-700 mr-1">Lý do:</span>
+                                    <span className="font-medium not-italic text-slate-700 mr-1">{t('reason')}:</span>
                                     {record.reason}
                                   </div>
                                 )}
@@ -1451,19 +1480,19 @@ export default function ParentView({
                             <div className="self-start sm:self-auto">
                               {record.status === 'present' ? (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 font-semibold rounded-lg text-xs border border-emerald-200">
-                                  <UserCheck className="w-3.5 h-3.5" /> Có mặt
+                                  <UserCheck className="w-3.5 h-3.5" /> {translateStatus('present', isEn)}
                                 </span>
                               ) : record.status === 'absent' ? (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 text-rose-700 font-semibold rounded-lg text-xs border border-rose-200">
-                                  <UserX className="w-3.5 h-3.5" /> Vắng mặt
+                                  <UserX className="w-3.5 h-3.5" /> {translateStatus('absent', isEn)}
                                 </span>
                               ) : record.status === 'leave_early' ? (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 font-semibold rounded-lg text-xs border border-amber-200">
-                                  Xin về sớm
+                                  {translateStatus('leave_early', isEn)}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 text-orange-700 font-semibold rounded-lg text-xs border border-orange-200">
-                                  <Clock className="w-3.5 h-3.5" /> Đi trễ
+                                  <Clock className="w-3.5 h-3.5" /> {translateStatus('late', isEn)}
                                 </span>
                               )}
                             </div>

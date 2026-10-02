@@ -13,7 +13,8 @@ import {
   STANDARD_SCHEDULE_PERIODS, 
   normalizePeriodTime, 
   generateScheduleCsvTemplate, 
-  createBlankStandardSchedule 
+  createBlankStandardSchedule,
+  checkIsSpecialSubject
 } from '../lib/scheduleConstants';
 
 interface TeacherScheduleProps {
@@ -38,9 +39,35 @@ export default function TeacherSchedule({
   const [isEditing, setIsEditing] = useState(false);
   const [editPeriods, setEditPeriods] = useState<SchedulePeriod[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [specialSubjects, setSpecialSubjects] = useState<string>('Math, Tiếng Anh');
+  const [isEditingSpecialConfig, setIsEditingSpecialConfig] = useState(false);
+  const [tempSpecialSubjects, setTempSpecialSubjects] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentClassName = className || classes.find(c => c.id === classId)?.name || 'lớp học';
+
+  useEffect(() => {
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.specialSubjects !== undefined) {
+          setSpecialSubjects(data.specialSubjects || '');
+        }
+      }
+    }, (err) => console.error(err));
+    return () => unsubSettings();
+  }, []);
+
+  const handleSaveSpecialSubjects = async () => {
+    try {
+      await setDoc(doc(db, 'settings', 'general'), { specialSubjects: tempSpecialSubjects }, { merge: true });
+      setSpecialSubjects(tempSpecialSubjects);
+      setIsEditingSpecialConfig(false);
+      showAlert('Đã lưu danh sách môn học đặc thù (Tô đỏ TKB)', 'success');
+    } catch (e) {
+      showAlert('Lỗi khi lưu cấu hình môn học đặc thù', 'error');
+    }
+  };
 
   useEffect(() => {
     if (!classId) { 
@@ -395,6 +422,69 @@ export default function TeacherSchedule({
         </div>
       </div>
 
+      {/* Môn đặc thù Banner / Admin Control Bar (Chỉ hiển thị cho Admin) */}
+      {role === 'admin' && (
+        <div className="mb-4 bg-rose-50/80 border border-rose-200/90 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+            <span className="text-xs sm:text-sm font-bold text-rose-900">
+              Môn học đặc thù (Tô đỏ TKB):
+            </span>
+            {specialSubjects.trim() ? (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {specialSubjects.split(/[,;]+/).map(s => s.trim()).filter(Boolean).map((subj, i) => (
+                  <span key={i} className="px-2.5 py-0.5 bg-rose-500 text-white font-extrabold text-xs rounded-lg shadow-2xs">
+                    {subj}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs text-slate-500 italic">Chưa thiết lập (các môn sẽ hiển thị bình thường)</span>
+            )}
+          </div>
+
+          <div className="w-full sm:w-auto flex items-center gap-2">
+            {!isEditingSpecialConfig ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setTempSpecialSubjects(specialSubjects);
+                  setIsEditingSpecialConfig(true);
+                }}
+                className="px-3 py-1.5 bg-white border border-rose-300 text-rose-700 hover:bg-rose-100 font-bold rounded-xl text-xs transition-colors shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Cấu hình môn đặc thù</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="text"
+                  value={tempSpecialSubjects}
+                  onChange={e => setTempSpecialSubjects(e.target.value)}
+                  placeholder="Ví dụ: Math, Tiếng Anh, Tin học"
+                  className="px-3 py-1 bg-white border border-rose-400 rounded-xl text-xs font-bold text-rose-900 focus:outline-none focus:ring-2 focus:ring-rose-500 w-full sm:w-64 shadow-2xs"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveSpecialSubjects}
+                  className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow-2xs whitespace-nowrap cursor-pointer"
+                >
+                  Lưu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingSpecialConfig(false)}
+                  className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded-xl text-xs font-medium hover:bg-slate-50 shadow-2xs cursor-pointer"
+                >
+                  Hủy
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
       {!displayPeriods || displayPeriods.length === 0 ? (
         <div className="flex-1 bg-white rounded-2xl border border-teal-100 shadow-sm flex flex-col items-center justify-center p-8 text-center min-h-[380px]">
@@ -524,6 +614,7 @@ export default function TeacherSchedule({
                       {/* Day Columns */}
                       {(['t2', 't3', 't4', 't5', 't6', 't7'] as const).map(dayKey => {
                         const cellVal = period[dayKey] || '';
+                        const isSpecial = checkIsSpecialSubject(cellVal, specialSubjects);
                         return (
                           <td key={dayKey} className="px-2 sm:px-2.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
                             {isEditing ? (
@@ -532,13 +623,19 @@ export default function TeacherSchedule({
                                 value={cellVal}
                                 onChange={e => handleCellChange(originalIdx, dayKey, e.target.value)}
                                 placeholder="Nhập môn..."
-                                className="w-full h-[38px] bg-white border border-teal-300 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-center shadow-2xs"
+                                className={`w-full h-[38px] rounded-lg px-2 py-1.5 text-xs sm:text-sm font-bold outline-none text-center shadow-2xs transition-all ${
+                                  isSpecial
+                                    ? 'bg-rose-50 border-2 border-rose-500 text-rose-900 font-extrabold focus:ring-2 focus:ring-rose-500'
+                                    : 'bg-white border border-teal-300 text-teal-950 focus:ring-2 focus:ring-teal-500 focus:border-teal-500'
+                                }`}
                               />
                             ) : (
                               <div className={`w-full h-[38px] px-2 py-1.5 rounded-lg text-xs sm:text-sm font-bold border transition-colors flex items-center justify-center ${
-                                cellVal.trim()
-                                  ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
-                                  : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
+                                isSpecial
+                                  ? 'bg-rose-500 text-white border-rose-600 font-black shadow-sm'
+                                  : cellVal.trim()
+                                    ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
+                                    : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
                               }`}>
                                 <span className="truncate">{cellVal.trim() || '-'}</span>
                               </div>
@@ -554,7 +651,7 @@ export default function TeacherSchedule({
                 <tr className="bg-[#0f766e] text-white shadow-xs border-y-2 border-teal-800 select-none">
                   <td colSpan={7} className="px-4 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-300 animate-pulse shrink-0"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-300 shrink-0"></span>
                       <span className="font-extrabold text-sm sm:text-base tracking-wider uppercase text-white">
                         NGHỈ TRƯA 11:00 - 13:15
                       </span>
@@ -620,6 +717,7 @@ export default function TeacherSchedule({
                       {/* Day Columns */}
                       {(['t2', 't3', 't4', 't5', 't6', 't7'] as const).map(dayKey => {
                         const cellVal = period[dayKey] || '';
+                        const isSpecial = checkIsSpecialSubject(cellVal, specialSubjects);
                         return (
                           <td key={dayKey} className="px-2 sm:px-2.5 py-2.5 border-r border-teal-100/70 last:border-0 text-center align-middle">
                             {isEditing ? (
@@ -628,13 +726,19 @@ export default function TeacherSchedule({
                                 value={cellVal}
                                 onChange={e => handleCellChange(originalIdx, dayKey, e.target.value)}
                                 placeholder="Nhập môn..."
-                                className="w-full h-[38px] bg-white border border-teal-300 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-center shadow-2xs"
+                                className={`w-full h-[38px] rounded-lg px-2 py-1.5 text-xs sm:text-sm font-bold outline-none text-center shadow-2xs transition-all ${
+                                  isSpecial
+                                    ? 'bg-rose-50 border-2 border-rose-500 text-rose-900 font-extrabold focus:ring-2 focus:ring-rose-500'
+                                    : 'bg-white border border-teal-300 text-teal-950 focus:ring-2 focus:ring-teal-500 focus:border-teal-500'
+                                }`}
                               />
                             ) : (
                               <div className={`w-full h-[38px] px-2 py-1.5 rounded-lg text-xs sm:text-sm font-bold border transition-colors flex items-center justify-center ${
-                                cellVal.trim()
-                                  ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
-                                  : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
+                                isSpecial
+                                  ? 'bg-rose-500 text-white border-rose-600 font-black shadow-sm'
+                                  : cellVal.trim()
+                                    ? 'bg-teal-50/90 border-teal-200/80 text-teal-950 shadow-2xs hover:bg-[#ccfbf1]'
+                                    : 'bg-slate-50/60 border-slate-200/60 text-slate-400'
                               }`}>
                                 <span className="truncate">{cellVal.trim() || '-'}</span>
                               </div>
@@ -689,6 +793,7 @@ export default function TeacherSchedule({
                                 );
                               }
                               const cellVal = period[dayKey] || '';
+                              const isSpecial = checkIsSpecialSubject(cellVal, specialSubjects);
                               return (
                                 <div key={originalIdx} className="p-3 flex items-center justify-between gap-3">
                                   <div className="shrink-0">
@@ -702,13 +807,19 @@ export default function TeacherSchedule({
                                         value={cellVal}
                                         onChange={e => handleCellChange(originalIdx, dayKey, e.target.value)}
                                         placeholder="Nhập môn..."
-                                        className="w-40 sm:w-48 bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-teal-950 text-center h-[38px] focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs"
+                                        className={`w-40 sm:w-48 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-center h-[38px] outline-none shadow-2xs transition-all ${
+                                          isSpecial
+                                            ? 'bg-rose-50 border-2 border-rose-500 text-rose-900 font-extrabold focus:ring-2 focus:ring-rose-500'
+                                            : 'bg-white border border-teal-300 text-teal-950 focus:ring-2 focus:ring-teal-500'
+                                        }`}
                                       />
                                     ) : (
                                       <div className={`w-40 sm:w-48 h-[38px] px-2.5 py-1.5 rounded-lg border text-[14px] font-bold flex items-center justify-center transition-colors ${
-                                        cellVal.trim()
-                                          ? 'bg-[#ccfbf1] border-[#5eead4] text-teal-950 shadow-2xs'
-                                          : 'bg-slate-50 border-slate-200 text-slate-400'
+                                        isSpecial
+                                          ? 'bg-rose-500 text-white border-rose-600 font-extrabold shadow-sm'
+                                          : cellVal.trim()
+                                            ? 'bg-[#ccfbf1] border-[#5eead4] text-teal-950 shadow-2xs'
+                                            : 'bg-slate-50 border-slate-200 text-slate-400'
                                       }`}>
                                         <span className="truncate">{cellVal.trim() || '-'}</span>
                                       </div>
@@ -723,7 +834,7 @@ export default function TeacherSchedule({
 
                       {/* Ngăn cách sáng chiều trên mobile */}
                       <div className="bg-[#0f766e] text-white p-2.5 rounded-xl text-center text-[14px] font-extrabold tracking-wide flex items-center justify-center gap-2 shadow-2xs">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-300 animate-pulse shrink-0"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-300 shrink-0"></span>
                         <span>NGHỈ TRƯA 11:00 - 13:15</span>
                       </div>
 
@@ -747,6 +858,7 @@ export default function TeacherSchedule({
                                 );
                               }
                               const cellVal = period[dayKey] || '';
+                              const isSpecial = checkIsSpecialSubject(cellVal, specialSubjects);
                               return (
                                 <div key={originalIdx} className="p-3 flex items-center justify-between gap-3">
                                   <div className="shrink-0">
@@ -760,13 +872,19 @@ export default function TeacherSchedule({
                                         value={cellVal}
                                         onChange={e => handleCellChange(originalIdx, dayKey, e.target.value)}
                                         placeholder="Nhập môn..."
-                                        className="w-40 sm:w-48 bg-white border border-teal-300 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-teal-950 text-center h-[38px] focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs"
+                                        className={`w-40 sm:w-48 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-center h-[38px] outline-none shadow-2xs transition-all ${
+                                          isSpecial
+                                            ? 'bg-rose-50 border-2 border-rose-500 text-rose-900 font-extrabold focus:ring-2 focus:ring-rose-500'
+                                            : 'bg-white border border-teal-300 text-teal-950 focus:ring-2 focus:ring-teal-500'
+                                        }`}
                                       />
                                     ) : (
                                       <div className={`w-40 sm:w-48 h-[38px] px-2.5 py-1.5 rounded-lg border text-[14px] font-bold flex items-center justify-center transition-colors ${
-                                        cellVal.trim()
-                                          ? 'bg-[#ccfbf1] border-[#5eead4] text-teal-950 shadow-2xs'
-                                          : 'bg-slate-50 border-slate-200 text-slate-400'
+                                        isSpecial
+                                          ? 'bg-rose-500 text-white border-rose-600 font-extrabold shadow-sm'
+                                          : cellVal.trim()
+                                            ? 'bg-[#ccfbf1] border-[#5eead4] text-teal-950 shadow-2xs'
+                                            : 'bg-slate-50 border-slate-200 text-slate-400'
                                       }`}>
                                         <span className="truncate">{cellVal.trim() || '-'}</span>
                                       </div>

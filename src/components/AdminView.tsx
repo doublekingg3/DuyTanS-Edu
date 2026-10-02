@@ -2355,6 +2355,29 @@ export default function AdminView({
                     </label>
                   </div>
 
+                  {/* Cấu hình Môn học đặc thù (Tô đỏ TKB) */}
+                  <div className="col-span-1 md:col-span-2 bg-rose-50/70 p-4 rounded-2xl border border-rose-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-7 h-7 rounded-lg bg-rose-500 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                        📌
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-rose-900 text-sm">Danh sách Môn học đặc thù (Nổi bật màu đỏ trên TKB)</h3>
+                        <p className="text-xs text-rose-700">Các môn nhập tại đây sẽ tự động được tô đỏ nổi bật trên Thời khóa biểu khi Giáo viên tải file lên, sửa trực tiếp hoặc Phụ huynh xem lịch học.</p>
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      value={appSettings.specialSubjects || ''}
+                      onChange={(e) => setAppSettings({ ...appSettings, specialSubjects: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-white border border-rose-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-sm font-bold text-slate-800 shadow-2xs"
+                      placeholder="Phân cách bằng dấu phẩy. Ví dụ: Math, Tiếng Anh, Tin học, STEM"
+                    />
+                    <p className="text-[11px] text-rose-600 font-medium mt-1.5 flex items-center gap-1">
+                      <span>💡 Ví dụ:</span> <code className="bg-white px-2 py-0.5 rounded border border-rose-200 font-mono font-bold text-rose-800">Math, Tiếng Anh, Tin học</code>
+                    </p>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Hình nền Giao diện Portal (URL)</label>
                     <div className="flex gap-2">

@@ -33,7 +33,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { SchoolActivityNews, UserAccount, initialSchoolActivities } from '../data';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useLanguage, translateCategory } from '../contexts/LanguageContext';
 
 interface SchoolNewsGalleryProps {
   activities: SchoolActivityNews[];
@@ -494,7 +494,7 @@ export default function SchoolNewsGallery({
       {/* 2. CATEGORY TABS BAR */}
       <div className="px-4 py-2.5 sm:px-6 bg-white border-b border-slate-100 flex items-center gap-2 overflow-x-auto text-xs no-scrollbar select-none">
         <span className="text-[11px] font-extrabold text-slate-400 tracking-wider uppercase shrink-0 mr-1">
-          CHUYÊN MỤC:
+          {isEn ? 'CATEGORIES:' : 'CHUYÊN MỤC:'}
         </span>
         {CATEGORIES.map(cat => {
           const isActive = selectedCategory === cat.id;
@@ -511,7 +511,7 @@ export default function SchoolNewsGallery({
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              {cat.label}
+              {translateCategory(cat.id, isEn)}
             </button>
           );
         })}
@@ -559,20 +559,20 @@ export default function SchoolNewsGallery({
             {/* Top-Left Badges */}
             <div className="absolute top-4 left-4 sm:top-5 sm:left-5 flex flex-wrap items-center gap-2 z-10">
               <span className="px-3 py-1 bg-teal-600/90 text-white text-xs font-bold rounded-full backdrop-blur-md shadow-xs border border-teal-400/30">
-                {currentActivity?.categoryLabel || 'Hoạt động nhà trường'}
+                {translateCategory(currentActivity?.category || 'stem', isEn)}
               </span>
 
               {currentActivity?.isFeatured && (
                 <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-extrabold rounded-full backdrop-blur-md shadow-xs flex items-center gap-1 border border-amber-300/40">
                   <Flame className="w-3.5 h-3.5 fill-current" />
-                  <span>Tiêu biểu</span>
+                  <span>{isEn ? 'Featured' : 'Tiêu biểu'}</span>
                 </span>
               )}
 
               {/* Photo album count badge */}
               <span className="px-2.5 py-1 bg-black/40 text-teal-300 text-xs font-bold rounded-full backdrop-blur-md shadow-xs border border-white/20 flex items-center gap-1">
                 <Images className="w-3.5 h-3.5" />
-                <span>{currentActivity?.galleryImages?.length || 1} ảnh</span>
+                <span>{currentActivity?.galleryImages?.length || 1} {t('photosCount')}</span>
               </span>
             </div>
 
@@ -586,7 +586,7 @@ export default function SchoolNewsGallery({
                     ? 'scale-110 bg-rose-600 text-white'
                     : 'bg-black/40 hover:bg-black/60 text-white'
                 }`}
-                title="Yêu thích bài viết"
+                title={isEn ? "Like this post" : "Yêu thích bài viết"}
               >
                 <Heart className={`w-3.5 h-3.5 ${currentActivity?.likesCount ? 'fill-rose-500 text-rose-500' : 'text-white'}`} />
                 <span>{currentActivity?.likesCount || 0}</span>
@@ -600,7 +600,7 @@ export default function SchoolNewsGallery({
                     if (currentActivity) handleOpenUpload(currentActivity);
                   }}
                   className="p-2 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-white transition-all shadow-xs cursor-pointer"
-                  title="Chỉnh sửa bài viết"
+                  title={isEn ? "Edit article" : "Chỉnh sửa bài viết"}
                 >
                   <Edit3 className="w-4 h-4" />
                 </button>
@@ -611,7 +611,7 @@ export default function SchoolNewsGallery({
                 <button
                   onClick={(e) => currentActivity && handleDelete(currentActivity, e)}
                   className="p-2 rounded-full bg-rose-600/80 hover:bg-rose-600 backdrop-blur-md text-white transition-all shadow-xs cursor-pointer"
-                  title="Xóa bài viết này"
+                  title={isEn ? "Delete article" : "Xóa bài viết này"}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -624,14 +624,14 @@ export default function SchoolNewsGallery({
                 <button
                   onClick={handlePrev}
                   className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/75 backdrop-blur-md text-white flex items-center justify-center transition-all z-10 shadow-md cursor-pointer hover:scale-105 active:scale-95"
-                  title="Tin trước"
+                  title={isEn ? "Previous" : "Tin trước"}
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleNext}
                   className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/75 backdrop-blur-md text-white flex items-center justify-center transition-all z-10 shadow-md cursor-pointer hover:scale-105 active:scale-95"
-                  title="Tin tiếp theo"
+                  title={isEn ? "Next" : "Tin tiếp theo"}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -655,7 +655,7 @@ export default function SchoolNewsGallery({
                 </span>
                 <span>•</span>
                 <span className="text-teal-300 font-bold">
-                  Tin {currentIndex + 1} / {filteredActivities.length}
+                  {isEn ? `News ${currentIndex + 1} / ${filteredActivities.length}` : `Tin ${currentIndex + 1} / ${filteredActivities.length}`}
                 </span>
               </div>
 
@@ -676,7 +676,7 @@ export default function SchoolNewsGallery({
                   className="self-start sm:self-auto shrink-0 bg-white/20 hover:bg-teal-600 backdrop-blur-md text-white text-xs font-bold px-3.5 py-2 rounded-xl border border-white/30 flex items-center gap-1.5 transition-all shadow-sm hover:scale-105"
                 >
                   <BookOpen className="w-4 h-4 text-teal-300" />
-                  <span>Xem bài viết chi tiết</span>
+                  <span>{t('articleDetails')}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -692,12 +692,12 @@ export default function SchoolNewsGallery({
                 {isPlaying ? (
                   <>
                     <Pause className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Tạm dừng</span>
+                    <span>{isEn ? 'Pause' : 'Tạm dừng'}</span>
                   </>
                 ) : (
                   <>
                     <Play className="w-3.5 h-3.5 text-emerald-400 fill-current" />
-                    <span>Tiếp tục</span>
+                    <span>{isEn ? 'Resume' : 'Tiếp tục'}</span>
                   </>
                 )}
               </button>
@@ -732,7 +732,7 @@ export default function SchoolNewsGallery({
                 onClick={() => currentActivity && handleOpenArticle(currentActivity)}
                 className="text-xs text-teal-300 hover:text-white font-bold hidden sm:flex items-center gap-1 transition-colors cursor-pointer shrink-0"
               >
-                <span>Mở bài viết</span>
+                <span>{isEn ? 'Open Article' : 'Mở bài viết'}</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </button>
             </div>

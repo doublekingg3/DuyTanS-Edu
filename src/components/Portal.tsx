@@ -2,6 +2,7 @@ import React from 'react';
 import { Calendar, GraduationCap, ArrowRight } from 'lucide-react';
 import { AppSettings } from '../data';
 import SchoolLogo from './SchoolLogo';
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function Portal({ onSelectEduManager, settings }: { onSelectEduManager: () => void, settings?: AppSettings }) {
   return (
@@ -10,6 +11,9 @@ export default function Portal({ onSelectEduManager, settings }: { onSelectEduMa
       backgroundSize: 'cover',
       backgroundPosition: 'center'
     }}>
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher />
+      </div>
       {settings?.portalBackground && <div className="absolute inset-0 bg-white/40 backdrop-blur-sm z-0"></div>}
       <div className="max-w-4xl w-full relative z-10">
         <div className="text-center mb-12">

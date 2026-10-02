@@ -295,3 +295,23 @@ export function createBlankStandardSchedule(): SchedulePeriod[] {
     t7: p.isBreak ? 'Ra chơi' : '',
   }));
 }
+
+/**
+ * Checks if a subject string matches any of the special/specialized subjects configured by Admin.
+ */
+export function checkIsSpecialSubject(cellVal?: string, specialSubjectsConfig?: string): boolean {
+  if (!cellVal || !cellVal.trim() || !specialSubjectsConfig || !specialSubjectsConfig.trim()) {
+    return false;
+  }
+
+  const text = cellVal.trim().toLowerCase();
+  const specialList = specialSubjectsConfig
+    .split(/[,;]+/)
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (specialList.length === 0) return false;
+
+  return specialList.some(target => text.includes(target));
+}
+
