@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { SchoolClass, Student, UserAccount, UserPermissions, SchoolYear, AppSettings, defaultSettings, sortClasses, getUserTeacherType } from '../data';
-import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw, Settings, CheckCircle, X, BookOpen, Check, FileSpreadsheet, Copy, CheckCheck, LayoutList, Grid, Lock, Unlock, ShieldCheck, Eye, AlertTriangle } from 'lucide-react';
+import { Building2, Users, Search, Plus, Edit2, Trash2, Download, Upload, Shield, Key, Calendar, ArrowRight, Database, Save, Cloud, Server, Sparkles, LayoutTemplate, PieChart as PieChartIcon, BarChart2, RefreshCcw, Settings, CheckCircle, X, BookOpen, Check, FileSpreadsheet, Copy, CheckCheck, LayoutList, Grid, Lock, Unlock, ShieldCheck, Eye, AlertTriangle, KeyRound, RotateCcw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAlert } from "../contexts/AlertContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { db, activeFirebaseProject } from '../lib/firebase';
 import { defaultDb } from '../lib/firebase_default';
 import { doc, setDoc, deleteDoc, updateDoc, writeBatch, addDoc, collection } from 'firebase/firestore';
@@ -33,6 +34,7 @@ export default function AdminView({
   currentUser?: UserAccount
 }) {
   const { showAlert, showConfirm } = useAlert();
+  const { t, isEn } = useLanguage();
 
   const [appSettings, setAppSettings] = useState<AppSettings>(settings || defaultSettings);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -342,6 +344,10 @@ export default function AdminView({
   const [parentAccessSearch, setParentAccessSearch] = useState<string>('');
   const [parentAccessCopiedId, setParentAccessCopiedId] = useState<string | null>(null);
   const [parentAccessViewMode, setParentAccessViewMode] = useState<'table' | 'cards'>('table');
+  const [resetPasswordStudent, setResetPasswordStudent] = useState<Student | null>(null);
+  const [newStudentPassword, setNewStudentPassword] = useState<string>('12345678');
+  const [isResettingPassword, setIsResettingPassword] = useState<boolean>(false);
+  const [isBatchResetting, setIsBatchResetting] = useState<boolean>(false);
 
   // Filtered students for Parent Access list
   const parentAccessStudents = React.useMemo(() => {
@@ -459,6 +465,83 @@ export default function AdminView({
     setTimeout(() => {
       setParentAccessCopiedId(null);
     }, 2000);
+  };
+
+  const handleOpenResetModal = (student: Student) => {
+    setResetPasswordStudent(student);
+    setNewStudentPassword('12345678');
+  };
+
+  const handleConfirmResetPassword = async () => {
+    if (!resetPasswordStudent) return;
+    const pwd = newStudentPassword.trim();
+    if (!pwd) {
+      showAlert(isEn ? 'Please enter a new password' : 'Vui lòng nhập mật khẩu mới.', 'info');
+      return;
+    }
+    if (pwd.length < 4) {
+      showAlert(isEn ? 'Password must be at least 4 characters' : 'Mật khẩu phải có ít nhất 4 ký tự.', 'info');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      await setDoc(doc(db, 'students', resetPasswordStudent.id), {
+        password: pwd
+      }, { merge: true });
+
+      const studentName = resetPasswordStudent.fullName;
+      showAlert(
+        isEn
+          ? `Successfully reset password for student ${studentName} to: ${pwd}`
+          : `Đã đặt lại mật khẩu cho học sinh ${studentName} thành: ${pwd}`,
+        'success'
+      );
+      setResetPasswordStudent(null);
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      showAlert(isEn ? 'Failed to reset password.' : 'Có lỗi xảy ra khi đặt lại mật khẩu.', 'error');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const handleBatchResetPasswords = async () => {
+    if (parentAccessStudents.length === 0) {
+      showAlert(isEn ? 'No students to reset.' : 'Không có học sinh nào để đặt lại mật khẩu.', 'info');
+      return;
+    }
+
+    const targetDesc = parentAccessClassId === 'all'
+      ? (isEn ? `all ${parentAccessStudents.length} students` : `tất cả ${parentAccessStudents.length} học sinh`)
+      : (isEn ? `${parentAccessStudents.length} students in class ${classes.find(c => c.id === parentAccessClassId)?.name || ''}` : `${parentAccessStudents.length} học sinh lớp ${classes.find(c => c.id === parentAccessClassId)?.name || ''}`);
+
+    const confirmed = await showConfirm(
+      isEn
+        ? `Are you sure you want to reset password for ${targetDesc} to default "12345678"?`
+        : `Bạn có chắc chắn muốn đặt lại mật khẩu cho ${targetDesc} về mặc định "12345678"?`
+    );
+    if (!confirmed) return;
+
+    setIsBatchResetting(true);
+    try {
+      const batch = writeBatch(db);
+      parentAccessStudents.forEach(s => {
+        batch.set(doc(db, 'students', s.id), { password: '12345678' }, { merge: true });
+      });
+      await batch.commit();
+      showAlert(
+        isEn
+          ? `Successfully reset password for ${parentAccessStudents.length} students to 12345678!`
+          : `Đã đặt lại mật khẩu cho ${parentAccessStudents.length} học sinh về mặc định 12345678 thành công!`,
+        'success'
+      );
+    } catch (err) {
+      console.error('Error batch resetting passwords:', err);
+      showAlert(isEn ? 'Error resetting passwords.' : 'Có lỗi khi đặt lại mật khẩu hàng loạt.', 'error');
+    } finally {
+      setIsBatchResetting(false);
+    }
   };
 
   const handleExportTemplate = async () => {
@@ -1667,25 +1750,39 @@ export default function AdminView({
                   </p>
                 </div>
 
-                {/* Nút Xuất file Excel theo lớp */}
-                <button
-                  type="button"
-                  onClick={handleExportParentAccessExcel}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center gap-2 cursor-pointer shrink-0"
-                  title="Xuất file Excel theo lớp: STT | Lớp | Mã định danh | Họ và tên | Mật khẩu"
-                >
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-100 shrink-0" />
-                  <span>
-                    {parentAccessClassId === 'all'
-                      ? 'Xuất Excel tất cả các lớp'
-                      : `Xuất Excel lớp ${classes.find(c => c.id === parentAccessClassId)?.name || ''}`}
-                  </span>
-                  <span className="bg-emerald-700/80 px-2 py-0.5 rounded-md text-xs font-mono font-bold text-emerald-100">
-                    {parentAccessClassId === 'all'
-                      ? students.filter(s => !s.isDeleted).length
-                      : students.filter(s => !s.isDeleted && s.classId === parentAccessClassId).length} HS
-                  </span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Nút Reset tất cả về 12345678 */}
+                  <button
+                    type="button"
+                    onClick={handleBatchResetPasswords}
+                    disabled={isBatchResetting || parentAccessStudents.length === 0}
+                    className="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 border border-amber-200 rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title="Đặt lại mật khẩu cho tất cả học sinh trong danh sách đang xem về mặc định 12345678"
+                  >
+                    <RotateCcw className={`w-4 h-4 text-amber-600 ${isBatchResetting ? 'animate-spin' : ''}`} />
+                    <span>{t('resetAllClassPasswords', 'Reset tất cả về 12345678')}</span>
+                  </button>
+
+                  {/* Nút Xuất file Excel theo lớp */}
+                  <button
+                    type="button"
+                    onClick={handleExportParentAccessExcel}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center gap-2 cursor-pointer shrink-0"
+                    title="Xuất file Excel theo lớp: STT | Lớp | Mã định danh | Họ và tên | Mật khẩu"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-100 shrink-0" />
+                    <span>
+                      {parentAccessClassId === 'all'
+                        ? 'Xuất Excel tất cả các lớp'
+                        : `Xuất Excel lớp ${classes.find(c => c.id === parentAccessClassId)?.name || ''}`}
+                    </span>
+                    <span className="bg-emerald-700/80 px-2 py-0.5 rounded-md text-xs font-mono font-bold text-emerald-100">
+                      {parentAccessClassId === 'all'
+                        ? students.filter(s => !s.isDeleted).length
+                        : students.filter(s => !s.isDeleted && s.classId === parentAccessClassId).length} HS
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {/* Menu tùy chọn hiển thị dữ liệu theo lớp & Thanh tìm kiếm */}
@@ -1803,7 +1900,7 @@ export default function AdminView({
                             <th className="py-3 px-4 font-bold whitespace-nowrap bg-slate-50">Mã định danh</th>
                             <th className="py-3 px-4 font-bold whitespace-nowrap bg-slate-50 min-w-[200px]">Họ và tên</th>
                             <th className="py-3 px-4 font-bold text-center w-36 whitespace-nowrap bg-slate-50">Mật khẩu</th>
-                            <th className="py-3 px-4 font-bold text-right whitespace-nowrap bg-slate-50 w-32">Thao tác</th>
+                            <th className="py-3 px-4 font-bold text-right whitespace-nowrap bg-slate-50 w-48">Thao tác</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
@@ -1861,28 +1958,39 @@ export default function AdminView({
                                     </span>
                                   </td>
                                   <td className="py-3 px-4 text-right whitespace-nowrap">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopyAccessInfo(student)}
-                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                                        isCopied
-                                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                          : 'bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border border-slate-200 hover:border-teal-200'
-                                      }`}
-                                      title="Sao chép tên, mã định danh và mật khẩu"
-                                    >
-                                      {isCopied ? (
-                                        <>
-                                          <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
-                                          <span>Đã chép</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Copy className="w-3.5 h-3.5" />
-                                          <span>Sao chép</span>
-                                        </>
-                                      )}
-                                    </button>
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenResetModal(student)}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-all cursor-pointer shadow-2xs"
+                                        title={t('resetPasswordForStudent', 'Đặt lại mật khẩu cho học sinh này')}
+                                      >
+                                        <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                                        <span>{t('resetPasswordShort', 'Reset MK')}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyAccessInfo(student)}
+                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                                          isCopied
+                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                            : 'bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border border-slate-200 hover:border-teal-200'
+                                        }`}
+                                        title="Sao chép tên, mã định danh và mật khẩu"
+                                      >
+                                        {isCopied ? (
+                                          <>
+                                            <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                            <span>Đã chép</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Copy className="w-3.5 h-3.5" />
+                                            <span>Sao chép</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               );
@@ -1936,27 +2044,38 @@ export default function AdminView({
                               <span className="text-slate-500">
                                 MK: <strong className="font-mono text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">{password}</strong>
                               </span>
-                              <button
-                                type="button"
-                                onClick={() => handleCopyAccessInfo(student)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                                  isCopied
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                    : 'bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border border-slate-200'
-                                }`}
-                              >
-                                {isCopied ? (
-                                  <>
-                                    <CheckCheck className="w-3 h-3 text-emerald-600" />
-                                    <span>Đã chép</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="w-3 h-3" />
-                                    <span>Sao chép</span>
-                                  </>
-                                )}
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenResetModal(student)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-all cursor-pointer shadow-2xs"
+                                  title="Đặt lại mật khẩu"
+                                >
+                                  <KeyRound className="w-3 h-3 text-amber-600" />
+                                  <span>Reset MK</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyAccessInfo(student)}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                                    isCopied
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                      : 'bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border border-slate-200'
+                                  }`}
+                                >
+                                  {isCopied ? (
+                                    <>
+                                      <CheckCheck className="w-3 h-3 text-emerald-600" />
+                                      <span>Đã chép</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3" />
+                                      <span>Sao chép</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -1966,6 +2085,143 @@ export default function AdminView({
                 )}
               </div>
             </div>
+
+            {/* Modal Đặt lại mật khẩu học sinh */}
+            {resetPasswordStudent && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150">
+                  {/* Modal Header */}
+                  <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                        <KeyRound className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-base">
+                          {t('resetPasswordForStudent', 'Đặt lại mật khẩu cho học sinh')}
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          {t('parentAccessTitle', 'Mã truy cập Phụ huynh')}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setResetPasswordStudent(null)}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6 space-y-4">
+                    {/* Thông tin học sinh */}
+                    <div className="bg-teal-50/70 border border-teal-200/80 rounded-xl p-3.5 space-y-2 text-xs text-slate-700">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">{t('student', 'Học sinh')}:</span>
+                        <span className="font-bold text-slate-900 text-sm">{resetPasswordStudent.fullName}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">{t('class', 'Lớp')}:</span>
+                        <span className="font-semibold text-indigo-700">
+                          {classes.find(c => c.id === resetPasswordStudent.classId)?.name || 'Chưa xếp'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Mã định danh:</span>
+                        <span className="font-mono font-bold text-teal-800 bg-white px-2 py-0.5 rounded border border-teal-200">
+                          {resetPasswordStudent.code || `HS-${resetPasswordStudent.stt}`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-1.5 border-t border-teal-200/60">
+                        <span className="text-slate-500">{t('currentPasswordLabel', 'Mật khẩu hiện tại')}:</span>
+                        <span className="font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                          {(resetPasswordStudent as any).password || '12345678'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Ô nhập mật khẩu mới */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        {t('newPasswordLabel', 'Mật khẩu mới')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={newStudentPassword}
+                          onChange={e => setNewStudentPassword(e.target.value)}
+                          placeholder="12345678"
+                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white shadow-2xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Gợi ý nhanh */}
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Gợi ý mật khẩu nhanh:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNewStudentPassword('12345678')}
+                          className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                        >
+                          12345678 (Mặc định)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewStudentPassword(Math.floor(100000 + Math.random() * 900000).toString())}
+                          className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                        >
+                          Mã PIN 6 số
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+                            let res = '';
+                            for (let i = 0; i < 8; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+                            setNewStudentPassword(res);
+                          }}
+                          className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                        >
+                          Ngẫu nhiên 8 ký tự
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setResetPasswordStudent(null)}
+                      className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                    >
+                      {t('cancel', 'Hủy')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmResetPassword}
+                      disabled={isResettingPassword}
+                      className="px-4 py-2 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {isResettingPassword ? (
+                        <span>{t('savingPassword', 'Đang lưu...')}</span>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>{t('saveNewPassword', 'Lưu mật khẩu mới')}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 

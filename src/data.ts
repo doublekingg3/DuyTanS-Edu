@@ -217,6 +217,7 @@ export interface Student {
   status: string;
   parentName?: string;
   parentPhone?: string;
+  password?: string;
   attendanceRecords?: Record<string, { status: 'present' | 'late' | 'absent' | 'leave_early', reason?: string, time: string }>;
   weeklyData?: Record<number, WeeklyData>;
   monthlyData?: Record<number, MonthlyData>;

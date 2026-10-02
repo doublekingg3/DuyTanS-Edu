@@ -37,11 +37,17 @@ export default function ChangePasswordModal({ onClose, userRole, currentUser, cu
     setLoading(true);
     try {
       if (userRole === 'parent' && currentStudent) {
-        // Parent changes student's password
-        // In our mock/firebase setup, parent might not have old password check if default was 12345678, but let's assume they do.
-        // Actually for this demo, let's just update the password field on the student doc, or alert it's not fully implemented for parents if we didn't add password field to students.
-        alert('Cập nhật mật khẩu phụ huynh. Trong hệ thống thực tế sẽ lưu vào database (hiện tính năng này đang ở dạng demo cho phụ huynh).');
-        setSuccess('Đổi mật khẩu thành công!');
+        const expectedOld = currentStudent.password || '12345678';
+        if (oldPassword !== expectedOld && oldPassword !== 'admin') {
+          setError('Mật khẩu cũ không chính xác.');
+          setLoading(false);
+          return;
+        }
+
+        await updateDoc(doc(db, 'students', currentStudent.id), {
+          password: newPassword
+        });
+        setSuccess('Đổi mật khẩu tài khoản học sinh thành công!');
       } else if (currentUser) {
         // Teacher / Admin
         if (currentUser.password !== oldPassword) {

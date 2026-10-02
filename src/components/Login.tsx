@@ -105,44 +105,44 @@ export default function Login({
         setError('Vui lòng nhập mã học sinh.');
         return;
       }
-      if (password !== '12345678' && password !== 'admin') {
-        setError('Tài khoản hoặc mật khẩu không đúng.');
-        return;
-      }
       
       const codeInput = studentCode.trim().toUpperCase();
       const codeInputNoHyphen = codeInput.replace(/-/g, '');
       
       // Try to find by direct code (e.g., HS-001 or 20252026-001 or 20252026001)
-      const studentByCode = students.find(s => 
+      let targetStudent = students.find(s => 
         s.code?.toUpperCase() === codeInput || 
         s.code?.toUpperCase() === codeInputNoHyphen
       );
       
-      if (studentByCode) {
-        persistCredentials();
-        onLogin('parent', studentByCode.id);
-        return;
-      }
-
       // Fallback for backward compatibility (Lớp-STT)
-      const parts = codeInput.split('-');
-      if (parts.length === 2) {
-        const className = parts[0];
-        const stt = parseInt(parts[1], 10);
+      if (!targetStudent) {
+        const parts = codeInput.split('-');
+        if (parts.length === 2) {
+          const className = parts[0];
+          const stt = parseInt(parts[1], 10);
 
-        const classObj = classes.find(c => c.name.toLowerCase() === className.toLowerCase());
-        if (classObj) {
-          const student = students.find(s => s.classId === classObj.id && s.stt === stt);
-          if (student) {
-            persistCredentials();
-            onLogin('parent', student.id);
-            return;
+          const classObj = classes.find(c => c.name.toLowerCase() === className.toLowerCase());
+          if (classObj) {
+            targetStudent = students.find(s => s.classId === classObj.id && s.stt === stt);
           }
         }
       }
-      
-      setError('Không tìm thấy học sinh với mã này. (Nhập mã HS-xxx hoặc Lớp-STT)');
+
+      if (!targetStudent) {
+        setError('Không tìm thấy học sinh với mã này. (Nhập mã HS-xxx hoặc Lớp-STT)');
+        return;
+      }
+
+      const expectedPassword = targetStudent.password || '12345678';
+      if (password !== expectedPassword && password !== 'admin') {
+        setError('Tài khoản hoặc mật khẩu không đúng.');
+        return;
+      }
+
+      persistCredentials();
+      onLogin('parent', targetStudent.id);
+      return;
     }
   };
 

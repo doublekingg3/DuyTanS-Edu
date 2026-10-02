@@ -149,7 +149,23 @@ const translations: Record<Language, Record<string, string>> = {
     sortClassOrder: 'Thứ tự lớp',
     sortRateDesc: 'Tỉ lệ chuyên cần cao → thấp',
     sortRateAsc: 'Tỉ lệ chuyên cần thấp → cao',
-    sortAbsentDesc: 'Nhiều học sinh vắng nhất'
+    sortAbsentDesc: 'Nhiều học sinh vắng nhất',
+
+    // Password reset in Parent Access
+    parentAccessTitle: 'Mã truy cập Phụ huynh',
+    resetPassword: 'Đặt lại mật khẩu',
+    resetPasswordShort: 'Reset MK',
+    resetPasswordForStudent: 'Đặt lại mật khẩu cho học sinh',
+    currentPasswordLabel: 'Mật khẩu hiện tại',
+    newPasswordLabel: 'Mật khẩu mới',
+    resetToDefaultBtn: 'Đặt về mặc định (12345678)',
+    generateRandomPin: 'Tạo 6 số ngẫu nhiên',
+    saveNewPassword: 'Lưu mật khẩu mới',
+    savingPassword: 'Đang lưu...',
+    resetPasswordSuccess: 'Đã đặt lại mật khẩu thành công!',
+    resetAllClassPasswords: 'Reset tất cả về 12345678',
+    resetAllClassConfirm: 'Bạn có chắc chắn muốn đặt lại mật khẩu cho tất cả học sinh đang chọn về mặc định 12345678 không?',
+    resetAllSuccess: 'Đã đặt lại mật khẩu thành công cho'
   },
   en: {
     // Top Bar & App Header
@@ -288,7 +304,23 @@ const translations: Record<Language, Record<string, string>> = {
     sortClassOrder: 'Class Order',
     sortRateDesc: 'Attendance: High to Low',
     sortRateAsc: 'Attendance: Low to High',
-    sortAbsentDesc: 'Most Absences First'
+    sortAbsentDesc: 'Most Absences First',
+
+    // Password reset in Parent Access
+    parentAccessTitle: 'Parent Access Credentials',
+    resetPassword: 'Reset Password',
+    resetPasswordShort: 'Reset PW',
+    resetPasswordForStudent: 'Reset password for student',
+    currentPasswordLabel: 'Current password',
+    newPasswordLabel: 'New password',
+    resetToDefaultBtn: 'Reset to default (12345678)',
+    generateRandomPin: 'Generate 6-digit PIN',
+    saveNewPassword: 'Save New Password',
+    savingPassword: 'Saving...',
+    resetPasswordSuccess: 'Password reset successfully!',
+    resetAllClassPasswords: 'Reset all to 12345678',
+    resetAllClassConfirm: 'Are you sure you want to reset password for all selected students to default 12345678?',
+    resetAllSuccess: 'Successfully reset passwords for'
   }
 };
 
