@@ -33,6 +33,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { SchoolActivityNews, UserAccount, initialSchoolActivities } from '../data';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SchoolNewsGalleryProps {
   activities: SchoolActivityNews[];
@@ -110,6 +111,7 @@ export default function SchoolNewsGallery({
   triggerUploadModal = false,
   onResetTriggerUpload
 }: SchoolNewsGalleryProps) {
+  const { t, isEn } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'carousel' | 'grid'>('carousel');
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -420,15 +422,15 @@ export default function SchoolNewsGallery({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-bold font-sans text-slate-800 tracking-tight">
-                HOẠT ĐỘNG & SỰ KIỆN TIÊU BIỂU NHÀ TRƯỜNG
+                {t('schoolActivitiesHeader')}
               </h2>
               <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-sans">
                 <Sparkles className="w-3 h-3 text-teal-600" />
-                {filteredActivities.length} bài đăng
+                {filteredActivities.length} {isEn ? 'posts' : 'bài đăng'}
               </span>
             </div>
             <p className="text-xs text-slate-500 font-sans font-normal mt-0.5">
-              Nhấp vào bài viết hoặc banner để xem đầy đủ nội dung phóng sự và album hình ảnh
+              {t('schoolActivitiesSub')}
             </p>
           </div>
         </div>
@@ -444,10 +446,10 @@ export default function SchoolNewsGallery({
                   ? 'bg-white text-teal-800 font-bold shadow-xs'
                   : 'hover:text-slate-900'
               }`}
-              title="Chế độ Trình diễn Banner lướt (Slider)"
+              title={isEn ? "Banner Carousel Slider Mode" : "Chế độ Trình diễn Banner lướt (Slider)"}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Trình diễn</span>
+              <span className="hidden md:inline">{isEn ? 'Slider' : 'Trình diễn'}</span>
             </button>
             <button
               onClick={() => setViewMode('grid')}
@@ -456,10 +458,10 @@ export default function SchoolNewsGallery({
                   ? 'bg-white text-teal-800 font-bold shadow-xs'
                   : 'hover:text-slate-900'
               }`}
-              title="Chế độ Lưới bài viết"
+              title={isEn ? "Article Grid Mode" : "Chế độ Lưới bài viết"}
             >
               <Grid className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Lưới tin</span>
+              <span className="hidden md:inline">{isEn ? 'Grid' : 'Lưới tin'}</span>
             </button>
           </div>
 
@@ -470,7 +472,7 @@ export default function SchoolNewsGallery({
               setIsPlaying(true);
             }}
             className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 transition-colors cursor-pointer"
-            title="Xem lại từ đầu"
+            title={isEn ? "Restart from first slide" : "Xem lại từ đầu"}
           >
             <RotateCcw className="w-4 h-4" />
           </button>

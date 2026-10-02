@@ -24,6 +24,7 @@ import { Student, SchoolClass, sortClasses, SchoolActivityNews } from '../data';
 import AbsentLateDetailTable from './AbsentLateDetailTable';
 import AttendanceRateTable from './AttendanceRateTable';
 import SchoolNewsGallery from './SchoolNewsGallery';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TeacherDashboardProps {
   classId: string;
@@ -58,6 +59,7 @@ export default function TeacherDashboard({
   onNavigateToAttendance,
   activities = []
 }: TeacherDashboardProps) {
+  const { t, isEn } = useLanguage();
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [sortField, setSortField] = useState<'name' | 'total' | 'present' | 'absent' | 'late' | 'rate'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -205,15 +207,15 @@ export default function TeacherDashboard({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h2 className="text-xl sm:text-2xl font-bold font-display text-slate-800 tracking-tight">
-              Tổng quan nề nếp & Chuyên cần: {className || 'Các lớp phụ trách'}
+              {isEn ? `Discipline & Attendance Overview: ${className || 'Assigned Classes'}` : `Tổng quan nề nếp & Chuyên cần: ${className || 'Các lớp phụ trách'}`}
             </h2>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
-              {teacherClasses.length > 1 ? `${teacherClasses.length} lớp phụ trách` : 'Lớp chủ nhiệm'}
+              {teacherClasses.length > 1 ? (isEn ? `${teacherClasses.length} assigned classes` : `${teacherClasses.length} lớp phụ trách`) : (isEn ? 'Homeroom Class' : 'Lớp chủ nhiệm')}
             </span>
           </div>
           <p className="text-slate-500 text-xs sm:text-sm font-medium flex items-center gap-2">
             <Calendar className="w-4 h-4 text-teal-600" />
-            <span>Ngày theo dõi: <b>{selectedDate.split('-').reverse().join('/')}</b></span>
+            <span>{isEn ? 'Monitored Date: ' : 'Ngày theo dõi: '}<b>{selectedDate.split('-').reverse().join('/')}</b></span>
           </p>
         </div>
 
@@ -223,7 +225,7 @@ export default function TeacherDashboard({
             className="bg-teal-gradient hover:opacity-95 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs flex items-center justify-center gap-2 transition-transform active:scale-95 shrink-0"
           >
             <BookOpen className="w-4 h-4" />
-            <span>Mở sổ điểm danh lớp {className}</span>
+            <span>{isEn ? `Open Class ${className} Attendance` : `Mở sổ điểm danh lớp ${className}`}</span>
           </button>
         )}
       </div>
@@ -235,9 +237,11 @@ export default function TeacherDashboard({
             <Bell className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm sm:text-base font-bold text-amber-800 mb-0.5">Nhắc nhở điểm danh chuyên cần</h3>
+            <h3 className="text-sm sm:text-base font-bold text-amber-800 mb-0.5">{isEn ? 'Attendance Reminder' : 'Nhắc nhở điểm danh chuyên cần'}</h3>
             <p className="text-xs sm:text-sm text-amber-700 font-medium">
-              Lớp <b>{className}</b> còn <b>{classStatsForSelected.notMarked}</b> học sinh chưa được ghi nhận trạng thái điểm danh trong ngày hôm nay. Vui lòng hoàn tất điểm danh đúng giờ.
+              {isEn 
+                ? `Class ${className} still has ${classStatsForSelected.notMarked} students without attendance recorded today. Please complete attendance on time.`
+                : `Lớp ${className} còn ${classStatsForSelected.notMarked} học sinh chưa được ghi nhận trạng thái điểm danh trong ngày hôm nay. Vui lòng hoàn tất điểm danh đúng giờ.`}
             </p>
           </div>
         </div>
@@ -249,12 +253,12 @@ export default function TeacherDashboard({
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Users className="w-14 h-14 text-indigo-600" />
           </div>
-          <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">SĨ SỐ LỚP</p>
+          <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">{isEn ? 'CLASS ENROLLMENT' : 'SĨ SỐ LỚP'}</p>
           <div className="flex items-baseline gap-1.5 mb-2">
             <span className="text-3xl font-extrabold text-slate-800">{classStatsForSelected.total}</span>
-            <span className="text-xs font-medium text-slate-500">học sinh</span>
+            <span className="text-xs font-medium text-slate-500">{isEn ? 'students' : 'học sinh'}</span>
           </div>
-          <p className="text-xs text-slate-500">Lớp {className}</p>
+          <p className="text-xs text-slate-500">{t('class')} {className}</p>
         </div>
 
         <div className="bg-white rounded-[20px] p-5 border border-emerald-100 shadow-sm relative overflow-hidden group">
@@ -262,10 +266,10 @@ export default function TeacherDashboard({
             <CheckCircle className="w-14 h-14 text-emerald-600" />
           </div>
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-bold text-emerald-500 tracking-wider uppercase">CÓ MẶT</p>
+            <p className="text-xs font-bold text-emerald-500 tracking-wider uppercase">{isEn ? 'PRESENT' : 'CÓ MẶT'}</p>
             {!classStatsForSelected.isDone && (
               <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                Chưa ĐD
+                {isEn ? 'Pending' : 'Chưa ĐD'}
               </span>
             )}
           </div>
@@ -273,14 +277,14 @@ export default function TeacherDashboard({
             <span className="text-3xl font-extrabold text-emerald-600">
               {classStatsForSelected.isDone ? classStatsForSelected.present : 0}
             </span>
-            <span className="text-xs font-medium text-slate-500">học sinh</span>
+            <span className="text-xs font-medium text-slate-500">{isEn ? 'students' : 'học sinh'}</span>
           </div>
           <div className="flex items-center text-xs font-semibold text-emerald-600">
             <TrendingUp className="w-3.5 h-3.5 mr-1" />
             <span>
               {classStatsForSelected.isDone 
-                ? `${classStatsForSelected.total ? ((classStatsForSelected.present / classStatsForSelected.total) * 100).toFixed(1) : 100}% sĩ số`
-                : 'Lớp chưa thực hiện điểm danh hôm nay'}
+                ? `${classStatsForSelected.total ? ((classStatsForSelected.present / classStatsForSelected.total) * 100).toFixed(1) : 100}% ${isEn ? 'enrollment' : 'sĩ số'}`
+                : (isEn ? 'Attendance not marked yet today' : 'Lớp chưa thực hiện điểm danh hôm nay')}
             </span>
           </div>
         </div>
@@ -289,14 +293,14 @@ export default function TeacherDashboard({
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <UserX className="w-14 h-14 text-rose-600" />
           </div>
-          <p className="text-xs font-bold text-rose-500 tracking-wider uppercase mb-1">VẮNG MẶT</p>
+          <p className="text-xs font-bold text-rose-500 tracking-wider uppercase mb-1">{isEn ? 'ABSENT' : 'VẮNG MẶT'}</p>
           <div className="flex items-baseline gap-1.5 mb-2">
             <span className="text-3xl font-extrabold text-rose-600">{classStatsForSelected.absent}</span>
-            <span className="text-xs font-medium text-slate-500">học sinh</span>
+            <span className="text-xs font-medium text-slate-500">{isEn ? 'students' : 'học sinh'}</span>
           </div>
           <p className="text-xs text-rose-600 font-medium flex items-center">
             <AlertTriangle className="w-3.5 h-3.5 mr-1" />
-            <span>{classStatsForSelected.absent > 0 ? 'Cần theo dõi sát' : 'Không có học sinh vắng'}</span>
+            <span>{classStatsForSelected.absent > 0 ? (isEn ? 'Monitor closely' : 'Cần theo dõi sát') : (isEn ? 'No absent students' : 'Không có học sinh vắng')}</span>
           </p>
         </div>
 
@@ -304,13 +308,13 @@ export default function TeacherDashboard({
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Clock className="w-14 h-14 text-amber-600" />
           </div>
-          <p className="text-xs font-bold text-amber-500 tracking-wider uppercase mb-1">ĐI TRỄ / VỀ SỚM</p>
+          <p className="text-xs font-bold text-amber-500 tracking-wider uppercase mb-1">{isEn ? 'LATE / EARLY LEAVE' : 'ĐI TRỄ / VỀ SỚM'}</p>
           <div className="flex items-baseline gap-1.5 mb-2">
             <span className="text-3xl font-extrabold text-amber-600">{classStatsForSelected.late}</span>
-            <span className="text-xs font-medium text-slate-500">học sinh</span>
+            <span className="text-xs font-medium text-slate-500">{isEn ? 'students' : 'học sinh'}</span>
           </div>
           <p className="text-xs text-amber-600 font-medium">
-            <span>{classStatsForSelected.late > 0 ? 'Có vi phạm giờ giấc' : 'Đúng giờ 100%'}</span>
+            <span>{classStatsForSelected.late > 0 ? (isEn ? 'Time violation noted' : 'Có vi phạm giờ giấc') : (isEn ? '100% Punctual' : 'Đúng giờ 100%')}</span>
           </p>
         </div>
       </div>

@@ -24,6 +24,7 @@ import {
   Filter
 } from 'lucide-react';
 import { SchoolClass, Student } from '../data';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ClassComparisonChartProps {
   classes: SchoolClass[];
@@ -43,6 +44,7 @@ export default function ClassComparisonChart({
   onSelectClass,
   onNavigateToAttendance
 }: ClassComparisonChartProps) {
+  const { t, isEn } = useLanguage();
   const [metric, setMetric] = useState<MetricType>('rate');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<SortType>('default');
@@ -174,14 +176,14 @@ export default function ClassComparisonChart({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">
-                BIỂU ĐỒ SO SÁNH CÁC LỚP
+                {t('classComparisonChart')}
               </h2>
               <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
-                Ngày {formattedDisplayDate}
+                {isEn ? 'Date ' : 'Ngày '}{formattedDisplayDate}
               </span>
             </div>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
-              So sánh đối chiếu trực quan tỉ lệ chuyên cần, số lượng học sinh có mặt, vắng mặt và đi trễ giữa các lớp
+              {t('classComparisonSubtitle')}
             </p>
           </div>
         </div>
@@ -198,7 +200,7 @@ export default function ClassComparisonChart({
                   : 'hover:text-slate-900'
               }`}
             >
-              Tỉ lệ chuyên cần (%)
+              {t('metricAttendanceRate')}
             </button>
             <button
               onClick={() => setMetric('absent_late')}
@@ -208,7 +210,7 @@ export default function ClassComparisonChart({
                   : 'hover:text-slate-900'
               }`}
             >
-              Vắng & Đi trễ
+              {isEn ? 'Absent & Late' : 'Vắng & Đi trễ'}
             </button>
             <button
               onClick={() => setMetric('attendance_count')}
@@ -218,7 +220,7 @@ export default function ClassComparisonChart({
                   : 'hover:text-slate-900'
               }`}
             >
-              Có mặt / Sĩ số
+              {isEn ? 'Present / Enrolled' : 'Có mặt / Sĩ số'}
             </button>
           </div>
 
@@ -231,9 +233,9 @@ export default function ClassComparisonChart({
                 onChange={(e) => setSelectedGrade(e.target.value)}
                 className="bg-transparent font-semibold text-slate-700 focus:outline-none cursor-pointer"
               >
-                <option value="all">Tất cả các khối</option>
+                <option value="all">{isEn ? 'All Grades' : 'Tất cả các khối'}</option>
                 {availableGrades.map(g => (
-                  <option key={g} value={g}>Khối {g}</option>
+                  <option key={g} value={g}>{isEn ? `Grade ${g}` : `Khối ${g}`}</option>
                 ))}
               </select>
             </div>
@@ -247,10 +249,10 @@ export default function ClassComparisonChart({
               onChange={(e) => setSortOrder(e.target.value as SortType)}
               className="bg-transparent font-semibold text-slate-700 focus:outline-none cursor-pointer"
             >
-              <option value="default">Thứ tự mặc định</option>
-              <option value="rate_desc">Chuyên cần cao nhất</option>
-              <option value="rate_asc">Chuyên cần thấp nhất</option>
-              <option value="absent_desc">Vắng nhiều nhất</option>
+              <option value="default">{isEn ? 'Default Order' : 'Thứ tự mặc định'}</option>
+              <option value="rate_desc">{isEn ? 'Highest Attendance' : 'Chuyên cần cao nhất'}</option>
+              <option value="rate_asc">{isEn ? 'Lowest Attendance' : 'Chuyên cần thấp nhất'}</option>
+              <option value="absent_desc">{isEn ? 'Most Absences' : 'Vắng nhiều nhất'}</option>
             </select>
           </div>
         </div>
@@ -266,10 +268,10 @@ export default function ClassComparisonChart({
             </div>
             <div>
               <p className="text-[11px] font-bold text-teal-800 uppercase tracking-wide">
-                Trung bình {selectedGrade === 'all' ? 'Toàn trường' : `Khối ${selectedGrade}`}
+                {isEn ? 'Average ' : 'Trung bình '}{selectedGrade === 'all' ? (isEn ? 'Whole School' : 'Toàn trường') : (isEn ? `Grade ${selectedGrade}` : `Khối ${selectedGrade}`)}
               </p>
               <p className="text-xs text-teal-600 font-medium">
-                {summaryStats.checkedCount}/{summaryStats.totalClasses} lớp đã hoàn tất điểm danh
+                {summaryStats.checkedCount}/{summaryStats.totalClasses} {isEn ? 'classes marked attendance' : 'lớp đã hoàn tất điểm danh'}
               </p>
             </div>
           </div>
@@ -286,10 +288,10 @@ export default function ClassComparisonChart({
             </div>
             <div>
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wide">
-                Lớp chuyên cần cao nhất
+                {isEn ? 'HIGHEST ATTENDANCE CLASS' : 'Lớp chuyên cần cao nhất'}
               </p>
               <p className="text-xs text-emerald-600 font-medium">
-                {summaryStats.topClass ? `GVCN: ${summaryStats.topClass.homeroomTeacher}` : 'Đang cập nhật'}
+                {summaryStats.topClass ? `${t('homeroomTeacher')}: ${summaryStats.topClass.homeroomTeacher}` : (isEn ? 'Updating' : 'Đang cập nhật')}
               </p>
             </div>
           </div>
@@ -311,10 +313,10 @@ export default function ClassComparisonChart({
             </div>
             <div>
               <p className="text-[11px] font-bold text-rose-800 uppercase tracking-wide">
-                Lớp có nhiều HS vắng nhất
+                {isEn ? 'MOST ABSENT STUDENTS' : 'Lớp có nhiều HS vắng nhất'}
               </p>
               <p className="text-xs text-rose-600 font-medium">
-                {summaryStats.mostAbsentClass ? `GVCN: ${summaryStats.mostAbsentClass.homeroomTeacher}` : 'Không có lớp vắng'}
+                {summaryStats.mostAbsentClass ? `${t('homeroomTeacher')}: ${summaryStats.mostAbsentClass.homeroomTeacher}` : (isEn ? 'No absences' : 'Không có lớp vắng')}
               </p>
             </div>
           </div>
@@ -323,7 +325,7 @@ export default function ClassComparisonChart({
               {summaryStats.mostAbsentClass ? summaryStats.mostAbsentClass.name : '0'}
             </span>
             <span className="text-xs font-bold text-rose-600">
-              {summaryStats.mostAbsentClass ? `${summaryStats.mostAbsentClass.absent} vắng` : 'Đầy đủ'}
+              {summaryStats.mostAbsentClass ? `${summaryStats.mostAbsentClass.absent} ${isEn ? 'absent' : 'vắng'}` : (isEn ? '100% Present' : 'Đầy đủ')}
             </span>
           </div>
         </div>
@@ -369,24 +371,24 @@ export default function ClassComparisonChart({
                       return (
                         <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs space-y-1.5 border border-slate-700 min-w-[200px]">
                           <div className="flex items-center justify-between border-b border-slate-700 pb-1 font-bold">
-                            <span className="text-sm text-teal-300">Lớp {data.name}</span>
+                            <span className="text-sm text-teal-300">{t('class')} {data.name}</span>
                             <span className={`px-1.5 py-0.5 rounded text-[10px] ${data.isAttendanceDone ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
-                              {data.isAttendanceDone ? 'Đã điểm danh' : 'Chưa điểm danh'}
+                              {data.isAttendanceDone ? t('attendanceDone') : t('attendanceNotDone')}
                             </span>
                           </div>
-                          <p className="text-slate-300">GVCN: <span className="text-white font-medium">{data.homeroomTeacher}</span></p>
+                          <p className="text-slate-300">{t('homeroomTeacher')}: <span className="text-white font-medium">{data.homeroomTeacher}</span></p>
                           <div className="grid grid-cols-2 gap-x-2 gap-y-1 pt-1 text-[11px]">
-                            <div>Tỉ lệ chuyên cần:</div>
+                            <div>{t('overallAttendanceRate')}:</div>
                             <div className="font-bold text-teal-300 text-right">{data.rate}%</div>
-                            <div>Có mặt:</div>
+                            <div>{t('presentCount')}:</div>
                             <div className="font-semibold text-emerald-400 text-right">{data.present} / {data.total}</div>
-                            <div>Vắng mặt:</div>
-                            <div className="font-semibold text-rose-400 text-right">{data.absent} HS</div>
-                            <div>Đi trễ:</div>
-                            <div className="font-semibold text-amber-400 text-right">{data.late} HS</div>
+                            <div>{t('absentCount')}:</div>
+                            <div className="font-semibold text-rose-400 text-right">{data.absent} {t('studentsCount')}</div>
+                            <div>{t('lateCount')}:</div>
+                            <div className="font-semibold text-amber-400 text-right">{data.late} {t('studentsCount')}</div>
                           </div>
                           <div className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-800 text-center">
-                            Nhấp để mở sổ điểm danh lớp này
+                            {isEn ? 'Click to open class attendance book' : 'Nhấp để mở sổ điểm danh lớp này'}
                           </div>
                         </div>
                       );
@@ -394,10 +396,10 @@ export default function ClassComparisonChart({
                     return null;
                   }}
                 />
-                <ReferenceLine y={95} stroke="#0D9488" strokeDasharray="3 3" label={{ value: 'Mục tiêu 95%', fill: '#0D9488', fontSize: 10, position: 'right' }} />
+                <ReferenceLine y={95} stroke="#0D9488" strokeDasharray="3 3" label={{ value: isEn ? 'Target 95%' : 'Mục tiêu 95%', fill: '#0D9488', fontSize: 10, position: 'right' }} />
                 <Bar 
                   dataKey="rate" 
-                  name="Tỉ lệ chuyên cần (%)" 
+                  name={t('metricAttendanceRate')} 
                   radius={[6, 6, 0, 0]}
                   cursor="pointer"
                 >
@@ -448,8 +450,8 @@ export default function ClassComparisonChart({
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
-                <Bar dataKey="absent" name="Số học sinh vắng" fill="#F43F5E" radius={[4, 4, 0, 0]} cursor="pointer" />
-                <Bar dataKey="late" name="Số học sinh đi trễ" fill="#F59E0B" radius={[4, 4, 0, 0]} cursor="pointer" />
+                <Bar dataKey="absent" name={isEn ? "Absent Students" : "Số học sinh vắng"} fill="#F43F5E" radius={[4, 4, 0, 0]} cursor="pointer" />
+                <Bar dataKey="late" name={isEn ? "Late Students" : "Số học sinh đi trễ"} fill="#F59E0B" radius={[4, 4, 0, 0]} cursor="pointer" />
               </BarChart>
             ) : (
               <BarChart 
@@ -490,8 +492,8 @@ export default function ClassComparisonChart({
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
-                <Bar dataKey="total" name="Tổng sĩ số lớp" fill="#94A3B8" radius={[4, 4, 0, 0]} cursor="pointer" />
-                <Bar dataKey="present" name="Có mặt trên lớp" fill="#0D9488" radius={[4, 4, 0, 0]} cursor="pointer" />
+                <Bar dataKey="total" name={isEn ? "Total Enrollment" : "Tổng sĩ số lớp"} fill="#94A3B8" radius={[4, 4, 0, 0]} cursor="pointer" />
+                <Bar dataKey="present" name={isEn ? "Present Students" : "Có mặt trên lớp"} fill="#0D9488" radius={[4, 4, 0, 0]} cursor="pointer" />
               </BarChart>
             )}
           </ResponsiveContainer>
@@ -502,23 +504,23 @@ export default function ClassComparisonChart({
           <div className="flex flex-wrap items-center justify-center gap-4 pt-3 text-xs text-slate-600 border-t border-slate-100">
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-              <span>≥ 98% (Xuất sắc)</span>
+              <span>≥ 98% ({isEn ? 'Excellent' : 'Xuất sắc'})</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-teal-600"></span>
-              <span>95% - 98% (Đạt chuẩn)</span>
+              <span>95% - 98% ({isEn ? 'Standard' : 'Đạt chuẩn'})</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-              <span>90% - 95% (Khá)</span>
+              <span>90% - 95% ({isEn ? 'Fair' : 'Khá'})</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-rose-500"></span>
-              <span>&lt; 90% (Cần lưu ý)</span>
+              <span>&lt; 90% ({isEn ? 'Needs Attention' : 'Cần lưu ý'})</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-slate-300"></span>
-              <span>Chưa ĐD hôm nay</span>
+              <span>{isEn ? 'Not Marked Today' : 'Chưa ĐD hôm nay'}</span>
             </div>
           </div>
         )}

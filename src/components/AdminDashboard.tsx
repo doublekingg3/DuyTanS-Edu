@@ -5,6 +5,7 @@ import AbsentLateDetailTable from './AbsentLateDetailTable';
 import AttendanceRateTable from './AttendanceRateTable';
 import SchoolNewsGallery from './SchoolNewsGallery';
 import ClassComparisonChart from './ClassComparisonChart';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface AdminDashboardProps {
   classes: SchoolClass[];
@@ -35,6 +36,7 @@ export default function AdminDashboard({
   canEditNews = false,
   currentUser
 }: AdminDashboardProps) {
+  const { t, isEn } = useLanguage();
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
@@ -197,14 +199,14 @@ export default function AdminDashboard({
           <div>
             <div className="flex flex-wrap items-center gap-2.5 mb-1">
               <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
-                TỔNG THỂ SỐ HỌC SINH VẮNG CỦA CÁC LỚP
+                {isEn ? 'OVERALL ABSENT STUDENTS BY CLASS' : 'TỔNG THỂ SỐ HỌC SINH VẮNG CỦA CÁC LỚP'}
               </h2>
               <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
-                {todayStats.absent} HS vắng
+                {todayStats.absent} {isEn ? 'absent' : 'HS vắng'}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 font-normal">
-              Thống kê sĩ số, số lượng học sinh có mặt, vắng mặt (có phép & không phép) và đi trễ trên toàn trường hôm nay
+              {isEn ? 'Statistics on enrollment, attendance rate, present/absent counts (excused & unexcused) and tardiness across the school today' : 'Thống kê sĩ số, số lượng học sinh có mặt, vắng mặt (có phép & không phép) và đi trễ trên toàn trường hôm nay'}
             </p>
           </div>
         </div>
@@ -222,7 +224,7 @@ export default function AdminDashboard({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {grade === 'all' ? 'Toàn trường' : `Khối ${grade}`}
+                {grade === 'all' ? (isEn ? 'Whole School' : 'Toàn trường') : (isEn ? `Grade ${grade}` : `Khối ${grade}`)}
               </button>
             ))}
           </div>
@@ -233,7 +235,7 @@ export default function AdminDashboard({
             className="bg-teal-gradient hover:opacity-95 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl shadow-xs flex items-center justify-center gap-2 transition-transform active:scale-95"
           >
             <BookOpen className="w-4 h-4" />
-            <span>Sổ điểm danh chi tiết</span>
+            <span>{isEn ? 'Detailed Attendance Roster' : 'Sổ điểm danh chi tiết'}</span>
           </button>
         </div>
       </div>
@@ -243,14 +245,14 @@ export default function AdminDashboard({
         {/* Card 1: Tổng sĩ số */}
         <div className="bg-white rounded-[20px] p-5 border border-slate-100 shadow-sm shadow-teal-500/5 relative">
           <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-2">
-            TỔNG SĨ SỐ
+            {isEn ? 'TOTAL ENROLLMENT' : 'TỔNG SĨ SỐ'}
           </p>
           <div className="flex items-baseline gap-1.5 mb-2">
             <span className="text-3xl font-extrabold text-slate-800">{todayStats.total}</span>
-            <span className="text-xs font-medium text-slate-500">học sinh</span>
+            <span className="text-xs font-medium text-slate-500">{isEn ? 'students' : 'học sinh'}</span>
           </div>
           <p className="text-xs text-slate-500">
-            {todayStats.checkedClassesCount} lớp đã ĐD • {todayStats.uncheckedClassesCount} lớp chưa ĐD ({currentClasses.length} lớp)
+            {todayStats.checkedClassesCount} {isEn ? 'done' : 'lớp đã ĐD'} • {todayStats.uncheckedClassesCount} {isEn ? 'pending' : 'lớp chưa ĐD'} ({currentClasses.length} {isEn ? 'classes' : 'lớp'})
           </p>
         </div>
 
@@ -258,15 +260,15 @@ export default function AdminDashboard({
         <div className="bg-[#f0fdfa] rounded-[20px] p-5 border border-[#5eead4]/60 shadow-sm shadow-teal-500/5 relative">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-bold text-teal-700 tracking-wider uppercase">
-              ĐANG CÓ MẶT
+              {isEn ? 'PRESENT TODAY' : 'ĐANG CÓ MẶT'}
             </p>
             {todayStats.uncheckedClassesCount > 0 ? (
               <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                {todayStats.checkedClassesCount}/{todayStats.totalClasses} lớp đã ĐD
+                {todayStats.checkedClassesCount}/{todayStats.totalClasses} {isEn ? 'marked' : 'lớp đã ĐD'}
               </span>
             ) : (
               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                <Check className="w-3 h-3" /> Đầy đủ {todayStats.totalClasses} lớp
+                <Check className="w-3 h-3" /> {isEn ? `All ${todayStats.totalClasses} classes` : `Đầy đủ ${todayStats.totalClasses} lớp`}
               </span>
             )}
           </div>
@@ -278,13 +280,13 @@ export default function AdminDashboard({
               ({todayStats.presentPercent}%)
             </span>
             <span className="text-[11px] text-slate-400 font-normal ml-0.5">
-              / {todayStats.total} tổng sĩ số
+              / {todayStats.total} {isEn ? 'total' : 'tổng sĩ số'}
             </span>
           </div>
           <p className="text-xs text-teal-700 font-medium">
             {todayStats.uncheckedClassesCount > 0 
-              ? `${todayStats.present}/${todayStats.total} HS có mặt (${todayStats.checkedClassesCount}/${todayStats.totalClasses} lớp đã ĐD)`
-              : 'Hiện diện đầy đủ trên lớp học'}
+              ? `${todayStats.present}/${todayStats.total} ${isEn ? 'students present' : 'HS có mặt'} (${todayStats.checkedClassesCount}/${todayStats.totalClasses} ${isEn ? 'classes marked' : 'lớp đã ĐD'})`
+              : (isEn ? 'Full attendance recorded across classes' : 'Hiện diện đầy đủ trên lớp học')}
           </p>
         </div>
 
@@ -292,30 +294,30 @@ export default function AdminDashboard({
         <div className="bg-white rounded-[20px] p-5 border border-rose-100 shadow-sm shadow-rose-500/5 relative">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-bold text-rose-600 tracking-wider uppercase">
-              TỔNG SỐ HS VẮNG
+              {isEn ? 'TOTAL ABSENT' : 'TỔNG SỐ HS VẮNG'}
             </p>
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
           </div>
           <div className="flex items-baseline gap-1.5 mb-2">
             <span className="text-3xl font-extrabold text-rose-600">{todayStats.absent}</span>
-            <span className="text-xs font-medium text-slate-500">học sinh</span>
+            <span className="text-xs font-medium text-slate-500">{isEn ? 'students' : 'học sinh'}</span>
           </div>
           <p className="text-xs text-rose-500 font-medium">
-            {todayStats.absentP} có phép (P) • {todayStats.absentKP} không phép (KP)
+            {todayStats.absentP} {isEn ? 'excused (P)' : 'có phép (P)'} • {todayStats.absentKP} {isEn ? 'unexcused (KP)' : 'không phép (KP)'}
           </p>
         </div>
 
         {/* Card 4: Đi học trễ */}
         <div className="bg-[#fffbeb]/60 rounded-[20px] p-5 border border-amber-200/80 shadow-sm relative">
           <p className="text-xs font-bold text-amber-700 tracking-wider uppercase mb-2">
-            ĐI HỌC TRỄ
+            {isEn ? 'LATE TODAY' : 'ĐI HỌC TRỄ'}
           </p>
           <div className="flex items-baseline gap-1.5 mb-2">
             <span className="text-3xl font-extrabold text-amber-700">{todayStats.late}</span>
-            <span className="text-xs font-medium text-slate-500">học sinh</span>
+            <span className="text-xs font-medium text-slate-500">{isEn ? 'students' : 'học sinh'}</span>
           </div>
           <p className="text-xs text-amber-700 font-medium">
-            Đã ghi nhận vào sổ theo dõi
+            {isEn ? 'Recorded into tracking log' : 'Đã ghi nhận vào sổ theo dõi'}
           </p>
         </div>
       </div>
@@ -329,15 +331,19 @@ export default function AdminDashboard({
             </div>
             <div>
               <p className="text-xs sm:text-sm font-bold text-amber-900">
-                Có {todayStats.uncheckedClassesCount} lớp chưa hoàn thành điểm danh ngày {selectedDate.split('-').reverse().join('/')}
+                {isEn 
+                  ? `There are ${todayStats.uncheckedClassesCount} classes that haven't finished attendance for ${selectedDate.split('-').reverse().join('/')}`
+                  : `Có ${todayStats.uncheckedClassesCount} lớp chưa hoàn thành điểm danh ngày ${selectedDate.split('-').reverse().join('/')}`}
               </p>
               <p className="text-xs text-amber-700">
-                Số học sinh "Đang có mặt" ({todayStats.present} HS) hiện tổng hợp từ {todayStats.checkedClassesCount} lớp đã điểm danh (đạt {todayStats.presentPercent}%). Các lớp chưa ĐD có nút sáng xanh bên dưới.
+                {isEn 
+                  ? `Present count (${todayStats.present} students) is currently summarized from ${todayStats.checkedClassesCount} classes marked (${todayStats.presentPercent}%).`
+                  : `Số học sinh "Đang có mặt" (${todayStats.present} HS) hiện tổng hợp từ ${todayStats.checkedClassesCount} lớp đã điểm danh (đạt ${todayStats.presentPercent}%). Các lớp chưa ĐD có nút sáng xanh bên dưới.`}
               </p>
             </div>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 bg-white text-amber-800 rounded-lg border border-amber-200 shadow-2xs shrink-0">
-            {todayStats.checkedClassesCount}/{todayStats.totalClasses} lớp hoàn thành
+            {todayStats.checkedClassesCount}/{todayStats.totalClasses} {isEn ? 'classes completed' : 'lớp hoàn thành'}
           </span>
         </div>
       )}
@@ -352,8 +358,8 @@ export default function AdminDashboard({
           onSelectClass?.(classId);
           onNavigateToAttendance?.(classId);
         }}
-        title={`DANH SÁCH CHI TIẾT HỌC SINH VẮNG, ĐI TRỄ NGÀY ${selectedDate.split('-').reverse().join('/')}`}
-        description="Thống kê chi tiết các trường hợp vắng có phép, vắng không phép và đi trễ trên toàn trường kèm SĐT liên hệ phụ huynh"
+        title={isEn ? `DETAILED LIST OF ABSENT & LATE STUDENTS ON ${selectedDate.split('-').reverse().join('/')}` : `DANH SÁCH CHI TIẾT HỌC SINH VẮNG, ĐI TRỄ NGÀY ${selectedDate.split('-').reverse().join('/')}`}
+        description={isEn ? "Detailed records of excused absences, unexcused absences and late arrivals with parent contact phone numbers" : "Thống kê chi tiết các trường hợp vắng có phép, vắng không phép và đi trễ trên toàn trường kèm SĐT liên hệ phụ huynh"}
       />
 
       {/* BIỂU ĐỒ SO SÁNH CÁC LỚP */}

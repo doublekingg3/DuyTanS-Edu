@@ -32,6 +32,7 @@ import MediaNewsManagement from './MediaNewsManagement';
 import { SchoolActivityNews } from '../data';
 import { getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
 import { canUserEdit } from '../lib/permissions';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TeacherViewProps {
   role?: string;
@@ -86,6 +87,7 @@ export default function TeacherView({
   onUpdateActivity,
   onDeleteActivity
 }: TeacherViewProps) {
+  const { t, isEn } = useLanguage();
   const [activeMenu, setActiveMenu] = useState(role === 'media' ? 'news' : 'overview');
   const [internalYearId, setInternalYearId] = useState(
     schoolYears && schoolYears.length > 0 ? schoolYears[0].id : ''
@@ -165,74 +167,74 @@ export default function TeacherView({
       { 
         id: "news", 
         icon: Newspaper, 
-        label: "Tin tức hoạt động",
-        badge: "Truyền thông",
+        label: t('mediaNews'),
+        badge: t('mediaDepartment'),
         badgeType: 'teal' as const,
-        collapsedBadge: "TT"
+        collapsedBadge: isEn ? "MD" : "TT"
       }
     ] : [
       { 
         id: "overview", 
         icon: LayoutDashboard, 
-        label: "Tổng quan" 
+        label: t('dashboard') 
       },
       ...(role !== 'staff' && role !== 'subject_teacher' ? [{ 
         id: "schedule", 
         icon: Clock, 
-        label: "Thời khóa biểu" 
+        label: t('schedule') 
       }] : []),
       ...(role !== 'staff' ? [{ 
         id: "students", 
         icon: Users, 
-        label: "Danh sách lớp",
-        badge: `${filteredStudents.length} HS`,
+        label: t('classList'),
+        badge: `${filteredStudents.length} ${t('studentsCount')}`,
         badgeType: 'count' as const,
         collapsedBadge: filteredStudents.length.toString(),
       }] : []),
       ...(role !== 'staff' && role !== 'subject_teacher' ? [{ 
         id: "weekly_plan", 
         icon: ClipboardList, 
-        label: "Kế hoạch tuần",
-        badge: `Tuần ${currentWeekNumber}`,
+        label: t('weeklyPlan'),
+        badge: `${t('week')} ${currentWeekNumber}`,
         badgeType: 'yellow' as const,
-        collapsedBadge: `T${currentWeekNumber}`,
+        collapsedBadge: isEn ? `W${currentWeekNumber}` : `T${currentWeekNumber}`,
       }] : []),
       ...(role !== 'subject_teacher' ? [{ 
         id: "lunch_menu", 
         icon: Utensils, 
-        label: "Thực đơn ăn trưa",
-        badge: "Bán trú",
+        label: t('lunchMenu'),
+        badge: t('boardingBadge'),
         badgeType: 'teal' as const,
-        collapsedBadge: "BT",
+        collapsedBadge: isEn ? "BD" : "BT",
       }] : []),
       ...(role !== 'staff' ? [{ 
         id: "attendance", 
         icon: UserCheck, 
-        label: "Điểm danh" 
+        label: t('attendanceMarking') 
       }] : []),
       // Tin tức hoạt động được đưa xuống phía dưới, bên trên chữ "Quản lý Lớp học"
       { 
         id: "news", 
         icon: Newspaper, 
-        label: "Tin tức hoạt động",
-        badge: role === 'admin' ? "Truyền thông" : undefined,
+        label: t('mediaNews'),
+        badge: role === 'admin' ? t('mediaDepartment') : undefined,
         badgeType: 'teal' as const,
-        collapsedBadge: "TT"
+        collapsedBadge: isEn ? "MD" : "TT"
       },
       ...(role === 'admin' ? [
-        { id: "admin_classes", icon: Building2, label: "Quản lý Lớp học" },
-        { id: "admin_school_years", icon: CalendarIcon, label: "Quản lý Năm học" },
-        { id: "admin_accounts", icon: Shield, label: "Quản lý người dùng" },
-        { id: "admin_settings", icon: Settings, label: "Cấu hình hệ thống" }
+        { id: "admin_classes", icon: Building2, label: t('classManagement') },
+        { id: "admin_school_years", icon: CalendarIcon, label: t('schoolYearManagement') },
+        { id: "admin_accounts", icon: Shield, label: t('userManagement') },
+        { id: "admin_settings", icon: Settings, label: t('systemConfig') }
       ] : [])
     ])
   ];
 
   const roleBadgeLabel = role === 'admin' 
-    ? 'Ban Giám Hiệu' 
-    : (role === 'teacher' ? 'Giáo viên' : (role === 'staff' ? 'Giáo vụ' : (role === 'media' ? 'Truyền Thông' : 'Chủ nhiệm')));
+    ? t('roleAdmin') 
+    : (role === 'teacher' ? t('roleTeacher') : (role === 'staff' ? t('roleStaff') : (role === 'media' ? t('roleMedia') : t('roleHomeroom'))));
 
-  const shortRoleLabel = role === 'admin' ? 'BGH' : (role === 'media' ? 'TT' : (role === 'staff' ? 'GVụ' : 'GV'));
+  const shortRoleLabel = role === 'admin' ? t('roleShortAdmin') : (role === 'media' ? t('roleShortMedia') : (role === 'staff' ? t('roleShortStaff') : t('roleShortTeacher')));
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-68px)] overflow-hidden bg-[#f0fdfa]/30 relative">
@@ -257,7 +259,7 @@ export default function TeacherView({
             <>
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
-                  HỆ THỐNG QUẢN LÝ
+                  {t('managementSystem')}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-[#ccfbf1] text-[#0f766e] text-[10px] font-bold shrink-0">
                   {roleBadgeLabel}

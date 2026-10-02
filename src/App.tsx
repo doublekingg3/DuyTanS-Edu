@@ -6,14 +6,16 @@ import AdminView from './components/AdminView';
 import Login from './components/Login';
 import Portal from './components/Portal';
 import SchoolLogo from './components/SchoolLogo';
-import { GraduationCap, Calendar, Users, UserCircle, Shield, Loader2, LogOut, ArrowLeft, KeyRound, Bell, ChevronDown } from 'lucide-react';
+import { GraduationCap, Calendar, Users, UserCircle, Shield, Loader2, LogOut, ArrowLeft, KeyRound, Bell, ChevronDown, Globe } from 'lucide-react';
 import ChangePasswordModal from './components/ChangePasswordModal';
+import { useLanguage } from './contexts/LanguageContext';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from './lib/firebase';
 import { defaultDb } from './lib/firebase_default';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 
 export default function App() {
+  const { language, setLanguage, t } = useLanguage();
   const [appMode, setAppMode] = useState<'portal' | 'edu_manager' | 'tkb'>('portal');
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -558,9 +560,10 @@ export default function App() {
   // Active user info
   const currentUser = users.find(u => u.id === loggedInUserId);
   const currentUserDisplayName = currentUser?.fullName || (
-    role === 'admin' ? 'Ban Giám Hiệu Duy Tân' :
-    role === 'teacher' ? 'Giáo viên' :
-    role === 'staff' ? 'Giáo vụ' : 'Phụ huynh'
+    role === 'admin' ? t('roleAdmin') :
+    role === 'teacher' ? t('roleTeacher') :
+    role === 'staff' ? t('roleStaff') :
+    role === 'media' ? t('roleMedia') : t('roleParent')
   );
   const currentUserInitial = currentUserDisplayName.charAt(0).toUpperCase() || 'T';
 
@@ -581,11 +584,11 @@ export default function App() {
           <SchoolLogo src={settings?.portalLogo || settings?.loginLogo} className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 object-contain" />
           <div className="flex flex-col min-w-0 justify-center">
             <h1 className="text-[11px] sm:text-xs md:text-sm font-black tracking-wider text-[#0054a6] uppercase font-display truncate max-w-[140px] sm:max-w-xs md:max-w-none">
-              {settings?.appName || "Trường Phổ Thông Duy Tân"}
+              {settings?.appName || t('appName')}
             </h1>
             <div className="mt-0.5">
               <span className="text-xs sm:text-sm md:text-base font-extrabold text-[#b91c1c] tracking-tight whitespace-nowrap">
-                DuyTan Student360
+                {t('appSubtitle')}
               </span>
             </div>
           </div>
@@ -595,31 +598,55 @@ export default function App() {
         {currentClass && (
           <div className="hidden lg:flex items-center gap-3 bg-[#f0fdfa] border border-[#5eead4] px-4 py-1.5 rounded-2xl shadow-2xs shrink-0 mx-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-500">Lớp:</span>
+              <span className="text-xs font-semibold text-slate-500">{t('class')}:</span>
               <span className="text-sm font-extrabold text-teal-800 bg-[#ccfbf1] px-2 py-0.5 rounded-lg">
                 {currentClass.name}
               </span>
             </div>
             <span className="text-teal-300">•</span>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-500">GVCN:</span>
+              <span className="text-xs font-semibold text-slate-500">{t('homeroomTeacher')}:</span>
               <span className="text-sm font-bold text-slate-800">
-                {currentClass.homeroomTeacher || 'Chưa phân công'}
+                {currentClass.homeroomTeacher || t('unassigned')}
               </span>
             </div>
           </div>
         )}
 
-        {/* Right: Notification Bell & User Profile Dropdown */}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* Notification Bell */}
-          <button 
-            className="p-1.5 sm:p-2 text-slate-400 hover:text-teal-700 hover:bg-[#f0fdfa] rounded-xl transition-colors relative shrink-0"
-            title="Thông báo"
+        {/* Right: Language Switcher & User Profile Dropdown */}
+        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
+          {/* Language Switcher (Replaces Notification Bell) */}
+          <div 
+            className="flex items-center p-0.5 rounded-xl bg-teal-50/90 border border-teal-200/80 shadow-2xs shrink-0" 
+            title={t('switchLanguage')}
           >
-            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="absolute top-1 sm:top-1.5 right-1 sm:right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('vi')}
+              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                language === 'vi'
+                  ? 'bg-white text-teal-900 shadow-xs ring-1 ring-teal-200/50'
+                  : 'text-slate-500 hover:text-teal-700'
+              }`}
+              title="Tiếng Việt"
+            >
+              <span className="text-xs leading-none">🇻🇳</span>
+              <span className="text-[11px] font-black tracking-wide">VN</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('en')}
+              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                language === 'en'
+                  ? 'bg-white text-teal-900 shadow-xs ring-1 ring-teal-200/50'
+                  : 'text-slate-500 hover:text-teal-700'
+              }`}
+              title="English"
+            >
+              <span className="text-xs leading-none">🇬🇧</span>
+              <span className="text-[11px] font-black tracking-wide">EN</span>
+            </button>
+          </div>
 
           {/* User Menu Button */}
           <div className="relative shrink-0" ref={userMenuRef}>
@@ -635,11 +662,11 @@ export default function App() {
                   {currentUserDisplayName}
                 </div>
                 <div className="text-[11px] text-slate-500 font-medium leading-tight">
-                  {role === 'admin' && 'Ban Giám Hiệu'}
-                  {role === 'teacher' && 'Giáo viên'}
-                  {role === 'staff' && 'Giáo vụ'}
-                  {role === 'media' && 'Phòng Truyền Thông'}
-                  {role === 'parent' && 'Phụ huynh'}
+                  {role === 'admin' && t('roleAdmin')}
+                  {role === 'teacher' && t('roleTeacher')}
+                  {role === 'staff' && t('roleStaff')}
+                  {role === 'media' && t('roleMedia')}
+                  {role === 'parent' && t('roleParent')}
                 </div>
               </div>
               <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
@@ -651,7 +678,7 @@ export default function App() {
                 <div className="px-4 py-2 border-b border-slate-100 sm:hidden">
                   <div className="text-sm font-bold text-slate-800">{currentUserDisplayName}</div>
                   <div className="text-xs text-slate-500">
-                    {role === 'admin' ? 'Ban Giám Hiệu' : role === 'teacher' ? 'Giáo viên' : role === 'staff' ? 'Giáo vụ' : role === 'media' ? 'Phòng Truyền Thông' : 'Người dùng'}
+                    {role === 'admin' ? t('roleAdmin') : role === 'teacher' ? t('roleTeacher') : role === 'staff' ? t('roleStaff') : role === 'media' ? t('roleMedia') : t('roleParent')}
                   </div>
                 </div>
 
@@ -663,7 +690,7 @@ export default function App() {
                   className="w-full text-left px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[#f0fdfa] hover:text-teal-700 flex items-center gap-2.5 transition-colors font-medium"
                 >
                   <KeyRound className="w-4 h-4 text-teal-600" />
-                  <span>Đổi mật khẩu</span>
+                  <span>{t('changePassword')}</span>
                 </button>
 
                 {!settings?.disablePortal && (
@@ -676,7 +703,7 @@ export default function App() {
                     className="w-full text-left px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[#f0fdfa] hover:text-teal-700 flex items-center gap-2.5 transition-colors font-medium"
                   >
                     <ArrowLeft className="w-4 h-4 text-teal-600" />
-                    <span>Về trang Portal</span>
+                    <span>{t('backToPortal')}</span>
                   </button>
                 )}
 
@@ -690,7 +717,7 @@ export default function App() {
                   className="w-full text-left px-4 py-2.5 text-xs sm:text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors font-medium"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Đăng xuất</span>
+                  <span>{t('logout')}</span>
                 </button>
               </div>
             )}
@@ -736,18 +763,14 @@ export default function App() {
             onDeleteActivity={handleDeleteActivity}
           />
         ) : (
-          <div className="flex flex-col h-[calc(100vh-68px)]">
-            <div className="flex-1 overflow-y-auto">
-              <ParentView 
-                student={students.find(s => s.id === parentStudentId) || students[0]} 
-                allStudents={students} 
-                classes={classes} 
-                schoolYears={schoolYears} 
-                onEditStudent={handleEditStudent}
-                activities={activities}
-              />
-            </div>
-          </div>
+          <ParentView 
+            student={students.find(s => s.id === parentStudentId) || students[0]} 
+            allStudents={students} 
+            classes={classes} 
+            schoolYears={schoolYears} 
+            onEditStudent={handleEditStudent}
+            activities={activities}
+          />
         )}
       </main>
     </div>
