@@ -275,7 +275,8 @@ export default function App() {
   // Tự động đồng bộ Favicon, iOS Touch Icon và Android PWA Manifest theo Icon Tiêu đề (settings.pageIcon)
   useEffect(() => {
     const title = settings.pageTitle || 'Trường Phổ Thông Duy Tân';
-    const iconUrl = settings.pageIcon || '/favicon.ico';
+    const defaultEmblemSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="%23ffffff" stroke="%230284c7" stroke-width="3"/><circle cx="50" cy="50" r="44" fill="%23f0fdfa" stroke="%230d9488" stroke-width="1.5"/><circle cx="50" cy="50" r="33" fill="%230d9488"/><path d="M32 58C38 54 46 54 50 58C54 54 62 54 68 58V40C62 36 54 36 50 40C46 36 38 36 32 40V58Z" fill="%23ffffff"/><path d="M50 34V58" stroke="%230f766e" stroke-width="2" stroke-linecap="round"/><path d="M50 24C48 27 46 29 48 32C49 33 51 33 52 32C54 29 52 27 50 24Z" fill="%23f59e0b"/></svg>`;
+    const iconUrl = settings.pageIcon || settings.portalLogo || settings.loginLogo || defaultEmblemSvg;
     const shortName = settings.appName || 'Trường Duy Tân';
 
     document.title = title;
@@ -297,6 +298,14 @@ export default function App() {
       document.head.appendChild(linkAppleIcon);
     }
     linkAppleIcon.href = iconUrl;
+
+    let linkApplePrecomposed = document.querySelector("link[rel='apple-touch-icon-precomposed']") as HTMLLinkElement;
+    if (!linkApplePrecomposed) {
+      linkApplePrecomposed = document.createElement('link');
+      linkApplePrecomposed.rel = 'apple-touch-icon-precomposed';
+      document.head.appendChild(linkApplePrecomposed);
+    }
+    linkApplePrecomposed.href = iconUrl;
 
     let metaAppleTitle = document.querySelector("meta[name='apple-mobile-web-app-title']") as HTMLMetaElement;
     if (!metaAppleTitle) {
@@ -347,7 +356,7 @@ export default function App() {
     return () => {
       URL.revokeObjectURL(manifestURL);
     };
-  }, [settings.pageTitle, settings.pageIcon, settings.appName]);
+  }, [settings.pageTitle, settings.pageIcon, settings.portalLogo, settings.loginLogo, settings.appName]);
 
   const handleUpdateSettings = async (newSettings: AppSettings) => {
     setSettings(newSettings);
