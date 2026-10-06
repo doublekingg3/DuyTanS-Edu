@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { useAlert } from '../contexts/AlertContext';
 import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Download, Save, Plus, Trash2, Upload, X, RotateCcw, Eye, Shield, Camera, Image as ImageIcon } from 'lucide-react';
-import { db } from '../lib/firebase';
+import { db, uploadImageToStorage } from '../lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { generateSchoolWeeks, getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
+import { generateSchoolWeeks, getCurrentSchoolWeek, getDayDateFormatted } from '../lib/schoolWeekUtils';
 import { canUserEdit } from '../lib/permissions';
 import { UserAccount } from '../data';
 
@@ -107,13 +107,18 @@ export default function TeacherLunchMenu({
     if (!file) return;
 
     try {
-      const dataUrl = await compressImage(file, 1024, 0.8);
-      const newMenus = menus.map(m => {
-        if (m.day === targetDay) {
-          return { ...m, imageUrl: dataUrl };
-        }
-        return m;
-      });
+      showAlert(`Đang xử lý ảnh món ăn ${targetDay}...`, 'info');
+      const imageUrl = await uploadImageToStorage(file, 'lunch_menus');
+      if (!imageUrl) {
+        showAlert('Lỗi khi đọc file ảnh. Vui lòng thử tấm ảnh khác.', 'error');
+        return;
+      }
+
+      const dayExists = menus.some(m => m.day === targetDay);
+      const newMenus = dayExists 
+        ? menus.map(m => m.day === targetDay ? { ...m, imageUrl } : m)
+        : [...menus, { day: targetDay, dishes: [], imageUrl }];
+
       setMenus(newMenus);
       await saveToFirebase(selectedWeek, { menus: newMenus });
       showAlert(`Đã tải lên hình ảnh món ăn thực tế cho ${targetDay}`, 'success');
@@ -645,34 +650,39 @@ export default function TeacherLunchMenu({
                       )}
 
                       {/* Image Thumbnail Preview */}
-                      {dayMenu.imageUrl && (
-                        <div className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm shrink-0">
-                          <img 
-                            src={dayMenu.imageUrl} 
-                            alt={`Món ăn ${day}`} 
-                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" 
-                            onClick={() => setPreviewImage({ title: `Hình ảnh món ăn thực tế - ${day} (Tuần ${selectedWeek})`, imageUrl: dayMenu.imageUrl!, dishes: dayMenu.dishes })}
-                          />
-                          <button 
-                            type="button"
-                            onClick={() => setPreviewImage({ title: `Hình ảnh món ăn thực tế - ${day} (Tuần ${selectedWeek})`, imageUrl: dayMenu.imageUrl!, dishes: dayMenu.dishes })}
-                            className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
-                            title="Xem ảnh phóng to"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          {canEdit && (
+                      {dayMenu.imageUrl && (() => {
+                        const activeWeekObj = weeks.find(w => w.id === selectedWeek);
+                        const dayDate = getDayDateFormatted(activeWeekObj?.startDate, day);
+                        const modalTitle = `Hình ảnh món ăn thực tế - ${day}${dayDate ? ` (${dayDate})` : ` (Tuần ${selectedWeek})`}`;
+                        return (
+                          <div className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm shrink-0">
+                            <img 
+                              src={dayMenu.imageUrl} 
+                              alt={`Món ăn ${day}`} 
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" 
+                              onClick={() => setPreviewImage({ title: modalTitle, imageUrl: dayMenu.imageUrl!, dishes: dayMenu.dishes })}
+                            />
                             <button 
                               type="button"
-                              onClick={() => handleRemoveDayImage(day)}
-                              className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition-colors shadow-xs"
-                              title="Xóa ảnh món ăn"
+                              onClick={() => setPreviewImage({ title: modalTitle, imageUrl: dayMenu.imageUrl!, dishes: dayMenu.dishes })}
+                              className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+                              title="Xem ảnh phóng to"
                             >
-                              <X className="w-3 h-3" />
+                              <Eye className="w-4 h-4" />
                             </button>
-                          )}
-                        </div>
-                      )}
+                            {canEdit && (
+                              <button 
+                                type="button"
+                                onClick={() => handleRemoveDayImage(day)}
+                                className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition-colors shadow-xs"
+                                title="Xóa ảnh món ăn"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex-1 w-full space-y-2">

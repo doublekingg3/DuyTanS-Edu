@@ -272,20 +272,82 @@ export default function App() {
   }, []);
 
 
+  // Tự động đồng bộ Favicon, iOS Touch Icon và Android PWA Manifest theo Icon Tiêu đề (settings.pageIcon)
   useEffect(() => {
-    if (settings.pageTitle) {
-      document.title = settings.pageTitle;
+    const title = settings.pageTitle || 'Trường Phổ Thông Duy Tân';
+    const iconUrl = settings.pageIcon || '/favicon.ico';
+    const shortName = settings.appName || 'Trường Duy Tân';
+
+    document.title = title;
+
+    // 1. Cập nhật Favicon trình duyệt
+    let linkFavicon = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (!linkFavicon) {
+      linkFavicon = document.createElement('link');
+      linkFavicon.rel = 'icon';
+      document.head.appendChild(linkFavicon);
     }
-    if (settings.pageIcon) {
-      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'icon';
-        document.head.appendChild(link);
-      }
-      link.href = settings.pageIcon;
+    linkFavicon.href = iconUrl;
+
+    // 2. Cập nhật iOS Apple Touch Icon cho Shortcut iPhone / iPad
+    let linkAppleIcon = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement;
+    if (!linkAppleIcon) {
+      linkAppleIcon = document.createElement('link');
+      linkAppleIcon.rel = 'apple-touch-icon';
+      document.head.appendChild(linkAppleIcon);
     }
-  }, [settings.pageTitle, settings.pageIcon]);
+    linkAppleIcon.href = iconUrl;
+
+    let metaAppleTitle = document.querySelector("meta[name='apple-mobile-web-app-title']") as HTMLMetaElement;
+    if (!metaAppleTitle) {
+      metaAppleTitle = document.createElement('meta');
+      metaAppleTitle.name = 'apple-mobile-web-app-title';
+      document.head.appendChild(metaAppleTitle);
+    }
+    metaAppleTitle.content = shortName;
+
+    // 3. Tự động tạo Web App Manifest cho Android PWA Shortcut
+    const manifestData = {
+      id: '/',
+      name: title,
+      short_name: shortName,
+      description: 'Hệ thống sổ chủ nhiệm & thời khóa biểu số Trường Phổ Thông Duy Tân',
+      start_url: '/',
+      scope: '/',
+      display: 'standalone',
+      background_color: '#ffffff',
+      theme_color: '#0f766e',
+      icons: [
+        {
+          src: iconUrl,
+          sizes: '192x192',
+          type: 'image/png',
+          purpose: 'any'
+        },
+        {
+          src: iconUrl,
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'any'
+        }
+      ]
+    };
+
+    const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+    const manifestURL = URL.createObjectURL(manifestBlob);
+
+    let linkManifest = document.querySelector("link[rel='manifest']") as HTMLLinkElement;
+    if (!linkManifest) {
+      linkManifest = document.createElement('link');
+      linkManifest.rel = 'manifest';
+      document.head.appendChild(linkManifest);
+    }
+    linkManifest.href = manifestURL;
+
+    return () => {
+      URL.revokeObjectURL(manifestURL);
+    };
+  }, [settings.pageTitle, settings.pageIcon, settings.appName]);
 
   const handleUpdateSettings = async (newSettings: AppSettings) => {
     setSettings(newSettings);

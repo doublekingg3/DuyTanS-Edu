@@ -189,6 +189,7 @@ export interface Student {
   classId: string;
   stt: number;
   fullName: string;
+  avatarUrl?: string;
   gender: 'Nam' | 'Nữ';
   ethnicity: string;
   dob?: string;

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Utensils, ChevronLeft, ChevronRight, Download, Calendar, CheckCircle2, Clock, Camera, Eye, X } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { generateSchoolWeeks, getCurrentSchoolWeek } from '../lib/schoolWeekUtils';
+import { generateSchoolWeeks, getCurrentSchoolWeek, getDayDateFormatted } from '../lib/schoolWeekUtils';
 import { useLanguage, translateDish, translateDay } from '../contexts/LanguageContext';
 
 interface DayMenu {
@@ -221,28 +221,33 @@ export default function ParentLunchMenu() {
               </div>
 
               {/* Dish Photo Button / Thumbnail for Parents */}
-              {menu.imageUrl && (
-                <div className="shrink-0 flex sm:flex-col items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                  <div className="relative group w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-teal-200 shadow-2xs shrink-0 cursor-pointer" onClick={() => setPreviewImage({ title: `${isEn ? 'Actual Dish Photo' : 'Hình ảnh món ăn thực tế'} - ${translateDay(menu.day, isEn)}`, imageUrl: menu.imageUrl!, dishes: menu.dishes })}>
-                    <img 
-                      src={menu.imageUrl} 
-                      alt={`Món ăn ${menu.day}`} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
-                    />
-                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-                      <Eye className="w-4 h-4" />
+              {menu.imageUrl && (() => {
+                const activeWeekObj = weeks.find(w => w.id === selectedWeek);
+                const dayDate = getDayDateFormatted(activeWeekObj?.startDate, menu.day);
+                const modalTitle = `${isEn ? 'Actual Dish Photo' : 'Hình ảnh món ăn thực tế'} - ${translateDay(menu.day, isEn)}${dayDate ? ` (${dayDate})` : ` (Tuần ${selectedWeek})`}`;
+                return (
+                  <div className="shrink-0 flex sm:flex-col items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                    <div className="relative group w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-teal-200 shadow-2xs shrink-0 cursor-pointer" onClick={() => setPreviewImage({ title: modalTitle, imageUrl: menu.imageUrl!, dishes: menu.dishes })}>
+                      <img 
+                        src={menu.imageUrl} 
+                        alt={`Món ăn ${menu.day}`} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                      />
+                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                        <Eye className="w-4 h-4" />
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage({ title: modalTitle, imageUrl: menu.imageUrl!, dishes: menu.dishes })}
+                      className="flex-1 sm:w-full px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{isEn ? 'View Dish Photo' : 'Xem hình ảnh món ăn'}</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewImage({ title: `${isEn ? 'Actual Dish Photo' : 'Hình ảnh món ăn thực tế'} - ${translateDay(menu.day, isEn)}`, imageUrl: menu.imageUrl!, dishes: menu.dishes })}
-                    className="flex-1 sm:w-full px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <Camera className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{isEn ? 'View Dish Photo' : 'Xem hình ảnh món ăn'}</span>
-                  </button>
-                </div>
-              )}
+                );
+              })()}
             </div>
           ))}
         </div>

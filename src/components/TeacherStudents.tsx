@@ -19,11 +19,12 @@ import {
   Eye,
   CheckCircle,
   Save,
-  Shield
+  Shield,
+  Camera
 } from 'lucide-react';
 import { useAlert } from '../contexts/AlertContext';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../lib/firebase';
+import { db, uploadImageToStorage } from '../lib/firebase';
 import { doc, writeBatch, deleteDoc, setDoc } from 'firebase/firestore';
 import { canUserEdit } from '../lib/permissions';
 import { UserAccount } from '../data';
@@ -844,8 +845,12 @@ export default function TeacherStudents({
             {/* Modal Header */}
             <div className="bg-teal-gradient px-6 py-5 text-white flex justify-between items-center relative">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white font-bold text-xl shadow-inner">
-                  {selectedStudentForDetails.fullName.split(' ').pop()?.[0] || 'H'}
+                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white font-bold text-xl shadow-inner overflow-hidden">
+                  {selectedStudentForDetails.avatarUrl ? (
+                    <img src={selectedStudentForDetails.avatarUrl} alt={selectedStudentForDetails.fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    selectedStudentForDetails.fullName.split(' ').pop()?.[0] || 'H'
+                  )}
                 </div>
                 <div>
                   <h3 className="text-xl font-bold font-display tracking-tight text-white flex items-center gap-2">
@@ -1056,6 +1061,42 @@ export default function TeacherStudents({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* Avatar Upload (Firebase Storage) */}
+                    <div className="sm:col-span-2 p-3 bg-teal-50/60 rounded-2xl border border-teal-200/80 flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-teal- gradient bg-teal-700 text-white font-bold text-xl flex items-center justify-center overflow-hidden border border-teal-200 shrink-0">
+                        {editFormData.avatarUrl ? (
+                          <img src={editFormData.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          editFormData.fullName?.split(' ').pop()?.[0] || 'H'
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-bold text-teal-900 mb-1">Ảnh chân dung / Avatar học sinh</label>
+                        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-teal-300 text-teal-800 rounded-xl text-xs font-bold hover:bg-teal-50 cursor-pointer shadow-2xs transition-colors">
+                          <Camera className="w-3.5 h-3.5 text-teal-600" />
+                          <span>{editFormData.avatarUrl ? 'Thay đổi ảnh chân dung' : 'Tải lên ảnh chân dung'}</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                showAlert('Đang tải ảnh chân dung học sinh...', 'info');
+                                const url = await uploadImageToStorage(file, 'students/avatars');
+                                setEditFormData(prev => ({ ...prev, avatarUrl: url }));
+                                showAlert('Đã tải ảnh chân dung học sinh thành công!', 'success');
+                              } catch (err) {
+                                console.error(err);
+                                showAlert('Lỗi khi tải ảnh học sinh', 'error');
+                              }
+                            }} 
+                          />
+                        </label>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-xs font-bold text-slate-600 mb-1">1. STT</label>
                       <input 

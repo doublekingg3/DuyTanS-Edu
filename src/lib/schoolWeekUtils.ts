@@ -124,3 +124,33 @@ export function getCurrentSchoolWeek(schoolYearName?: string, referenceDate: Dat
   // Giới hạn trong khoảng 1 đến 42 tuần
   return Math.min(Math.max(weekNum, 1), 42);
 }
+
+/**
+ * Lấy chuỗi DD/MM/YYYY thực tế của một ngày trong tuần dựa vào ngày Thứ 2 của tuần đó (weekStartDateStr)
+ */
+export function getDayDateFormatted(weekStartDateStr?: string, dayName?: string): string {
+  if (!weekStartDateStr) return '';
+  // Parse YYYY-MM-DD
+  const parts = weekStartDateStr.split('-');
+  if (parts.length < 3) return '';
+  const baseDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+
+  let dayOffset = 0;
+  const d = (dayName || '').toLowerCase();
+  if (d.includes('thứ 2') || d.includes('thứ hai') || d.includes('mon')) dayOffset = 0;
+  else if (d.includes('thứ 3') || d.includes('thứ ba') || d.includes('tue')) dayOffset = 1;
+  else if (d.includes('thứ 4') || d.includes('thứ tư') || d.includes('wed')) dayOffset = 2;
+  else if (d.includes('thứ 5') || d.includes('thứ năm') || d.includes('thu')) dayOffset = 3;
+  else if (d.includes('thứ 6') || d.includes('thứ sáu') || d.includes('fri')) dayOffset = 4;
+  else if (d.includes('thứ 7') || d.includes('thứ bảy') || d.includes('sat')) dayOffset = 5;
+  else if (d.includes('chủ nhật') || d.includes('cn') || d.includes('sun')) dayOffset = 6;
+
+  const targetDate = new Date(baseDate);
+  targetDate.setDate(baseDate.getDate() + dayOffset);
+
+  const day = String(targetDate.getDate()).padStart(2, '0');
+  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const year = targetDate.getFullYear();
+
+  return `${day}/${month}/${year}`;
+}

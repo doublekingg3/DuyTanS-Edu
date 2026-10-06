@@ -54,7 +54,8 @@ import {
   Sunset,
   Coffee,
   Check,
-  Award
+  Award,
+  Camera
 } from 'lucide-react';
 import ParentSchedule from './ParentSchedule';
 import { checkIsSpecialSubject } from '../lib/scheduleConstants';
@@ -63,7 +64,7 @@ import ParentWeeklyPlan from './ParentWeeklyPlan';
 import SchoolNewsGallery from './SchoolNewsGallery';
 import { useAlert } from '../contexts/AlertContext';
 import { useLanguage, translateSubject, translateDay, translateStatus, translateDish } from '../contexts/LanguageContext';
-import { db } from '../lib/firebase';
+import { db, uploadImageToStorage } from '../lib/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getCurrentSchoolWeek, generateSchoolWeeks } from '../lib/schoolWeekUtils';
 
@@ -128,7 +129,8 @@ export default function ParentView({
     phone: '',
     parentPhone: '',
     citizenId: '',
-    parentName: ''
+    parentName: '',
+    avatarUrl: ''
   });
   
   // Find all historical records for this student based on their unique code
@@ -269,7 +271,8 @@ export default function ParentView({
         phone: currentViewStudent.phone || currentViewStudent.parentPhone || '',
         parentPhone: currentViewStudent.parentPhone || currentViewStudent.phone || '',
         citizenId: currentViewStudent.citizenId || '',
-        parentName: currentViewStudent.parentName || ''
+        parentName: currentViewStudent.parentName || '',
+        avatarUrl: currentViewStudent.avatarUrl || ''
       });
     }
   }, [currentViewStudent]);
@@ -287,7 +290,8 @@ export default function ParentView({
       phone: currentViewStudent.phone || currentViewStudent.parentPhone || '',
       parentPhone: currentViewStudent.parentPhone || currentViewStudent.phone || '',
       citizenId: currentViewStudent.citizenId || '',
-      parentName: currentViewStudent.parentName || ''
+      parentName: currentViewStudent.parentName || '',
+      avatarUrl: currentViewStudent.avatarUrl || ''
     });
     setIsEditingProfile(true);
     setActiveTab('profile');
@@ -308,7 +312,8 @@ export default function ParentView({
         phone: currentViewStudent.phone || currentViewStudent.parentPhone || '',
         parentPhone: currentViewStudent.parentPhone || currentViewStudent.phone || '',
         citizenId: currentViewStudent.citizenId || '',
-        parentName: currentViewStudent.parentName || ''
+        parentName: currentViewStudent.parentName || '',
+        avatarUrl: currentViewStudent.avatarUrl || ''
       });
     }
   };
@@ -334,7 +339,8 @@ export default function ParentView({
       phone: editFormData.phone.trim(),
       parentPhone: editFormData.phone.trim() || editFormData.parentPhone.trim(),
       citizenId: editFormData.citizenId.trim(),
-      parentName: editFormData.parentName.trim()
+      parentName: editFormData.parentName.trim(),
+      avatarUrl: editFormData.avatarUrl || currentViewStudent.avatarUrl || ''
     };
 
     try {
@@ -557,8 +563,12 @@ export default function ParentView({
 
                 <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
                   <div className="flex items-start gap-4">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-teal-gradient text-white flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white shrink-0">
-                      {student.fullName?.charAt(0) || 'H'}
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-teal-gradient text-white flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white shrink-0 overflow-hidden">
+                      {student.avatarUrl ? (
+                        <img src={student.avatarUrl} alt={student.fullName} className="w-full h-full object-cover" />
+                      ) : (
+                        student.fullName?.charAt(0) || 'H'
+                      )}
                     </div>
                     <div>
                       <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -1192,6 +1202,44 @@ export default function ParentView({
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4">
+                      {/* Ảnh chân dung học sinh (Upload Firebase Storage) */}
+                      <div className="sm:col-span-2 md:col-span-3 p-4 bg-teal-50/60 rounded-2xl border border-teal-200/80 flex flex-col sm:flex-row items-center gap-4 shadow-2xs">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-teal-gradient text-white font-bold text-2xl flex items-center justify-center overflow-hidden border-2 border-white shadow-md shrink-0">
+                          {editFormData.avatarUrl ? (
+                            <img src={editFormData.avatarUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            editFormData.fullName?.charAt(0) || 'H'
+                          )}
+                        </div>
+                        <div className="flex-1 text-center sm:text-left">
+                          <label className="block text-xs font-extrabold uppercase tracking-wider text-teal-900 mb-1.5">
+                            {isEn ? 'Student Avatar / Portrait Photo' : 'Hình ảnh chân dung học sinh'}
+                          </label>
+                          <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-teal-300 text-teal-800 rounded-xl text-xs font-bold hover:bg-teal-50 cursor-pointer shadow-2xs transition-all active:scale-95">
+                            <Camera className="w-4 h-4 text-teal-600" />
+                            <span>{editFormData.avatarUrl ? (isEn ? 'Change Photo' : 'Thay đổi ảnh chân dung') : (isEn ? 'Upload Photo' : 'Tải lên ảnh chân dung')}</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  showAlert('Đang tải ảnh chân dung học sinh...', 'info');
+                                  const url = await uploadImageToStorage(file, 'students/avatars');
+                                  setEditFormData(prev => ({ ...prev, avatarUrl: url }));
+                                  showAlert('Đã tải lên ảnh chân dung học sinh thành công!', 'success');
+                                } catch (err) {
+                                  console.error(err);
+                                  showAlert('Lỗi khi tải ảnh học sinh', 'error');
+                                }
+                              }} 
+                            />
+                          </label>
+                        </div>
+                      </div>
+
                       {/* Họ và tên */}
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">

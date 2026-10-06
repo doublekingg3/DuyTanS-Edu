@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { SchoolActivityNews, UserAccount, initialSchoolActivities } from '../data';
 import { useLanguage, translateCategory } from '../contexts/LanguageContext';
+import { uploadImageToStorage } from '../lib/firebase';
 
 interface SchoolNewsGalleryProps {
   activities: SchoolActivityNews[];
@@ -275,15 +276,15 @@ export default function SchoolNewsGallery({
     setIsUploadModalOpen(true);
   };
 
-  // Chọn ảnh banner từ máy
+  // Chọn ảnh banner từ máy (Upload Firebase Storage)
   const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImageFile(file, 1400, 0.8);
-      setFormImageUrl(compressed);
+      const url = await uploadImageToStorage(file, 'news/banners');
+      setFormImageUrl(url);
     } catch (err) {
-      console.warn('Lỗi nén ảnh, fallback sang đọc trực tiếp:', err);
+      console.warn('Lỗi upload ảnh banner:', err);
       const reader = new FileReader();
       reader.onload = (re) => {
         if (re.target?.result) setFormImageUrl(re.target.result as string);
@@ -292,7 +293,7 @@ export default function SchoolNewsGallery({
     }
   };
 
-  // Chọn nhiều ảnh cho album bài viết từ máy
+  // Chọn nhiều ảnh cho album bài viết từ máy (Upload Firebase Storage)
   const handleGalleryFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -300,10 +301,10 @@ export default function SchoolNewsGallery({
     const newPhotos: string[] = [];
     for (let i = 0; i < files.length; i++) {
       try {
-        const compressed = await compressImageFile(files[i], 1200, 0.75);
-        newPhotos.push(compressed);
+        const url = await uploadImageToStorage(files[i], 'news/gallery');
+        newPhotos.push(url);
       } catch (err) {
-        console.warn('Lỗi nén ảnh album:', err);
+        console.warn('Lỗi upload ảnh album:', err);
       }
     }
 
