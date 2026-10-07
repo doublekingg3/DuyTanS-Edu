@@ -132,9 +132,22 @@ export default function App() {
         // Sort by STT to maintain order
         loadedStudents.sort((a, b) => a.stt - b.stt);
         setStudents(loadedStudents);
-        if (loadedStudents.length > 0 && !parentStudentId) {
-          setParentStudentId(loadedStudents[0].id);
-        }
+        setParentStudentId(prev => {
+          if (prev && loadedStudents.some(s => s.id === prev)) {
+            return prev; // Giữ nguyên học sinh mà phụ huynh đang xem khi Firestore đồng bộ
+          }
+          try {
+            const rawSession = sessionStorage.getItem('edumanage_session') || 
+              (localStorage.getItem('edumanage_remember_me') === 'true' ? localStorage.getItem('edumanage_auto_session') : null);
+            if (rawSession) {
+              const parsed = JSON.parse(rawSession);
+              if (parsed.studentId && loadedStudents.some(s => s.id === parsed.studentId)) {
+                return parsed.studentId;
+              }
+            }
+          } catch (e) {}
+          return loadedStudents[0]?.id || '';
+        });
         studentsLoaded = true;
         checkLoading();
       }
@@ -633,14 +646,10 @@ export default function App() {
     setParentStudentId(studentId);
     try {
       const rawSession = sessionStorage.getItem('edumanage_session') || localStorage.getItem('edumanage_auto_session');
-      if (rawSession) {
-        const parsed = JSON.parse(rawSession);
-        const updated = { ...parsed, studentId };
-        sessionStorage.setItem('edumanage_session', JSON.stringify(updated));
-        if (localStorage.getItem('edumanage_remember_me') === 'true') {
-          localStorage.setItem('edumanage_auto_session', JSON.stringify(updated));
-        }
-      }
+      const parsed = rawSession ? JSON.parse(rawSession) : { role: 'parent' };
+      const updated = { ...parsed, role: 'parent', studentId };
+      sessionStorage.setItem('edumanage_session', JSON.stringify(updated));
+      localStorage.setItem('edumanage_auto_session', JSON.stringify(updated));
     } catch (e) {
       console.error('Error updating parent student session:', e);
     }
