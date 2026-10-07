@@ -74,6 +74,7 @@ interface ParentViewProps {
   classes: SchoolClass[];
   schoolYears: SchoolYear[];
   onEditStudent?: (student: Student) => void;
+  onSelectStudent?: (studentId: string) => void;
   activities?: SchoolActivityNews[];
 }
 
@@ -94,6 +95,7 @@ export default function ParentView({
   classes, 
   schoolYears,
   onEditStudent,
+  onSelectStudent,
   activities = []
 }: ParentViewProps) {
   const { showAlert } = useAlert();
@@ -479,7 +481,11 @@ export default function ParentView({
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <select 
                   value={selectedHistoryId}
-                  onChange={e => setSelectedHistoryId(e.target.value)}
+                  onChange={e => {
+                    const newId = e.target.value;
+                    setSelectedHistoryId(newId);
+                    onSelectStudent?.(newId);
+                  }}
                   className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1 text-[11px] font-medium w-full focus:outline-none focus:ring-1 focus:ring-teal-500"
                 >
                   {studentHistory.map(hist => {

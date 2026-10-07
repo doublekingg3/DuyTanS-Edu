@@ -629,6 +629,23 @@ export default function App() {
     return <Login classes={classes} students={students} users={users} onLogin={handleLogin} onBack={() => setAppMode('portal')} settings={settings} />;
   }
 
+  const handleSelectParentStudent = (studentId: string) => {
+    setParentStudentId(studentId);
+    try {
+      const rawSession = sessionStorage.getItem('edumanage_session') || localStorage.getItem('edumanage_auto_session');
+      if (rawSession) {
+        const parsed = JSON.parse(rawSession);
+        const updated = { ...parsed, studentId };
+        sessionStorage.setItem('edumanage_session', JSON.stringify(updated));
+        if (localStorage.getItem('edumanage_remember_me') === 'true') {
+          localStorage.setItem('edumanage_auto_session', JSON.stringify(updated));
+        }
+      }
+    } catch (e) {
+      console.error('Error updating parent student session:', e);
+    }
+  };
+
   // Active user info
   const currentUser = users.find(u => u.id === loggedInUserId);
   const currentUserDisplayName = currentUser?.fullName || (
@@ -641,11 +658,10 @@ export default function App() {
 
   // Active class info
   const activeClasses = classes.filter(c => !c.isDeleted);
-  const currentClass = activeClasses.find(c => c.id === selectedClassId) || (
-    role === 'parent'
-      ? activeClasses.find(c => c.id === students.find(s => s.id === parentStudentId)?.classId)
-      : activeClasses[0]
-  );
+  const activeParentStudent = students.find(s => s.id === parentStudentId) || students[0];
+  const currentClass = role === 'parent'
+    ? (activeClasses.find(c => c.id === activeParentStudent?.classId) || activeClasses[0])
+    : (activeClasses.find(c => c.id === selectedClassId) || activeClasses[0]);
 
   return (
     <div className="min-h-screen bg-[#f0fdfa]/30 flex flex-col font-sans text-slate-900 overflow-hidden">
@@ -811,6 +827,7 @@ export default function App() {
             classes={classes} 
             schoolYears={schoolYears} 
             onEditStudent={handleEditStudent}
+            onSelectStudent={handleSelectParentStudent}
             activities={activities}
           />
         )}
