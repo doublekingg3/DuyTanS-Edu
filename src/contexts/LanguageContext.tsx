@@ -781,23 +781,37 @@ export function translateDay(day: string, isEn: boolean): string {
 }
 
 export function translateStatus(status: string, isEn: boolean): string {
-  if (!isEn || !status) return status;
-  const map: Record<string, string> = {
-    'present': 'Present',
-    'absent': 'Absent',
-    'late': 'Late',
-    'leave_early': 'Left Early',
-    'Có mặt': 'Present',
-    'Vắng mặt': 'Absent',
-    'Vắng': 'Absent',
-    'Đi trễ': 'Late',
-    'Về sớm': 'Left Early',
-    'Xin về sớm': 'Left Early',
-    'Có phép': 'Excused',
-    'Không phép': 'Unexcused',
-    'Chưa điểm danh': 'Unmarked'
-  };
-  return map[status] || status;
+  if (!status) return '';
+  if (isEn) {
+    const enMap: Record<string, string> = {
+      'present': 'Present',
+      'absent': 'Absent',
+      'late': 'Late',
+      'leave_early': 'Left Early',
+      'Có mặt': 'Present',
+      'Vắng mặt': 'Absent',
+      'Vắng': 'Absent',
+      'Đi trễ': 'Late',
+      'Về sớm': 'Left Early',
+      'Xin về sớm': 'Left Early',
+      'Có phép': 'Excused',
+      'Không phép': 'Unexcused',
+      'Chưa điểm danh': 'Unmarked'
+    };
+    return enMap[status] || status;
+  } else {
+    const viMap: Record<string, string> = {
+      'present': 'Có mặt',
+      'absent': 'Vắng mặt',
+      'late': 'Đi trễ',
+      'leave_early': 'Về sớm',
+      'Present': 'Có mặt',
+      'Absent': 'Vắng mặt',
+      'Late': 'Đi trễ',
+      'Left Early': 'Về sớm'
+    };
+    return viMap[status] || status;
+  }
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

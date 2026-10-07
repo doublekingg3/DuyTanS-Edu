@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Student, UserAccount, SchoolClass } from '../data';
 import { 
   Calendar, 
@@ -152,11 +152,60 @@ export default function TeacherAttendance({
     });
   }, [sortedStudents, searchTerm, statusFilter, attendanceDate]);
 
+  // Kiểm tra ngày đang chọn có phải ngày cuối tuần (Thứ 7 hoặc Chủ Nhật) không
+  const isWeekend = useMemo(() => {
+    const parts = attendanceDate.split('-');
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    const dateObj = (!isNaN(y) && !isNaN(m) && !isNaN(d)) ? new Date(y, m - 1, d) : new Date(attendanceDate);
+    return dateObj.getDay() === 0 || dateObj.getDay() === 6;
+  }, [attendanceDate]);
+
+  // Tự động xóa điểm danh nếu rơi vào ngày cuối tuần (Thứ 7 / Chủ Nhật)
+  useEffect(() => {
+    if (isWeekend && sortedStudents.length > 0) {
+      sortedStudents.forEach(student => {
+        if (student.attendanceRecords?.[attendanceDate]) {
+          const newRecords = { ...student.attendanceRecords };
+          delete newRecords[attendanceDate];
+          onEditStudent({
+            ...student,
+            attendanceRecords: newRecords
+          });
+        }
+      });
+    }
+  }, [isWeekend, attendanceDate, sortedStudents]);
+
   // Cập nhật trạng thái điểm danh
   const handleStatusChange = (student: Student, newStatus: 'present' | 'absent' | 'late' | 'leave_early') => {
+    if (isWeekend) {
+      showAlert('Không thể điểm danh vào ngày cuối tuần (Thứ 7 & Chủ nhật).', 'error');
+      return;
+    }
+
+    // Chỉ vai trò Admin có quyền bấm nút "Có mặt"
+    if (newStatus === 'present' && role !== 'admin') {
+      showAlert('Chỉ tài khoản Admin mới có quyền bấm nút Có mặt.', 'error');
+      return;
+    }
+
     const currentRecords = student.attendanceRecords || {};
     const existingForDate = currentRecords[attendanceDate];
     
+    // Bấm lần thứ 2 (khi đã có trạng thái này) -> Tắt điểm danh / Hủy đánh dấu
+    if (existingForDate?.status === newStatus) {
+      const newRecords = { ...currentRecords };
+      delete newRecords[attendanceDate];
+      const updatedStudent: Student = {
+        ...student,
+        attendanceRecords: newRecords
+      };
+      onEditStudent(updatedStudent);
+      return;
+    }
+
     const updatedStudent: Student = {
       ...student,
       attendanceRecords: {
@@ -192,16 +241,47 @@ export default function TeacherAttendance({
     setEditingReasonStudentId(null);
   };
 
-  // Thay đổi ngày (lùi / tiến)
+  // Thay đổi ngày (lùi / tiến) - Tự động bỏ qua Thứ 7 và Chủ nhật
   const changeDateByDays = (delta: number) => {
     const [y, m, d] = attendanceDate.split('-').map(Number);
     const date = new Date(y, m - 1, d);
-    date.setDate(date.getDate() + delta);
+
+    // Tiến hoặc lùi 1 ngày
+    date.setDate(date.getDate() + (delta >= 0 ? 1 : -1));
+
+    // Nếu rơi vào Thứ 7 (getDay() === 6) hoặc Chủ nhật (getDay() === 0) -> Nhảy tiếp
+    while (date.getDay() === 0 || date.getDay() === 6) {
+      date.setDate(date.getDate() + (delta >= 0 ? 1 : -1));
+    }
+
     setAttendanceDate(getLocalDateISO(date));
   };
 
   const handleSetToday = () => {
-    setAttendanceDate(getLocalDateISO());
+    const date = new Date();
+    // Nếu hôm nay là Thứ 7 hoặc Chủ nhật, tự chuyển về Thứ 6 gần nhất
+    if (date.getDay() === 6) {
+      date.setDate(date.getDate() - 1);
+    } else if (date.getDay() === 0) {
+      date.setDate(date.getDate() - 2);
+    }
+    setAttendanceDate(getLocalDateISO(date));
+  };
+
+  const handleDateSelect = (selectedDateStr: string) => {
+    if (!selectedDateStr) return;
+    const [y, m, d] = selectedDateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+
+    if (date.getDay() === 6) { // Thứ 7
+      date.setDate(date.getDate() - 1);
+      showAlert('Điểm danh chỉ thực hiện từ Thứ 2 đến Thứ 6. Đã tự động chuyển về Thứ 6.', 'info');
+    } else if (date.getDay() === 0) { // Chủ nhật
+      date.setDate(date.getDate() - 2);
+      showAlert('Điểm danh chỉ thực hiện từ Thứ 2 đến Thứ 6. Đã tự động chuyển về Thứ 6.', 'info');
+    }
+
+    setAttendanceDate(getLocalDateISO(date));
   };
 
   const isToday = attendanceDate === getLocalDateISO();
@@ -698,7 +778,7 @@ export default function TeacherAttendance({
               <input 
                 type="date" 
                 value={attendanceDate}
-                onChange={(e) => setAttendanceDate(e.target.value)}
+                onChange={(e) => handleDateSelect(e.target.value)}
                 className="bg-transparent text-xs sm:text-sm font-semibold text-slate-700 outline-none cursor-pointer max-w-[130px] sm:max-w-none"
               />
             </div>
@@ -1014,58 +1094,65 @@ export default function TeacherAttendance({
                 </div>
 
                 {/* 4 Large Touch Buttons (Có mặt, Vắng, Trễ, Về sớm) */}
-                <div className="grid grid-cols-4 gap-1.5 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => handleStatusChange(student, 'present')}
-                    className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
-                      currentStatus === 'present'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200/60'
-                    }`}
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Có mặt</span>
-                  </button>
+                {isWeekend ? (
+                  <div className="p-2 bg-slate-100/90 text-slate-500 rounded-xl text-xs font-semibold text-center border border-slate-200/80 mb-2">
+                    Ngày cuối tuần (Thứ 7 & Chủ nhật) - Không điểm danh
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-1.5 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(student, 'present')}
+                      className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
+                        currentStatus === 'present'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200/60'
+                      } ${role !== 'admin' ? 'opacity-80' : ''}`}
+                      title={role !== 'admin' ? 'Chỉ Admin mới có quyền bấm Có mặt' : 'Bấm 2 lần để tắt điểm danh'}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Có mặt</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleStatusChange(student, 'absent')}
-                    className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
-                      currentStatus === 'absent'
-                        ? 'bg-red-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-700 border border-slate-200/60'
-                    }`}
-                  >
-                    <XCircle className="w-3.5 h-3.5" />
-                    <span>Vắng</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(student, 'absent')}
+                      className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
+                        currentStatus === 'absent'
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-700 border border-slate-200/60'
+                      }`}
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Vắng</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleStatusChange(student, 'late')}
-                    className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
-                      currentStatus === 'late'
-                        ? 'bg-amber-500 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-700 border border-slate-200/60'
-                    }`}
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Trễ</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(student, 'late')}
+                      className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
+                        currentStatus === 'late'
+                          ? 'bg-amber-500 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-700 border border-slate-200/60'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Trễ</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleStatusChange(student, 'leave_early')}
-                    className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
-                      currentStatus === 'leave_early'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200/60'
-                    }`}
-                  >
-                    <span>Về sớm</span>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(student, 'leave_early')}
+                      className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 ${
+                        currentStatus === 'leave_early'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200/60'
+                      }`}
+                    >
+                      <span>Về sớm</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Reason Section (When absent, late, or leave_early, or existing note) */}
                 {currentStatus && currentStatus !== 'present' && (
@@ -1207,62 +1294,69 @@ export default function TeacherAttendance({
 
                       {/* Trạng thái điểm danh (Pill Buttons) */}
                       <td className="px-4 py-3.5">
-                        <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                          {/* Có mặt */}
-                          <button
-                            type="button"
-                            onClick={() => handleStatusChange(student, 'present')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                              currentStatus === 'present'
-                                ? 'bg-emerald-600 text-white shadow-xs font-bold scale-[1.02]'
-                                : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
-                            }`}
-                          >
-                            <Check className={`w-3.5 h-3.5 ${currentStatus === 'present' ? 'text-white' : 'text-emerald-600'}`} />
-                            Có mặt
-                          </button>
+                        {isWeekend ? (
+                          <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 inline-block">
+                            Cuối tuần (Thứ 7 & CN) - Không điểm danh
+                          </span>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                            {/* Có mặt */}
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(student, 'present')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                                currentStatus === 'present'
+                                  ? 'bg-emerald-600 text-white shadow-xs font-bold scale-[1.02]'
+                                  : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+                              } ${role !== 'admin' ? 'opacity-80' : ''}`}
+                              title={role !== 'admin' ? 'Chỉ Admin mới có quyền bấm Có mặt' : 'Bấm 2 lần để tắt điểm danh'}
+                            >
+                              <Check className={`w-3.5 h-3.5 ${currentStatus === 'present' ? 'text-white' : 'text-emerald-600'}`} />
+                              Có mặt
+                            </button>
 
-                          {/* Vắng mặt */}
-                          <button
-                            type="button"
-                            onClick={() => handleStatusChange(student, 'absent')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                              currentStatus === 'absent'
-                                ? 'bg-red-600 text-white shadow-xs font-bold scale-[1.02]'
-                                : 'text-slate-600 hover:text-red-700 hover:bg-red-50'
-                            }`}
-                          >
-                            <XCircle className={`w-3.5 h-3.5 ${currentStatus === 'absent' ? 'text-white' : 'text-red-500'}`} />
-                            Vắng mặt
-                          </button>
+                            {/* Vắng mặt */}
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(student, 'absent')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                                currentStatus === 'absent'
+                                  ? 'bg-red-600 text-white shadow-xs font-bold scale-[1.02]'
+                                  : 'text-slate-600 hover:text-red-700 hover:bg-red-50'
+                              }`}
+                            >
+                              <XCircle className={`w-3.5 h-3.5 ${currentStatus === 'absent' ? 'text-white' : 'text-red-500'}`} />
+                              Vắng mặt
+                            </button>
 
-                          {/* Đi trễ */}
-                          <button
-                            type="button"
-                            onClick={() => handleStatusChange(student, 'late')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                              currentStatus === 'late'
-                                ? 'bg-amber-500 text-white shadow-xs font-bold scale-[1.02]'
-                                : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50'
-                            }`}
-                          >
-                            <Clock className={`w-3.5 h-3.5 ${currentStatus === 'late' ? 'text-white' : 'text-amber-500'}`} />
-                            Đi trễ
-                          </button>
+                            {/* Đi trễ */}
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(student, 'late')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                                currentStatus === 'late'
+                                  ? 'bg-amber-500 text-white shadow-xs font-bold scale-[1.02]'
+                                  : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50'
+                              }`}
+                            >
+                              <Clock className={`w-3.5 h-3.5 ${currentStatus === 'late' ? 'text-white' : 'text-amber-500'}`} />
+                              Đi trễ
+                            </button>
 
-                          {/* Về sớm */}
-                          <button
-                            type="button"
-                            onClick={() => handleStatusChange(student, 'leave_early')}
-                            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
-                              currentStatus === 'leave_early'
-                                ? 'bg-indigo-600 text-white shadow-xs font-bold scale-[1.02]'
-                                : 'text-slate-600 hover:text-indigo-700 hover:bg-indigo-50'
-                            }`}
-                          >
-                            Về sớm
-                          </button>
-                        </div>
+                            {/* Về sớm */}
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(student, 'leave_early')}
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+                                currentStatus === 'leave_early'
+                                  ? 'bg-indigo-600 text-white shadow-xs font-bold scale-[1.02]'
+                                  : 'text-slate-600 hover:text-indigo-700 hover:bg-indigo-50'
+                              }`}
+                            >
+                              Về sớm
+                            </button>
+                          </div>
+                        )}
                       </td>
 
                       {/* Lý do */}

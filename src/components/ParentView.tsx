@@ -105,6 +105,7 @@ export default function ParentView({
   const [isSaving, setIsSaving] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [specialSubjects, setSpecialSubjects] = useState<string>('Math, Tiếng Anh');
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
 
   useEffect(() => {
     const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
@@ -385,6 +386,42 @@ export default function ParentView({
       rate
     };
   }, [currentViewStudent.attendanceRecords]);
+
+  // Nhóm lịch sử điểm danh theo từng Tháng
+  const attendanceGroupedByMonth = useMemo(() => {
+    const records = currentViewStudent.attendanceRecords || {};
+    const groups: Record<string, { monthLabel: string; year: number; month: number; items: { date: string; record: any }[] }> = {};
+
+    Object.entries(records).forEach(([dateStr, record]) => {
+      const parts = dateStr.split('-');
+      let year = parseInt(parts[0], 10);
+      let month = parseInt(parts[1], 10);
+
+      if (isNaN(year) || isNaN(month)) {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return;
+        year = d.getFullYear();
+        month = d.getMonth() + 1;
+      }
+
+      const key = `${year}-${String(month).padStart(2, '0')}`;
+      const monthLabel = isEn ? `Month ${month}/${year}` : `Tháng ${month}/${year}`;
+
+      if (!groups[key]) {
+        groups[key] = { monthLabel, year, month, items: [] };
+      }
+      groups[key].items.push({ date: dateStr, record });
+    });
+
+    // Sắp xếp các ngày trong tháng theo chiều mới nhất lên đầu
+    Object.values(groups).forEach(g => {
+      g.items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    });
+
+    // Sắp xếp danh sách các tháng theo thứ tự giảm dần (Tháng mới nhất lên trước)
+    const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+    return { groups, sortedKeys };
+  }, [currentViewStudent.attendanceRecords, isEn]);
 
   // Danh sách các menu bên trái cho Desktop
   const desktopMenuItems: {
@@ -1503,56 +1540,153 @@ export default function ParentView({
                     {t('attendanceHistoryTitle')}
                   </h3>
                 </div>
-                <div className="p-4 sm:p-6">
+                <div className="p-4 sm:p-6 space-y-6">
                   {!currentViewStudent.attendanceRecords || Object.keys(currentViewStudent.attendanceRecords).length === 0 ? (
                     <div className="text-center text-slate-500 py-12">{t('noAttendanceData')}</div>
                   ) : (
-                    <div className="space-y-3">
-                      {Object.entries(currentViewStudent.attendanceRecords)
-                        .sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime())
-                        .map(([date, record]) => (
-                          <div key={date} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 rounded-2xl border border-slate-100 gap-3">
-                            <div className="flex items-center gap-3.5">
-                              <div className="w-12 h-12 bg-white rounded-xl shadow-2xs border border-slate-200 flex flex-col items-center justify-center shrink-0">
-                                <span className="text-[10px] font-medium text-slate-500 uppercase">
-                                  {new Date(date).toLocaleDateString(isEn ? 'en-US' : 'vi-VN', { month: 'short' })}
-                                </span>
-                                <span className="text-base font-bold text-[#0f766e] leading-none">{new Date(date).getDate()}</span>
-                              </div>
-                              <div>
-                                <div className="font-semibold text-slate-800 text-sm">
-                                  {new Date(date).toLocaleDateString(isEn ? 'en-US' : 'vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                                </div>
-                                {record.reason && (
-                                  <div className="text-xs text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-100 italic mt-1 inline-block">
-                                    <span className="font-medium not-italic text-slate-700 mr-1">{t('reason')}:</span>
-                                    {record.reason}
+                    <>
+                      {/* Filter Tháng (Tháng 9, Tháng 10...) */}
+                      <div className="flex flex-wrap items-center gap-2 p-2 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                        <span className="text-xs font-bold text-slate-600 pl-2 pr-1 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                          <span>{isEn ? 'Filter Month:' : 'Lọc theo tháng:'}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMonthFilter('all')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            selectedMonthFilter === 'all'
+                              ? 'bg-teal-700 text-white shadow-2xs'
+                              : 'bg-white text-slate-600 hover:bg-teal-50 hover:text-teal-700 border border-slate-200/60'
+                          }`}
+                        >
+                          {isEn ? 'All Months' : 'Tất cả các tháng'}
+                        </button>
+                        {attendanceGroupedByMonth.sortedKeys.map(key => {
+                          const group = attendanceGroupedByMonth.groups[key];
+                          return (
+                            <button
+                              type="button"
+                              key={key}
+                              onClick={() => setSelectedMonthFilter(key)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                selectedMonthFilter === key
+                                  ? 'bg-teal-700 text-white shadow-2xs'
+                                  : 'bg-white text-slate-600 hover:bg-teal-50 hover:text-teal-700 border border-slate-200/60'
+                              }`}
+                            >
+                              {group.monthLabel} ({group.items.length})
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Hiển thị điểm danh nhóm theo từng Tháng */}
+                      <div className="space-y-6">
+                        {(selectedMonthFilter === 'all' 
+                          ? attendanceGroupedByMonth.sortedKeys 
+                          : attendanceGroupedByMonth.sortedKeys.filter(k => k === selectedMonthFilter)
+                        ).map(monthKey => {
+                          const group = attendanceGroupedByMonth.groups[monthKey];
+                          const presentCount = group.items.filter(i => i.record.status === 'present').length;
+                          const absentCount = group.items.filter(i => i.record.status === 'absent').length;
+                          const lateCount = group.items.filter(i => i.record.status === 'late' || i.record.status === 'leave_early').length;
+
+                          return (
+                            <div key={monthKey} className="space-y-3">
+                              {/* Thẻ Tiêu Đề Tháng */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 bg-gradient-to-r from-teal-50 via-emerald-50/50 to-teal-50 rounded-2xl border border-teal-100 shadow-2xs gap-2">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-xl bg-teal-700 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                                    <Calendar className="w-4 h-4" />
                                   </div>
-                                )}
+                                  <div>
+                                    <h4 className="font-extrabold text-teal-950 text-sm font-display leading-tight">{group.monthLabel}</h4>
+                                    <span className="text-[11px] text-slate-500 font-medium">Ghi nhận tổng cộng {group.items.length} buổi học</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                                  <span className="text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200/80">
+                                    {presentCount} có mặt
+                                  </span>
+                                  {absentCount > 0 && (
+                                    <span className="text-rose-800 bg-rose-100/90 px-2.5 py-0.5 rounded-full border border-rose-200/80">
+                                      {absentCount} vắng mặt
+                                    </span>
+                                  )}
+                                  {lateCount > 0 && (
+                                    <span className="text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-200/80">
+                                      {lateCount} trễ/về sớm
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Danh sách các ngày trong tháng này */}
+                              <div className="space-y-2.5 pl-0 sm:pl-2">
+                                {group.items.map(({ date, record }, idx) => {
+                                  const parts = date.split('-');
+                                  const y = parseInt(parts[0], 10);
+                                  const m = parseInt(parts[1], 10);
+                                  const d = parseInt(parts[2], 10);
+                                  const dateObj = (!isNaN(y) && !isNaN(m) && !isNaN(d)) ? new Date(y, m - 1, d) : new Date(date);
+
+                                  return (
+                                    <div key={date} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-slate-50/80 hover:bg-white rounded-2xl border border-slate-100/80 shadow-2xs transition-all gap-3">
+                                      <div className="flex items-center gap-3">
+                                        {/* Thứ tự 1, 2, 3... */}
+                                        <div className="w-8 h-8 sm:w-9 sm:h-9 bg-teal-50 border border-teal-200/80 text-teal-800 font-extrabold rounded-xl flex items-center justify-center text-xs sm:text-sm shrink-0">
+                                          {idx + 1}
+                                        </div>
+                                        <div>
+                                          {/* Thứ, Ngày Tháng Năm in đậm */}
+                                          <div className="font-bold sm:font-extrabold text-slate-900 text-sm sm:text-base">
+                                            {dateObj.toLocaleDateString(isEn ? 'en-US' : 'vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                          </div>
+                                          {record.reason && (
+                                            <div className="text-xs text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-100 italic mt-1 inline-block">
+                                              <span className="font-medium not-italic text-slate-700 mr-1">{t('reason')}:</span>
+                                              {record.reason}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Badge Trạng thái Điểm danh */}
+                                      <div className="self-start sm:self-auto">
+                                        {record.status === 'late' ? (
+                                          <div className="flex flex-wrap items-center gap-1.5">
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-xs border border-emerald-200">
+                                              <UserCheck className="w-3.5 h-3.5" /> {isEn ? 'Present' : 'Có mặt'}
+                                            </span>
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-orange-700 font-bold rounded-lg text-xs border border-orange-200">
+                                              <Clock className="w-3.5 h-3.5" /> {isEn ? 'Late' : 'Đi trễ'}
+                                            </span>
+                                          </div>
+                                        ) : record.status === 'present' ? (
+                                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-xs border border-emerald-200">
+                                            <UserCheck className="w-3.5 h-3.5" /> {isEn ? 'Present' : 'Có mặt'}
+                                          </span>
+                                        ) : record.status === 'absent' ? (
+                                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 text-rose-700 font-bold rounded-lg text-xs border border-rose-200">
+                                            <UserX className="w-3.5 h-3.5" /> {isEn ? 'Absent' : 'Vắng mặt'}
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 font-bold rounded-lg text-xs border border-amber-200">
+                                            <Clock className="w-3.5 h-3.5" /> {isEn ? 'Left Early' : 'Về sớm'}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
-                            <div className="self-start sm:self-auto">
-                              {record.status === 'present' ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 font-semibold rounded-lg text-xs border border-emerald-200">
-                                  <UserCheck className="w-3.5 h-3.5" /> {translateStatus('present', isEn)}
-                                </span>
-                              ) : record.status === 'absent' ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 text-rose-700 font-semibold rounded-lg text-xs border border-rose-200">
-                                  <UserX className="w-3.5 h-3.5" /> {translateStatus('absent', isEn)}
-                                </span>
-                              ) : record.status === 'leave_early' ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 font-semibold rounded-lg text-xs border border-amber-200">
-                                  {translateStatus('leave_early', isEn)}
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 text-orange-700 font-semibold rounded-lg text-xs border border-orange-200">
-                                  <Clock className="w-3.5 h-3.5" /> {translateStatus('late', isEn)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
