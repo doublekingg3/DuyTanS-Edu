@@ -294,6 +294,12 @@ export default function App() {
 
     document.title = title;
 
+    const iconType = iconUrl.startsWith('data:image/svg+xml') || iconUrl.endsWith('.svg')
+      ? 'image/svg+xml'
+      : iconUrl.startsWith('data:image/jpeg') || iconUrl.endsWith('.jpg') || iconUrl.endsWith('.jpeg')
+      ? 'image/jpeg'
+      : 'image/png';
+
     // 1. Cập nhật Favicon trình duyệt
     let linkFavicon = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
     if (!linkFavicon) {
@@ -302,6 +308,7 @@ export default function App() {
       document.head.appendChild(linkFavicon);
     }
     linkFavicon.href = iconUrl;
+    linkFavicon.type = iconType;
 
     // 2. Cập nhật iOS Apple Touch Icon cho Shortcut iPhone / iPad
     let linkAppleIcon = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement;
@@ -343,13 +350,13 @@ export default function App() {
         {
           src: iconUrl,
           sizes: '192x192',
-          type: 'image/png',
+          type: iconType,
           purpose: 'any'
         },
         {
           src: iconUrl,
           sizes: '512x512',
-          type: 'image/png',
+          type: iconType,
           purpose: 'any'
         }
       ]

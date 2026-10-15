@@ -59,7 +59,7 @@ export const storage = storageInstance;
 /**
  * Nén hình ảnh bằng HTMLCanvas siêu nhanh (dưới 50ms)
  */
-export function compressImageFile(file: File, maxWidth = 900, quality = 0.75): Promise<string> {
+export function compressImageFile(file: File, maxWidth = 720, quality = 0.65): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -125,14 +125,14 @@ export async function uploadImageToStorage(file: File, folderPath: string): Prom
     const fullPath = `${folderPath}/${fileName}`;
     const storageRef = ref(currentStorage, fullPath);
 
-    // Race upload task với timeout 2.5s
+    // Race upload task với timeout 7s để đảm bảo mạng di động/WiFi upload xong lấy link Firebase Storage
     const uploadTask = (async () => {
       await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
       return await getDownloadURL(storageRef);
     })();
 
     const timeoutTask = new Promise<string>((_, reject) => 
-      setTimeout(() => reject(new Error('Storage timeout')), 2500)
+      setTimeout(() => reject(new Error('Storage timeout')), 7000)
     );
 
     return await Promise.race([uploadTask, timeoutTask]);

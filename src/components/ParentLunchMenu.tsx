@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Utensils, ChevronLeft, ChevronRight, Download, Calendar, CheckCircle2, Clock, Camera, Eye, X } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { generateSchoolWeeks, getCurrentSchoolWeek, getDayDateFormatted } from '../lib/schoolWeekUtils';
 import { useLanguage, translateDish, translateDay } from '../contexts/LanguageContext';
 
@@ -50,7 +50,8 @@ export default function ParentLunchMenu() {
   const [currentWeekData, setCurrentWeekData] = useState<WeekInfo | null>(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'lunch_menus', 'general'), (docSnap) => {
+    // 1. Listen to general document for week list statuses
+    const unsubGeneral = onSnapshot(doc(db, 'lunch_menus', 'general'), (docSnap) => {
       const stdWeeks = generateSchoolWeeks(undefined, 42);
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -70,32 +71,56 @@ export default function ParentLunchMenu() {
             };
           })
         );
-
-        const current = firebaseWeeks[selectedWeek];
-        if (current) {
-          const matchedStd = stdWeeks.find(s => s.id === selectedWeek);
-          setCurrentWeekData({
-            id: selectedWeek,
-            name: `${isEn ? 'Week' : 'Tuần'} ${selectedWeek}`,
-            status: current.status || 'draft',
-            startDate: current.startDate || matchedStd?.startDate || '',
-            endDate: current.endDate || matchedStd?.endDate || '',
-            dateRangeFormatted: matchedStd ? `${matchedStd.startFormatted} - ${matchedStd.endFormatted}` : '',
-            menus: current.menus || []
-          });
-          if (current.menus && current.menus.length > 0) {
-            setFirestoreMenus(current.menus);
-          } else {
-            setFirestoreMenus([]);
-          }
-        } else {
-          setCurrentWeekData(null);
-          setFirestoreMenus([]);
-        }
       }
     });
 
-    return () => unsub();
+    // 2. Listen to individual week document for full menus & images
+    const weekDocRef = doc(db, 'lunch_menus', `week_${selectedWeek}`);
+    const unsubWeek = onSnapshot(weekDocRef, (docSnap) => {
+      const stdWeeks = generateSchoolWeeks(undefined, 42);
+      const matchedStd = stdWeeks.find(s => s.id === selectedWeek);
+
+      if (docSnap.exists()) {
+        const weekData = docSnap.data();
+        setCurrentWeekData({
+          id: selectedWeek,
+          name: `${isEn ? 'Week' : 'Tuần'} ${selectedWeek}`,
+          status: weekData.status || 'draft',
+          startDate: weekData.startDate || matchedStd?.startDate || '',
+          endDate: weekData.endDate || matchedStd?.endDate || '',
+          dateRangeFormatted: matchedStd ? `${matchedStd.startFormatted} - ${matchedStd.endFormatted}` : '',
+          menus: weekData.menus || []
+        });
+        setFirestoreMenus(weekData.menus || []);
+      } else {
+        // Fallback check legacy general document
+        getDoc(doc(db, 'lunch_menus', 'general')).then((gSnap) => {
+          if (gSnap.exists()) {
+            const legacyWeek = gSnap.data()?.weeks?.[selectedWeek];
+            if (legacyWeek) {
+              setCurrentWeekData({
+                id: selectedWeek,
+                name: `${isEn ? 'Week' : 'Tuần'} ${selectedWeek}`,
+                status: legacyWeek.status || 'draft',
+                startDate: legacyWeek.startDate || matchedStd?.startDate || '',
+                endDate: legacyWeek.endDate || matchedStd?.endDate || '',
+                dateRangeFormatted: matchedStd ? `${matchedStd.startFormatted} - ${matchedStd.endFormatted}` : '',
+                menus: legacyWeek.menus || []
+              });
+              setFirestoreMenus(legacyWeek.menus || []);
+              return;
+            }
+          }
+          setCurrentWeekData(null);
+          setFirestoreMenus([]);
+        });
+      }
+    });
+
+    return () => {
+      unsubGeneral();
+      unsubWeek();
+    };
   }, [selectedWeek, isEn]);
 
   const scrollRef = useRef<HTMLDivElement>(null);

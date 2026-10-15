@@ -65,7 +65,7 @@ import SchoolNewsGallery from './SchoolNewsGallery';
 import { useAlert } from '../contexts/AlertContext';
 import { useLanguage, translateSubject, translateDay, translateStatus, translateDish } from '../contexts/LanguageContext';
 import { db, uploadImageToStorage } from '../lib/firebase';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { getCurrentSchoolWeek, generateSchoolWeeks } from '../lib/schoolWeekUtils';
 
 interface ParentViewProps {
@@ -185,19 +185,31 @@ export default function ParentView({
   // Dữ liệu thực đơn ăn trưa tuần hiện tại
   const [weekMenus, setWeekMenus] = useState<Record<string, string[]>>({});
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'lunch_menus', 'general'), (docSnap) => {
+    const unsub = onSnapshot(doc(db, 'lunch_menus', `week_${currentWeekNumber}`), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        const weeks = data.weeks || {};
-        const curr = weeks[currentWeekNumber];
-        if (curr?.menus) {
+        if (data?.menus) {
           const map: Record<string, string[]> = {};
-          curr.menus.forEach((m: any) => {
+          data.menus.forEach((m: any) => {
             if (m.day) map[m.day] = m.dishes || [];
           });
           setWeekMenus(map);
+          return;
         }
       }
+      // Fallback check general document
+      getDoc(doc(db, 'lunch_menus', 'general')).then((gSnap) => {
+        if (gSnap.exists()) {
+          const legacyCurr = gSnap.data()?.weeks?.[currentWeekNumber];
+          if (legacyCurr?.menus) {
+            const map: Record<string, string[]> = {};
+            legacyCurr.menus.forEach((m: any) => {
+              if (m.day) map[m.day] = m.dishes || [];
+            });
+            setWeekMenus(map);
+          }
+        }
+      });
     }, (err) => console.warn('Lỗi đọc thực đơn:', err));
     return () => unsub();
   }, [currentWeekNumber]);

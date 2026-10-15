@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { useAlert } from '../contexts/AlertContext';
 import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Download, Save, Plus, Trash2, Upload, X, RotateCcw, Eye, Shield, Camera, Image as ImageIcon } from 'lucide-react';
 import { db, uploadImageToStorage } from '../lib/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import { generateSchoolWeeks, getCurrentSchoolWeek, getDayDateFormatted } from '../lib/schoolWeekUtils';
 import { canUserEdit } from '../lib/permissions';
 import { UserAccount } from '../data';
@@ -146,9 +146,9 @@ export default function TeacherLunchMenu({
   };
 
   useEffect(() => {
-    // We use a global document for lunch menus for the whole school
-    const docRef = doc(db, 'lunch_menus', 'general');
-    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+    // 1. Listen to general document for week list metadata
+    const generalRef = doc(db, 'lunch_menus', 'general');
+    const unsubGeneral = onSnapshot(generalRef, (snapshot) => {
       const data = snapshot.data();
       const standardWeeks = generateSchoolWeeks(schoolYearName, 42);
 
@@ -166,24 +166,48 @@ export default function TeacherLunchMenu({
         };
       });
       setWeeks(newWeeks);
-      
-      const currentWeekData = data?.weeks?.[selectedWeek];
-      if (currentWeekData?.menus) {
-        setMenus(currentWeekData.menus);
+    });
+
+    // 2. Listen to individual week document for full menus & images
+    const weekDocRef = doc(db, 'lunch_menus', `week_${selectedWeek}`);
+    const unsubWeek = onSnapshot(weekDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const weekData = snapshot.data();
+        if (weekData?.menus && weekData.menus.length > 0) {
+          setMenus(weekData.menus);
+        } else {
+          setMenus([
+            { day: 'Thứ 2', dishes: [] },
+            { day: 'Thứ 3', dishes: [] },
+            { day: 'Thứ 4', dishes: [] },
+            { day: 'Thứ 5', dishes: [] },
+            { day: 'Thứ 6', dishes: [] }
+          ]);
+        }
       } else {
-        setMenus([
-          { day: 'Thứ 2', dishes: [] },
-          { day: 'Thứ 3', dishes: [] },
-          { day: 'Thứ 4', dishes: [] },
-          { day: 'Thứ 5', dishes: [] },
-          { day: 'Thứ 6', dishes: [] }
-        ]);
+        // Fallback check legacy general document
+        getDoc(generalRef).then((gSnap) => {
+          const legacyWeekData = gSnap.data()?.weeks?.[selectedWeek];
+          if (legacyWeekData?.menus && legacyWeekData.menus.length > 0) {
+            setMenus(legacyWeekData.menus);
+          } else {
+            setMenus([
+              { day: 'Thứ 2', dishes: [] },
+              { day: 'Thứ 3', dishes: [] },
+              { day: 'Thứ 4', dishes: [] },
+              { day: 'Thứ 5', dishes: [] },
+              { day: 'Thứ 6', dishes: [] }
+            ]);
+          }
+        });
       }
-      
       setLoading(false);
     });
-    
-    return () => unsubscribe();
+
+    return () => {
+      unsubGeneral();
+      unsubWeek();
+    };
   }, [selectedWeek, schoolYearName]);
 
   const saveToFirebase = async (weekId: number, updateData: any) => {
@@ -192,13 +216,42 @@ export default function TeacherLunchMenu({
       return;
     }
     try {
-      await setDoc(doc(db, 'lunch_menus', 'general'), {
+      // 1. Save full week data (with menus & images) to individual week document
+      const weekDocRef = doc(db, 'lunch_menus', `week_${weekId}`);
+      const weekSnap = await getDoc(weekDocRef);
+      const existingWeekData = weekSnap.exists() ? weekSnap.data() : {};
+      const fullWeekData = {
+        ...existingWeekData,
+        ...updateData,
+        weekId
+      };
+
+      await setDoc(weekDocRef, fullWeekData, { merge: true });
+
+      // 2. Save lightweight metadata to general document (stripping large image URLs to prevent 1MB limit)
+      const generalRef = doc(db, 'lunch_menus', 'general');
+      const generalSnap = await getDoc(generalRef);
+      const existingWeeks = generalSnap.exists() ? (generalSnap.data()?.weeks || {}) : {};
+      
+      const summaryData = {
+        status: fullWeekData.status || 'draft',
+        startDate: fullWeekData.startDate || '',
+        endDate: fullWeekData.endDate || '',
+        menus: (fullWeekData.menus || []).map((m: any) => ({
+          day: m.day,
+          dishes: m.dishes || []
+          // Omit heavy imageUrl from general index to keep general document < 10 KB
+        }))
+      };
+
+      await setDoc(generalRef, {
         weeks: {
-          [weekId]: updateData
+          ...existingWeeks,
+          [weekId]: summaryData
         }
       }, { merge: true });
     } catch (e) {
-      console.error(e);
+      console.error('Lỗi khi lưu thực đơn:', e);
       showAlert('Lỗi khi lưu dữ liệu lên server.', 'error');
     }
   };
