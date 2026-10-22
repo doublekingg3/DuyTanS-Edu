@@ -130,8 +130,40 @@ export interface SchoolActivityNews {
   isRecent?: boolean;   // Ảnh mới đăng
   likesCount?: number;
   likedBy?: string[];
+  youtubeUrl?: string; // Link/Embed YouTube video đính kèm bài viết
   createdAt?: string;
   isDeleted?: boolean;
+}
+
+/**
+ * Tách và tạo Embed URL chuẩn cho Video YouTube từ URL thường, Shorts, hay mã <iframe> nhúng
+ */
+export function extractYouTubeEmbedUrl(input?: string): string | null {
+  if (!input || !input.trim()) return null;
+  const str = input.trim();
+
+  // 1. Nếu người dùng dán cả đoạn mã <iframe src="...">
+  const iframeSrcMatch = str.match(/src=["']([^"']+)["']/i);
+  if (iframeSrcMatch && iframeSrcMatch[1]) {
+    const src = iframeSrcMatch[1];
+    if (src.includes('youtube.com') || src.includes('youtu.be')) {
+      return extractYouTubeEmbedUrl(src);
+    }
+  }
+
+  // 2. Tìm mã ID 11 ký tự của YouTube
+  const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const match = str.match(regExp);
+
+  if (match && match[1]) {
+    return `https://www.youtube.com/embed/${match[1]}`;
+  }
+
+  if (str.startsWith('https://www.youtube.com/embed/')) {
+    return str;
+  }
+
+  return null;
 }
 
 /**

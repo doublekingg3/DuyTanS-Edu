@@ -30,11 +30,15 @@ import {
   Tag,
   Camera,
   Images,
-  ArrowRight
+  ArrowRight,
+  Crop,
+  Link as LinkIcon,
+  Video
 } from 'lucide-react';
-import { SchoolActivityNews, UserAccount, initialSchoolActivities } from '../data';
+import { SchoolActivityNews, UserAccount, initialSchoolActivities, extractYouTubeEmbedUrl } from '../data';
 import { useLanguage, translateCategory } from '../contexts/LanguageContext';
 import { uploadImageToStorage } from '../lib/firebase';
+import ImageCropModal from './ImageCropModal';
 
 interface SchoolNewsGalleryProps {
   activities: SchoolActivityNews[];
@@ -150,6 +154,7 @@ export default function SchoolNewsGallery({
       setFormImageUrl('');
       setFormGalleryImages([]);
       setAlbumUrlInput('');
+      setFormYoutubeUrl('');
       setFormIsFeatured(true);
       onResetTriggerUpload?.();
     }
@@ -168,10 +173,15 @@ export default function SchoolNewsGallery({
   const [formDescription, setFormDescription] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formImageUrl, setFormImageUrl] = useState('');
+  const [bannerUrlInput, setBannerUrlInput] = useState('');
+  const [bannerInputMode, setBannerInputMode] = useState<'upload' | 'url'>('upload');
+  const [cropperImageUrl, setCropperImageUrl] = useState<string | null>(null);
   const [formGalleryImages, setFormGalleryImages] = useState<string[]>([]);
   const [albumUrlInput, setAlbumUrlInput] = useState('');
+  const [formYoutubeUrl, setFormYoutubeUrl] = useState('');
   const [formIsFeatured, setFormIsFeatured] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
   
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const galleryFileInputRef = useRef<HTMLInputElement>(null);
@@ -259,6 +269,7 @@ export default function SchoolNewsGallery({
       setFormContent(act.content || '');
       setFormImageUrl(act.imageUrl || '');
       setFormGalleryImages(act.galleryImages || []);
+      setFormYoutubeUrl(act.youtubeUrl || '');
       setFormIsFeatured(!!act.isFeatured);
     } else {
       setEditingActivity(null);
@@ -270,6 +281,7 @@ export default function SchoolNewsGallery({
       setFormContent('');
       setFormImageUrl('');
       setFormGalleryImages([]);
+      setFormYoutubeUrl('');
       setFormIsFeatured(true);
     }
     setAlbumUrlInput('');
@@ -298,11 +310,15 @@ export default function SchoolNewsGallery({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    setIsSubmitting(true);
     const newPhotos: string[] = [];
-    for (let i = 0; i < files.length; i++) {
+    const total = files.length;
+
+    for (let i = 0; i < total; i++) {
+      setUploadProgress(`Đang nén & tải ảnh album ${i + 1}/${total}...`);
       try {
         const url = await uploadImageToStorage(files[i], 'news/gallery');
-        newPhotos.push(url);
+        if (url) newPhotos.push(url);
       } catch (err) {
         console.warn('Lỗi upload ảnh album:', err);
       }
@@ -311,6 +327,8 @@ export default function SchoolNewsGallery({
     if (newPhotos.length > 0) {
       setFormGalleryImages(prev => [...prev, ...newPhotos]);
     }
+    setUploadProgress('');
+    setIsSubmitting(false);
     e.target.value = '';
   };
 
@@ -350,6 +368,7 @@ export default function SchoolNewsGallery({
         date: formDate,
         author: formAuthor.trim(),
         description: formDescription.trim(),
+        youtubeUrl: formYoutubeUrl.trim(),
         isFeatured: formIsFeatured
       };
 
@@ -369,6 +388,7 @@ export default function SchoolNewsGallery({
           date: formDate,
           author: formAuthor.trim(),
           description: formDescription.trim(),
+          youtubeUrl: formYoutubeUrl.trim(),
           isFeatured: formIsFeatured,
           isRecent: true,
           likesCount: 1,
@@ -567,6 +587,13 @@ export default function SchoolNewsGallery({
                 <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-extrabold rounded-full backdrop-blur-md shadow-xs flex items-center gap-1 border border-amber-300/40">
                   <Flame className="w-3.5 h-3.5 fill-current" />
                   <span>{isEn ? 'Featured' : 'Tiêu biểu'}</span>
+                </span>
+              )}
+
+              {currentActivity?.youtubeUrl && (
+                <span className="px-2.5 py-1 bg-rose-600/90 text-white text-xs font-bold rounded-full backdrop-blur-md shadow-xs border border-rose-400/40 flex items-center gap-1">
+                  <Video className="w-3.5 h-3.5" />
+                  <span>Video YouTube</span>
                 </span>
               )}
 
@@ -771,10 +798,18 @@ export default function SchoolNewsGallery({
                   )}
                 </div>
 
-                {/* Album Photo Count Badge */}
-                <div className="absolute bottom-2.5 right-2.5 bg-black/60 backdrop-blur-xs text-white text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
-                  <Images className="w-3 h-3 text-teal-300" />
-                  <span>{act.galleryImages?.length || 1} ảnh</span>
+                {/* Album Photo Count & Video Badge */}
+                <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
+                  {act.youtubeUrl && (
+                    <div className="bg-rose-600/90 backdrop-blur-xs text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs">
+                      <Video className="w-3 h-3" />
+                      <span>Video</span>
+                    </div>
+                  )}
+                  <div className="bg-black/60 backdrop-blur-xs text-white text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
+                    <Images className="w-3 h-3 text-teal-300" />
+                    <span>{act.galleryImages?.length || 1} ảnh</span>
+                  </div>
                 </div>
 
                 {/* Like Button on Thumbnail */}
@@ -995,6 +1030,27 @@ export default function SchoolNewsGallery({
                   </>
                 )}
               </div>
+
+              {/* ========================================================
+                  VIDEO YOUTUBE PHÓNG SỰ NHÚNG KÈM BÀI VIẾT
+                  ======================================================== */}
+              {selectedArticle.youtubeUrl && extractYouTubeEmbedUrl(selectedArticle.youtubeUrl) && (
+                <div className="pt-2 space-y-2.5">
+                  <div className="flex items-center gap-2 text-rose-600 font-bold text-base">
+                    <Video className="w-5 h-5 text-rose-600" />
+                    <span>Video Phóng Sự YouTube</span>
+                  </div>
+                  <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-200 bg-black shadow-xl">
+                    <iframe
+                      src={extractYouTubeEmbedUrl(selectedArticle.youtubeUrl)!}
+                      title={`Video - ${selectedArticle.title}`}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* ========================================================
                   PHOTO ALBUM / GALLERY CỦA BÀI VIẾT (NHIỀU HÌNH ẢNH HƠN)
@@ -1278,17 +1334,39 @@ export default function SchoolNewsGallery({
               </div>
 
               {/* ẢNH BÌA ĐẠI DIỆN (BANNER CHÍNH) */}
-              <div className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-2.5">
-                <div className="flex items-center justify-between">
+              <div className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <label className="block font-bold text-slate-800 text-xs sm:text-sm">
-                    Ảnh bìa đại diện của bài viết (Hiển thị trên Banner trang chủ) <span className="text-rose-500">*</span>
+                    Ảnh bìa đại diện bài viết (Hiển thị trên Banner trang chủ) <span className="text-rose-500">*</span>
                   </label>
-                  {formImageUrl && (
-                    <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Đã tải ảnh lên thành công</span>
-                    </span>
-                  )}
+                  
+                  {/* Mode Toggles: Upload file vs Paste URL */}
+                  <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setBannerInputMode('upload')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        bannerInputMode === 'upload'
+                          ? 'bg-white text-teal-800 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Tải từ máy</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBannerInputMode('url')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        bannerInputMode === 'url'
+                          ? 'bg-white text-teal-800 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <LinkIcon className="w-3 h-3" />
+                      <span>Dán link URL</span>
+                    </button>
+                  </div>
                 </div>
                 
                 <input
@@ -1299,60 +1377,107 @@ export default function SchoolNewsGallery({
                   className="hidden"
                 />
 
-                {!formImageUrl ? (
+                {/* Paste URL Option */}
+                {bannerInputMode === 'url' && !formImageUrl && (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={bannerUrlInput}
+                        onChange={(e) => setBannerUrlInput(e.target.value)}
+                        placeholder="Dán đường link hình ảnh trực tiếp (https://...)..."
+                        className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-slate-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!bannerUrlInput.trim()) return;
+                          setFormImageUrl(bannerUrlInput.trim());
+                          setBannerUrlInput('');
+                        }}
+                        className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-xs"
+                      >
+                        Sử dụng URL gốc
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-teal-800 font-medium flex items-center gap-1 bg-teal-50/80 p-2 rounded-xl border border-teal-200/60">
+                      <span>⚡</span> Lấy ảnh trực tiếp từ host gốc để giữ 100% chất lượng ban đầu và hoàn toàn không tốn dung lượng Firebase Storage.
+                    </p>
+                  </div>
+                )}
+
+                {/* File Upload Option */}
+                {bannerInputMode === 'upload' && !formImageUrl && (
                   <div 
                     onClick={() => bannerFileInputRef.current?.click()}
-                    className="border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/40 hover:bg-teal-50/70 rounded-2xl p-5 text-center cursor-pointer transition-all group flex flex-col items-center justify-center gap-2"
+                    className="border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/40 hover:bg-teal-50/70 rounded-2xl p-4 text-center cursor-pointer transition-all group flex flex-col items-center justify-center gap-2"
                   >
-                    <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                      <Upload className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                      <Upload className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800 group-hover:text-teal-700">
-                        Nhấp vào đây để chọn ảnh từ máy
+                      <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-teal-700">
+                        Nhấp vào đây để chọn ảnh bìa từ máy
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-slate-500 mt-0.5">
                         Hỗ trợ định dạng JPG, PNG, WEBP, GIF (Khuyến nghị tỉ lệ 16:9 hoặc 21:9)
                       </p>
                     </div>
                   </div>
-                ) : (
+                )}
+
+                {/* Preview Image Card with Crop Button */}
+                {formImageUrl && (
                   <div className="space-y-2">
-                    <div className="relative aspect-[21/9] rounded-xl overflow-hidden border border-slate-200 max-h-48 bg-slate-900 group shadow-xs">
+                    <div className="relative aspect-[21/9] rounded-2xl overflow-hidden border border-slate-200 max-h-52 bg-slate-900 group shadow-md">
                       <img 
                         src={formImageUrl} 
                         alt="Ảnh bìa xem trước" 
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <div className="absolute inset-0 bg-black/50 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
                         <button
                           type="button"
-                          onClick={() => bannerFileInputRef.current?.click()}
-                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
+                          onClick={() => setCropperImageUrl(formImageUrl)}
+                          className="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95 border border-teal-400/30"
+                          title="Mở bộ công cụ Cắt & Căn chỉnh khung ảnh"
+                        >
+                          <Crop className="w-4 h-4 text-white" />
+                          <span>✂️ Cắt / Căn chỉnh khung (Crop)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (bannerInputMode === 'upload') bannerFileInputRef.current?.click();
+                            else setFormImageUrl('');
+                          }}
+                          className="px-3 py-2 bg-slate-800/90 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
                         >
                           <Upload className="w-3.5 h-3.5" />
-                          <span>Đổi ảnh khác</span>
+                          <span>Đổi ảnh</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setFormImageUrl('')}
-                          className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
+                          className="px-3 py-2 bg-rose-600/90 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
                         >
                           <X className="w-3.5 h-3.5" />
                           <span>Gỡ ảnh</span>
                         </button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span className="text-emerald-700 font-medium flex items-center gap-1">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Sẵn sàng xuất bản lên Banner tin tức
+
+                    <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2 pt-1">
+                      <span className="text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Sẵn sàng hiển thị trên Banner trang chủ
                       </span>
                       <button
                         type="button"
-                        onClick={() => bannerFileInputRef.current?.click()}
-                        className="text-teal-700 hover:underline font-semibold"
+                        onClick={() => setCropperImageUrl(formImageUrl)}
+                        className="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1 underline cursor-pointer"
                       >
-                        Chọn ảnh khác
+                        <Crop className="w-3.5 h-3.5" />
+                        <span>Chỉnh sửa lại góc/khung ảnh (Crop)</span>
                       </button>
                     </div>
                   </div>
@@ -1385,6 +1510,66 @@ export default function SchoolNewsGallery({
                   placeholder="Nhập toàn bộ nội dung bài viết phóng sự tại đây (xuống dòng 2 lần để tách đoạn văn)..."
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-normal focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs sm:text-sm leading-relaxed"
                 />
+              </div>
+
+              {/* ========================================================
+                  VIDEO YOUTUBE NHÚNG KÈM BÀI VIẾT (TÙY CHỌN)
+                  ======================================================== */}
+              <div className="bg-rose-50/60 p-4 rounded-2xl border border-rose-200/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
+                    <Video className="w-4 h-4 text-rose-600" />
+                    <span>Video YouTube nhúng kèm bài viết (Tùy chọn BGH)</span>
+                  </label>
+                  {formYoutubeUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setFormYoutubeUrl('')}
+                      className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                    >
+                      Xóa video
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Dán đường link YouTube (vd: https://www.youtube.com/watch?v=...) hoặc mã nhúng &lt;iframe&gt; của YouTube vào đây.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formYoutubeUrl}
+                    onChange={(e) => setFormYoutubeUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=... hoặc mã <iframe...>"
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-rose-500 text-xs bg-white"
+                  />
+                </div>
+
+                {/* Preview YouTube Video Embed if valid */}
+                {formYoutubeUrl.trim() !== '' && (
+                  <div className="pt-1">
+                    {extractYouTubeEmbedUrl(formYoutubeUrl) ? (
+                      <div className="space-y-1.5">
+                        <div className="relative aspect-video rounded-2xl overflow-hidden border border-rose-200 bg-black shadow-md">
+                          <iframe
+                            src={extractYouTubeEmbedUrl(formYoutubeUrl)!}
+                            title="Xem trước Video YouTube"
+                            className="w-full h-full border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                          />
+                        </div>
+                        <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Đã nhận diện Video YouTube hợp lệ. Video sẽ nhúng trực tiếp trong bài viết.</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-amber-700 font-medium bg-amber-50 p-2 rounded-xl border border-amber-200">
+                        ⚠️ Chưa nhận diện được mã Video YouTube. Hãy dán link dạng: https://www.youtube.com/watch?v=... hoặc mã &lt;iframe...&gt;
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* ========================================================
@@ -1441,6 +1626,13 @@ export default function SchoolNewsGallery({
                     </button>
                   </div>
                 </div>
+
+                {uploadProgress && (
+                  <div className="p-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs rounded-xl flex items-center gap-2 animate-pulse">
+                    <Upload className="w-4 h-4 text-indigo-600 animate-bounce" />
+                    <span>{uploadProgress}</span>
+                  </div>
+                )}
 
                 {/* Gallery Thumbnails List */}
                 {formGalleryImages.length > 0 && (
@@ -1501,6 +1693,20 @@ export default function SchoolNewsGallery({
             </form>
           </div>
         </div>
+      )}
+
+      {/* ========================================================
+          6. MODAL CẮT / CĂN CHỈNH KHUNG BANNER (CROP & ALIGN)
+          ======================================================== */}
+      {cropperImageUrl && (
+        <ImageCropModal
+          imageUrl={cropperImageUrl}
+          onClose={() => setCropperImageUrl(null)}
+          onSave={(croppedUrl) => {
+            setFormImageUrl(croppedUrl);
+            setCropperImageUrl(null);
+          }}
+        />
       )}
 
     </div>
