@@ -62,6 +62,7 @@ const CATEGORIES = [
   { id: 'arts', label: 'Văn nghệ & Hội trại' },
   { id: 'extracurricular', label: 'Ngoại khóa & Trải nghiệm' },
   { id: 'events', label: 'Lễ hội & Sự kiện' },
+  { id: 'parents', label: 'Phụ huynh' },
 ];
 
 /**
@@ -1358,7 +1359,7 @@ export default function SchoolNewsGallery({
               <div className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <label className="block font-bold text-slate-800 text-xs sm:text-sm">
-                    Ảnh bìa đại diện bài viết (Hiển thị trên Banner trang chủ) <span className="text-rose-500">*</span>
+                    Ảnh bìa đại diện bài viết <span className="text-rose-500">*</span>
                   </label>
                   
                   {/* Mode Toggles: Upload file vs Paste URL */}
@@ -1505,10 +1506,10 @@ export default function SchoolNewsGallery({
                 )}
               </div>
 
-              {/* Lời dẫn / Tóm tắt bài viết (Sa-pô) */}
+              {/* Lời dẫn bài viết */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  Lời dẫn / Tóm tắt bài viết (Sa-pô)
+                  Lời dẫn bài viết
                 </label>
                 <textarea
                   value={formDescription}
@@ -1534,13 +1535,13 @@ export default function SchoolNewsGallery({
               </div>
 
               {/* ========================================================
-                  VIDEO YOUTUBE / FACEBOOK NHÚNG KÈM BÀI VIẾT
+                  GÁN URL ĐỂ ĐĂNG VIDEO
                   ======================================================== */}
               <div className="bg-gradient-to-r from-rose-50/70 to-blue-50/70 p-4 rounded-2xl border border-indigo-200/80 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
                     <Video className="w-4 h-4 text-rose-600" />
-                    <span>Video YouTube / Facebook nhúng kèm bài viết (Tùy chọn BGH)</span>
+                    <span>Gán URL để đăng video</span>
                   </label>
                   {formYoutubeUrl && (
                     <button

@@ -682,7 +682,8 @@ export function translateCategory(catId: string, isEn: boolean): string {
       'sports': 'Thể dục thể thao',
       'arts': 'Văn nghệ & Hội trại',
       'extracurricular': 'Ngoại khóa & Trải nghiệm',
-      'events': 'Lễ hội & Sự kiện'
+      'events': 'Lễ hội & Sự kiện',
+      'parents': 'Phụ huynh'
     };
     return viMap[catId] || catId;
   }
@@ -692,7 +693,8 @@ export function translateCategory(catId: string, isEn: boolean): string {
     'sports': 'Sports & Athletics',
     'arts': 'Arts & Cultural',
     'extracurricular': 'Extracurricular & Tours',
-    'events': 'Events & Ceremonies'
+    'events': 'Events & Ceremonies',
+    'parents': 'Parents & Family'
   };
   return enMap[catId] || catId;
 }
