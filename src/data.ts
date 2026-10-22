@@ -130,15 +130,20 @@ export interface SchoolActivityNews {
   isRecent?: boolean;   // Ảnh mới đăng
   likesCount?: number;
   likedBy?: string[];
-  youtubeUrl?: string; // Link/Embed YouTube video đính kèm bài viết
+  youtubeUrl?: string; // Link/Embed Video (YouTube / Facebook) đính kèm bài viết
   createdAt?: string;
   isDeleted?: boolean;
 }
 
+export interface VideoEmbedResult {
+  embedUrl: string;
+  type: 'youtube' | 'facebook' | 'generic';
+}
+
 /**
- * Tách và tạo Embed URL chuẩn cho Video YouTube từ URL thường, Shorts, hay mã <iframe> nhúng
+ * Tách và tạo Embed URL chuẩn cho Video (YouTube / Facebook) từ Link hoặc mã <iframe> nhúng
  */
-export function extractYouTubeEmbedUrl(input?: string): string | null {
+export function extractVideoEmbedUrl(input?: string): VideoEmbedResult | null {
   if (!input || !input.trim()) return null;
   const str = input.trim();
 
@@ -146,24 +151,47 @@ export function extractYouTubeEmbedUrl(input?: string): string | null {
   const iframeSrcMatch = str.match(/src=["']([^"']+)["']/i);
   if (iframeSrcMatch && iframeSrcMatch[1]) {
     const src = iframeSrcMatch[1];
-    if (src.includes('youtube.com') || src.includes('youtu.be')) {
-      return extractYouTubeEmbedUrl(src);
+    return extractVideoEmbedUrl(src);
+  }
+
+  // 2. Nhận diện Facebook Video
+  if (str.includes('facebook.com') || str.includes('fb.watch')) {
+    if (str.includes('facebook.com/plugins/video.php')) {
+      return { embedUrl: str, type: 'facebook' };
+    }
+    const encodedUrl = encodeURIComponent(str);
+    return {
+      embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=false`,
+      type: 'facebook'
+    };
+  }
+
+  // 3. Nhận diện YouTube Video
+  if (str.includes('youtube.com') || str.includes('youtu.be')) {
+    const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = str.match(regExp);
+
+    if (match && match[1]) {
+      return {
+        embedUrl: `https://www.youtube.com/embed/${match[1]}`,
+        type: 'youtube'
+      };
+    }
+
+    if (str.startsWith('https://www.youtube.com/embed/')) {
+      return { embedUrl: str, type: 'youtube' };
     }
   }
 
-  // 2. Tìm mã ID 11 ký tự của YouTube
-  const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-  const match = str.match(regExp);
-
-  if (match && match[1]) {
-    return `https://www.youtube.com/embed/${match[1]}`;
-  }
-
-  if (str.startsWith('https://www.youtube.com/embed/')) {
-    return str;
-  }
-
   return null;
+}
+
+/**
+ * Backward-compatibility wrapper for YouTube embed
+ */
+export function extractYouTubeEmbedUrl(input?: string): string | null {
+  const res = extractVideoEmbedUrl(input);
+  return res ? res.embedUrl : null;
 }
 
 /**

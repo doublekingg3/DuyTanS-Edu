@@ -35,7 +35,7 @@ import {
   Link as LinkIcon,
   Video
 } from 'lucide-react';
-import { SchoolActivityNews, UserAccount, initialSchoolActivities, extractYouTubeEmbedUrl } from '../data';
+import { SchoolActivityNews, UserAccount, initialSchoolActivities, extractYouTubeEmbedUrl, extractVideoEmbedUrl } from '../data';
 import { useLanguage, translateCategory } from '../contexts/LanguageContext';
 import { uploadImageToStorage } from '../lib/firebase';
 import ImageCropModal from './ImageCropModal';
@@ -590,12 +590,18 @@ export default function SchoolNewsGallery({
                 </span>
               )}
 
-              {currentActivity?.youtubeUrl && (
-                <span className="px-2.5 py-1 bg-rose-600/90 text-white text-xs font-bold rounded-full backdrop-blur-md shadow-xs border border-rose-400/40 flex items-center gap-1">
-                  <Video className="w-3.5 h-3.5" />
-                  <span>Video YouTube</span>
-                </span>
-              )}
+              {currentActivity?.youtubeUrl && (() => {
+                const vRes = extractVideoEmbedUrl(currentActivity.youtubeUrl);
+                const isFb = vRes?.type === 'facebook';
+                return (
+                  <span className={`px-2.5 py-1 text-white text-xs font-bold rounded-full backdrop-blur-md shadow-xs border flex items-center gap-1 ${
+                    isFb ? 'bg-blue-600/90 border-blue-400/40' : 'bg-rose-600/90 border-rose-400/40'
+                  }`}>
+                    <Video className="w-3.5 h-3.5" />
+                    <span>{isFb ? 'Video Facebook' : 'Video YouTube'}</span>
+                  </span>
+                );
+              })()}
 
               {/* Photo album count badge */}
               <span className="px-2.5 py-1 bg-black/40 text-teal-300 text-xs font-bold rounded-full backdrop-blur-md shadow-xs border border-white/20 flex items-center gap-1">
@@ -800,12 +806,18 @@ export default function SchoolNewsGallery({
 
                 {/* Album Photo Count & Video Badge */}
                 <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
-                  {act.youtubeUrl && (
-                    <div className="bg-rose-600/90 backdrop-blur-xs text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs">
-                      <Video className="w-3 h-3" />
-                      <span>Video</span>
-                    </div>
-                  )}
+                  {act.youtubeUrl && (() => {
+                    const vRes = extractVideoEmbedUrl(act.youtubeUrl);
+                    const isFb = vRes?.type === 'facebook';
+                    return (
+                      <div className={`backdrop-blur-xs text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs ${
+                        isFb ? 'bg-blue-600/90' : 'bg-rose-600/90'
+                      }`}>
+                        <Video className="w-3 h-3" />
+                        <span>{isFb ? 'FB Video' : 'Video'}</span>
+                      </div>
+                    );
+                  })()}
                   <div className="bg-black/60 backdrop-blur-xs text-white text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
                     <Images className="w-3 h-3 text-teal-300" />
                     <span>{act.galleryImages?.length || 1} ảnh</span>
@@ -1032,23 +1044,32 @@ export default function SchoolNewsGallery({
               </div>
 
               {/* ========================================================
-                  VIDEO YOUTUBE PHÓNG SỰ NHÚNG KÈM BÀI VIẾT
+                  VIDEO PHÓNG SỰ NHÚNG KÈM BÀI VIẾT (YOUTUBE / FACEBOOK)
                   ======================================================== */}
-              {selectedArticle.youtubeUrl && extractYouTubeEmbedUrl(selectedArticle.youtubeUrl) && (
+              {selectedArticle.youtubeUrl && extractVideoEmbedUrl(selectedArticle.youtubeUrl) && (
                 <div className="pt-2 space-y-2.5">
-                  <div className="flex items-center gap-2 text-rose-600 font-bold text-base">
-                    <Video className="w-5 h-5 text-rose-600" />
-                    <span>Video Phóng Sự YouTube</span>
-                  </div>
-                  <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-200 bg-black shadow-xl">
-                    <iframe
-                      src={extractYouTubeEmbedUrl(selectedArticle.youtubeUrl)!}
-                      title={`Video - ${selectedArticle.title}`}
-                      className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    />
-                  </div>
+                  {(() => {
+                    const videoObj = extractVideoEmbedUrl(selectedArticle.youtubeUrl)!;
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 font-bold text-base">
+                          <Video className={`w-5 h-5 ${videoObj.type === 'facebook' ? 'text-blue-600' : 'text-rose-600'}`} />
+                          <span className={videoObj.type === 'facebook' ? 'text-blue-700' : 'text-rose-700'}>
+                            {videoObj.type === 'facebook' ? 'Video Phóng Sự Facebook' : 'Video Phóng Sự YouTube'}
+                          </span>
+                        </div>
+                        <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-200 bg-black shadow-xl">
+                          <iframe
+                            src={videoObj.embedUrl}
+                            title={`Video - ${selectedArticle.title}`}
+                            className="w-full h-full border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                          />
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -1513,13 +1534,13 @@ export default function SchoolNewsGallery({
               </div>
 
               {/* ========================================================
-                  VIDEO YOUTUBE NHÚNG KÈM BÀI VIẾT (TÙY CHỌN)
+                  VIDEO YOUTUBE / FACEBOOK NHÚNG KÈM BÀI VIẾT
                   ======================================================== */}
-              <div className="bg-rose-50/60 p-4 rounded-2xl border border-rose-200/80 space-y-2.5">
+              <div className="bg-gradient-to-r from-rose-50/70 to-blue-50/70 p-4 rounded-2xl border border-indigo-200/80 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
                     <Video className="w-4 h-4 text-rose-600" />
-                    <span>Video YouTube nhúng kèm bài viết (Tùy chọn BGH)</span>
+                    <span>Video YouTube / Facebook nhúng kèm bài viết (Tùy chọn BGH)</span>
                   </label>
                   {formYoutubeUrl && (
                     <button
@@ -1532,42 +1553,50 @@ export default function SchoolNewsGallery({
                   )}
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Dán đường link YouTube (vd: https://www.youtube.com/watch?v=...) hoặc mã nhúng &lt;iframe&gt; của YouTube vào đây.
+                  Dán đường link YouTube/Facebook (vd: https://www.youtube.com/... hoặc https://www.facebook.com/...) hoặc mã nhúng &lt;iframe&gt; vào đây.
                 </p>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={formYoutubeUrl}
                     onChange={(e) => setFormYoutubeUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=... hoặc mã <iframe...>"
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-rose-500 text-xs bg-white"
+                    placeholder="Dán link YouTube, Facebook video, Reel hoặc mã nhúng <iframe...>"
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs bg-white"
                   />
                 </div>
 
-                {/* Preview YouTube Video Embed if valid */}
+                {/* Preview Video Embed if valid */}
                 {formYoutubeUrl.trim() !== '' && (
                   <div className="pt-1">
-                    {extractYouTubeEmbedUrl(formYoutubeUrl) ? (
-                      <div className="space-y-1.5">
-                        <div className="relative aspect-video rounded-2xl overflow-hidden border border-rose-200 bg-black shadow-md">
-                          <iframe
-                            src={extractYouTubeEmbedUrl(formYoutubeUrl)!}
-                            title="Xem trước Video YouTube"
-                            className="w-full h-full border-0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                          />
+                    {(() => {
+                      const videoRes = extractVideoEmbedUrl(formYoutubeUrl);
+                      if (!videoRes) {
+                        return (
+                          <p className="text-[11px] text-amber-700 font-medium bg-amber-50 p-2 rounded-xl border border-amber-200">
+                            ⚠️ Chưa nhận diện được mã Video. Vui lòng dán link YouTube, Facebook video/Reel hoặc mã nhúng &lt;iframe...&gt;
+                          </p>
+                        );
+                      }
+                      return (
+                        <div className="space-y-1.5">
+                          <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-300 bg-black shadow-md">
+                            <iframe
+                              src={videoRes.embedUrl}
+                              title="Xem trước Video"
+                              className="w-full h-full border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                              allowFullScreen
+                            />
+                          </div>
+                          <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>
+                              {videoRes.type === 'facebook' ? 'Đã nhận diện Video Facebook hợp lệ.' : 'Đã nhận diện Video YouTube hợp lệ.'} Video sẽ nhúng trực tiếp trong bài viết.
+                            </span>
+                          </p>
                         </div>
-                        <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Đã nhận diện Video YouTube hợp lệ. Video sẽ nhúng trực tiếp trong bài viết.</span>
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-[11px] text-amber-700 font-medium bg-amber-50 p-2 rounded-xl border border-amber-200">
-                        ⚠️ Chưa nhận diện được mã Video YouTube. Hãy dán link dạng: https://www.youtube.com/watch?v=... hoặc mã &lt;iframe...&gt;
-                      </p>
-                    )}
+                      );
+                    })()}
                   </div>
                 )}
               </div>
